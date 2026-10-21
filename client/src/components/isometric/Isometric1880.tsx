@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { BuildingModal } from './BuildingModal';
 import { RoadModal } from './RoadModal';
+import { TerrainModal } from './modal/TerrainModal';
 import { IsometricHeader } from './IsometricHeader';
 import { BuildToolbar } from './BuildToolbar';
 import { BuildCursorBanner } from './BuildCursorBanner';
@@ -35,6 +36,16 @@ export const Isometric1880: React.FC = () => {
         if (x === 0) type = 'water';
         else if (x === 1) type = 'quay';
         else if (x === 2 || (x > 2 && y === 2)) type = 'road';
+        else {
+          // Opcja B: Naturalne strefy leśne na obrzeżach mapy (las dębowy, bór sosnowy, zagajnik)
+          const isNorthEastForest = x >= 12 && y <= 6 && (x + y) % 5 !== 0;
+          const isEastForest = x >= 14 && y >= 7 && (x * 2 + y) % 7 !== 0;
+          const isSouthForest = x >= 4 && x <= 10 && y >= 11 && (x + y) % 4 !== 0;
+          if (isNorthEastForest || isEastForest || isSouthForest) {
+            const hash = (x * 37 + y * 17) % 3;
+            type = hash === 0 ? 'forest_oak' : hash === 1 ? 'forest_pine' : 'forest_grove';
+          }
+        }
         initial[`${x},${y}`] = type;
       }
     }
@@ -43,9 +54,10 @@ export const Isometric1880: React.FC = () => {
   const [roadOrientations, setRoadOrientations] = useState<Record<string, 0 | 90>>({});
   const [roadTypes, setRoadTypes] = useState<Record<string, 'curb' | 'seamless' | 'dirt'>>({});
 
-  // Inspekcja budynku i drogi (Modal akcji)
+  // Inspekcja budynku, drogi i parceli terenu (Modal akcji)
   const [inspectingBuilding, setInspectingBuilding] = useState<PlacedBuilding | null>(null);
   const [inspectingRoad, setInspectingRoad] = useState<{ x: number; y: number } | null>(null);
+  const [inspectingTerrain, setInspectingTerrain] = useState<{ x: number; y: number } | null>(null);
   const [buildingsState, setBuildingsState] = useState<Record<string, BuildingState>>({});
 
   // Postawione budynki na mapie (dokładnie wyrównane na parcelach, z dala od dróg)
@@ -132,6 +144,7 @@ export const Isometric1880: React.FC = () => {
         setSelectedType(null);
         setInspectingBuilding(null);
         setInspectingRoad(null);
+        setInspectingTerrain(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -277,6 +290,20 @@ export const Isometric1880: React.FC = () => {
       if (terrainTiles[`${clickedTile.x},${clickedTile.y}`] === 'road') {
         setInspectingRoad({ x: clickedTile.x, y: clickedTile.y });
         setInspectingBuilding(null);
+        setInspectingTerrain(null);
+        return;
+      }
+
+      // c) Kliknięcie w wolną parcelę terenu (trawa lub las) -> Opcja C (Modal Terenu)
+      if (
+        clickedTile.x >= 2 &&
+        clickedTile.x < GRID_SIZE_X &&
+        clickedTile.y >= 0 &&
+        clickedTile.y < GRID_SIZE_Y
+      ) {
+        setInspectingTerrain({ x: clickedTile.x, y: clickedTile.y });
+        setInspectingBuilding(null);
+        setInspectingRoad(null);
         return;
       }
     }
@@ -393,6 +420,26 @@ export const Isometric1880: React.FC = () => {
             setInspectingRoad(null);
           }}
           onClose={() => setInspectingRoad(null)}
+        />
+      )}
+
+      {/* MODAL GOSPODARKI TERENEM (ZALESIANIE / WYCINKA LASU) */}
+      {inspectingTerrain && (
+        <TerrainModal
+          tileCoord={inspectingTerrain}
+          currentType={
+            terrainTiles[`${inspectingTerrain.x},${inspectingTerrain.y}`] || 'grass'
+          }
+          gold={gold}
+          onSetTerrain={(newType, goldDelta) => {
+            setTerrainTiles((prev) => ({
+              ...prev,
+              [`${inspectingTerrain.x},${inspectingTerrain.y}`]: newType,
+            }));
+            setGold((g) => g + goldDelta);
+            setInspectingTerrain(null);
+          }}
+          onClose={() => setInspectingTerrain(null)}
         />
       )}
     </div>

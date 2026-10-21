@@ -81,9 +81,49 @@ export function renderIsometricScene(p: RenderParams) {
       tileImgKey = 'tile_quay';
     }
 
-    const tileImg = assets[tileImgKey];
-    if (tileImg && tileImg.complete && tileImg.naturalWidth > 0) {
-      ctx.drawImage(tileImg, screenX, screenY, TILE_WIDTH, TILE_HEIGHT);
+    const isForest =
+      tile.type === 'forest_oak' ||
+      tile.type === 'forest_pine' ||
+      tile.type === 'forest_grove';
+
+    if (isForest) {
+      // Podłoże pod lasem (zielona trawa)
+      const grassImg = assets['tile_grass'];
+      if (grassImg && grassImg.complete && grassImg.naturalWidth > 0) {
+        ctx.drawImage(grassImg, screenX, screenY, TILE_WIDTH, TILE_HEIGHT);
+      }
+
+      // Korony i pnie drzew zakotwiczone w dolnym wierzchołku diamentu
+      const forestImg = assets[`tile_${tile.type}`];
+      if (forestImg && forestImg.complete && forestImg.naturalWidth > 0) {
+        let baseWidth = 974;
+        let anchorX = 486;
+        let anchorY = 912;
+        if (tile.type === 'forest_pine') {
+          baseWidth = 726;
+          anchorX = 358;
+          anchorY = 907;
+        } else if (tile.type === 'forest_grove') {
+          baseWidth = 902;
+          anchorX = 450;
+          anchorY = 879;
+        }
+
+        const scale = TILE_WIDTH / baseWidth;
+        const w = forestImg.naturalWidth * scale;
+        const h = forestImg.naturalHeight * scale;
+        const bottomX = topX;
+        const bottomY = topY + TILE_HEIGHT;
+        const drawX = bottomX - anchorX * scale;
+        const drawY = bottomY - anchorY * scale;
+
+        ctx.drawImage(forestImg, drawX, drawY, w, h);
+      }
+    } else {
+      const tileImg = assets[tileImgKey];
+      if (tileImg && tileImg.complete && tileImg.naturalWidth > 0) {
+        ctx.drawImage(tileImg, screenX, screenY, TILE_WIDTH, TILE_HEIGHT);
+      }
     }
 
     // Subtelna siatka

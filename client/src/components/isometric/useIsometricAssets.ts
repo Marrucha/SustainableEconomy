@@ -65,6 +65,9 @@ export function useIsometricAssets() {
       tile_road_dirt_rot90: '/sprites/assets_1880/tile_road_dirt_x.png',
       tile_water: '/sprites/assets_1880/tile_water.png',
       tile_quay: '/sprites/assets_1880/tile_quay.png',
+      tile_forest_oak: '/sprites/assets_1880/tile_forest_oak.png',
+      tile_forest_pine: '/sprites/assets_1880/tile_forest_pine.png',
+      tile_forest_grove: '/sprites/assets_1880/tile_forest_grove.png',
     };
 
     const ts = Date.now();

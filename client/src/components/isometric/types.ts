@@ -10,10 +10,19 @@ export interface PlacedBuilding {
   cost: number;
 }
 
+export type TerrainType =
+  | 'road'
+  | 'grass'
+  | 'water'
+  | 'quay'
+  | 'forest_oak'
+  | 'forest_pine'
+  | 'forest_grove';
+
 export interface TileDef {
   x: number;
   y: number;
-  type: 'road' | 'grass' | 'water' | 'quay';
+  type: TerrainType;
 }
 
 export type BusinessEnergySource = 'elektrownia' | 'drewno' | 'wegiel' | 'gaz' | 'wodor';
