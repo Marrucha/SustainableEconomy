@@ -19,21 +19,14 @@ export const Isometric1880: React.FC = () => {
   const [pan, setPan] = useState({ x: -20, y: 40 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const mouseDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const animFrameRef = useRef<number>(0);
 
   // Zarządzanie dwiema mapami (Miasto 🏙️ vs Wieś 🌾)
   const {
-    currentMap,
-    setCurrentMap,
-    activeGeometry,
-    terrainTiles,
-    setTerrainTiles,
-    roadOrientations,
-    setRoadOrientations,
-    roadTypes,
-    setRoadTypes,
-    placedBuildings,
-    setPlacedBuildings,
+    currentMap, setCurrentMap, activeGeometry,
+    terrainTiles, setTerrainTiles, roadOrientations, setRoadOrientations,
+    roadTypes, setRoadTypes, placedBuildings, setPlacedBuildings,
   } = useWorldMaps();
 
   // Budowanie i tryb wyburzania
@@ -54,24 +47,14 @@ export const Isometric1880: React.FC = () => {
 
   // Zunifikowane akcje modyfikacji miasta
   const {
-    demolishBuilding,
-    demolishRoad,
-    clearForest,
-    changeRoadType,
-    rotateRoad,
-    changeTerrainType,
-    buildOnCoord,
+    demolishBuilding, demolishRoad, clearForest,
+    changeRoadType, rotateRoad, changeTerrainType, buildOnCoord,
   } = useCityActions({
-    placedBuildings,
-    setPlacedBuildings,
-    terrainTiles,
-    setTerrainTiles,
-    roadOrientations,
-    setRoadOrientations,
-    roadTypes,
-    setRoadTypes,
-    gold,
-    setGold,
+    placedBuildings, setPlacedBuildings,
+    terrainTiles, setTerrainTiles,
+    roadOrientations, setRoadOrientations,
+    roadTypes, setRoadTypes,
+    gold, setGold,
     mapType: currentMap,
     gridSizeX: activeGeometry.gridSizeX,
     gridSizeY: activeGeometry.gridSizeY,
@@ -168,6 +151,8 @@ export const Isometric1880: React.FC = () => {
   ]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+
     const clickedTile = screenToTile(
       e.clientX,
       e.clientY,
@@ -217,91 +202,16 @@ export const Isometric1880: React.FC = () => {
       return;
     }
 
-    // 3. PRAWY PRZYCISK MYSZY (PPM) -> Menu Wyburzenia lub Przebudowy/Remontu
+    // 3. PRAWY PRZYCISK MYSZY (PPM) -> Anulowanie wyboru budynku (brak menu kontekstowego)
     if (e.button === 2) {
       e.preventDefault();
-      if (!clickedTile) return;
-
       if (selectedType) {
         setSelectedType(null);
-      }
-      setInspectingBuilding(null);
-      setInspectingTerrain(null);
-
-      // PPM w budynek
-      const clickedBuilding = [...placedBuildings]
-        .reverse()
-        .find(
-          (b) =>
-            clickedTile.x >= b.x &&
-            clickedTile.x < b.x + b.sizeX &&
-            clickedTile.y >= b.y &&
-            clickedTile.y < b.y + b.sizeY
-        );
-
-      if (clickedBuilding) {
-        setRebuildTarget({ kind: 'building', building: clickedBuilding });
-        return;
-      }
-
-      // PPM w drogę
-      if (terrainTiles[`${clickedTile.x},${clickedTile.y}`] === 'road') {
-        const subType = roadTypes[`${clickedTile.x},${clickedTile.y}`] || 'curb';
-        const ori = roadOrientations[`${clickedTile.x},${clickedTile.y}`] || 0;
-        setRebuildTarget({ kind: 'road', x: clickedTile.x, y: clickedTile.y, roadType: subType, orientation: ori });
-        return;
-      }
-
-      // PPM w parcelę terenu / las
-      const minWaterX = currentMap === 'rural' ? 2 : 1;
-      if (
-        clickedTile.x >= minWaterX &&
-        clickedTile.x < activeGeometry.gridSizeX &&
-        clickedTile.y >= 0 &&
-        clickedTile.y < activeGeometry.gridSizeY
-      ) {
-        const tType = terrainTiles[`${clickedTile.x},${clickedTile.y}`] || 'grass';
-        setRebuildTarget({ kind: 'terrain', x: clickedTile.x, y: clickedTile.y, terrainType: tType });
-        return;
       }
       return;
     }
 
-    // 4. LEWY PRZYCISK MYSZY (LPM) -> Kliknięcie w pole otwiera okno terenu lub menu budynku
-    if (e.button === 0 && !selectedType && clickedTile) {
-      // a) Kliknięcie w budynek -> Menu budynku
-      const clickedBuilding = [...placedBuildings]
-        .reverse()
-        .find(
-          (b) =>
-            clickedTile.x >= b.x &&
-            clickedTile.x < b.x + b.sizeX &&
-            clickedTile.y >= b.y &&
-            clickedTile.y < b.y + b.sizeY
-        );
-
-      if (clickedBuilding) {
-        setInspectingBuilding(clickedBuilding);
-        setInspectingTerrain(null);
-        setRebuildTarget(null);
-        return;
-      }
-
-      // b) Kliknięcie w pole terenu / las / drogę -> Okno Informacji o Terenie
-      const minWaterX = currentMap === 'rural' ? 2 : 1;
-      if (
-        clickedTile.x >= minWaterX &&
-        clickedTile.x < activeGeometry.gridSizeX &&
-        clickedTile.y >= 0 &&
-        clickedTile.y < activeGeometry.gridSizeY
-      ) {
-        setInspectingTerrain({ x: clickedTile.x, y: clickedTile.y });
-        setInspectingBuilding(null);
-        setRebuildTarget(null);
-        return;
-      }
-    }
-
+    // 4. LEWY LUB ŚRODKOWY PRZYCISK MYSZY -> Przesuwanie ekranu
     if (e.button === 0 || e.button === 1) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -312,12 +222,9 @@ export const Isometric1880: React.FC = () => {
     buildRotation,
     gold,
     terrainTiles,
-    roadOrientations,
-    roadTypes,
     pan,
     zoom,
     isDemolishMode,
-    currentMap,
     activeGeometry,
     buildOnCoord,
     demolishRoad,
@@ -343,7 +250,88 @@ export const Isometric1880: React.FC = () => {
     }
   };
 
-  const handleMouseUp = () => setIsDragging(false);
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    setIsDragging(false);
+
+    // Jeśli to był krótki klik bez ciągnięcia myszą (< 6px), sprawdzamy kliknięcie w budynek
+    const dist = Math.hypot(e.clientX - mouseDownPosRef.current.x, e.clientY - mouseDownPosRef.current.y);
+    if (dist < 6 && e.button === 0 && !selectedType && !isDemolishMode) {
+      const clickedTile = screenToTile(
+        e.clientX,
+        e.clientY,
+        canvasRef.current,
+        zoom,
+        pan,
+        activeGeometry.tileWidth,
+        activeGeometry.tileHeight,
+        activeGeometry.gridSizeX,
+        activeGeometry.gridSizeY
+      );
+
+      if (clickedTile) {
+        const clickedBuilding = [...placedBuildings]
+          .reverse()
+          .find(
+            (b) =>
+              clickedTile.x >= b.x &&
+              clickedTile.x < b.x + b.sizeX &&
+              clickedTile.y >= b.y &&
+              clickedTile.y < b.y + b.sizeY
+          );
+
+        if (clickedBuilding) {
+          setInspectingBuilding(clickedBuilding);
+          setInspectingTerrain(null);
+        }
+      }
+    }
+  }, [selectedType, isDemolishMode, zoom, pan, activeGeometry, placedBuildings]);
+
+  // DOUBLE CLICK (dwuklik) -> Otwarcie menu terenu lub budynku
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    const clickedTile = screenToTile(
+      e.clientX,
+      e.clientY,
+      canvasRef.current,
+      zoom,
+      pan,
+      activeGeometry.tileWidth,
+      activeGeometry.tileHeight,
+      activeGeometry.gridSizeX,
+      activeGeometry.gridSizeY
+    );
+
+    if (!clickedTile) return;
+
+    // a) Dwuklik w budynek
+    const clickedBuilding = [...placedBuildings]
+      .reverse()
+      .find(
+        (b) =>
+          clickedTile.x >= b.x &&
+          clickedTile.x < b.x + b.sizeX &&
+          clickedTile.y >= b.y &&
+          clickedTile.y < b.y + b.sizeY
+      );
+
+    if (clickedBuilding) {
+      setInspectingBuilding(clickedBuilding);
+      setInspectingTerrain(null);
+      return;
+    }
+
+    // b) Dwuklik w pole terenu / drogę / las
+    const minWaterX = currentMap === 'rural' ? 2 : 1;
+    if (
+      clickedTile.x >= minWaterX &&
+      clickedTile.x < activeGeometry.gridSizeX &&
+      clickedTile.y >= 0 &&
+      clickedTile.y < activeGeometry.gridSizeY
+    ) {
+      setInspectingTerrain({ x: clickedTile.x, y: clickedTile.y });
+      setInspectingBuilding(null);
+    }
+  }, [zoom, pan, activeGeometry, placedBuildings, currentMap]);
 
   const handleWheel = (e: React.WheelEvent) => {
     setZoom((prev) => Math.max(0.4, Math.min(1.8, prev - e.deltaY * 0.001)));
@@ -359,6 +347,7 @@ export const Isometric1880: React.FC = () => {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
         onContextMenu={(e) => e.preventDefault()}
         className="w-full h-full cursor-crosshair block"

@@ -177,17 +177,30 @@ export function renderIsometricScene(p: RenderParams) {
     }
   });
 
-  // Komparator topologiczny dla rzutu izometrycznego 2.5D
+  // Komparator głębokości dla rzutu izometrycznego 2.5D
   elevatedItems.sort((a, b) => {
-    // A leży przed krawędziami B w stronę kamery (A zasłania B)
-    if (a.x >= b.x + b.sizeX && a.y + a.sizeY > b.y && a.y <= b.y + b.sizeY) return 1;
-    if (a.y >= b.y + b.sizeY && a.x + a.sizeX > b.x && a.x <= b.x + b.sizeX) return 1;
+    // Relacja drzewo vs duży budynek:
+    // Drzewo przykrywa płot TYLKO wtedy, gdy leży na wysokości lub poniżej skrajnej komórki narożnej (a.depth >= b.depth - 1).
+    // Jeśli drzewo jest poniżej środka farmy, ale powyżej jej skrajnego narożnika, to narożnik farmy jest na wierzchu!
+    if (a.kind === 'forest' && b.kind === 'building') {
+      if (a.depth < b.depth - 1) {
+        return -1; // Skrajny narożnik farmy na wierzchu drzewa
+      }
+      if (a.x >= b.x + b.sizeX || a.y >= b.y + b.sizeY) {
+        return 1; // Drzewo na wysokości lub poniżej narożnika przykrywa płot
+      }
+    }
 
-    // B leży przed krawędziami A w stronę kamery (B zasłania A)
-    if (b.x >= a.x + a.sizeX && b.y + b.sizeY > a.y && b.y <= a.y + a.sizeY) return -1;
-    if (b.y >= a.y + a.sizeY && b.x + b.sizeX > a.x && b.x <= a.x + a.sizeX) return -1;
+    if (b.kind === 'forest' && a.kind === 'building') {
+      if (b.depth < a.depth - 1) {
+        return 1; // Skrajny narożnik farmy na wierzchu drzewa
+      }
+      if (b.x >= a.x + a.sizeX || b.y >= a.y + a.sizeY) {
+        return -1; // Drzewo na wysokości lub poniżej narożnika przykrywa płot
+      }
+    }
 
-    // Domyślne sortowanie rosnąco po głębokości narożnika
+    // Domyślne sortowanie rosnąco po głębokości rzutu
     return a.depth - b.depth;
   });
 
