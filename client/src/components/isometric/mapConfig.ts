@@ -59,11 +59,19 @@ export function getBuildingGridDimensions(
   mapType: MapType,
   rotation: 0 | 90 = 0
 ): { sizeX: number; sizeY: number } {
+  // Drogi zawsze zajmują dokładnie 1 kratkę siatki (1x1) – na wsi zajmują 1 małą kratkę!
+  if (item.typeId.startsWith('road') || item.roadSubType !== undefined) {
+    return {
+      sizeX: 1,
+      sizeY: 1,
+    };
+  }
+
   const baseSizeX = rotation === 0 ? item.defaultSizeX : item.defaultSizeY;
   const baseSizeY = rotation === 0 ? item.defaultSizeY : item.defaultSizeX;
 
   if (mapType === 'rural') {
-    // Na wsi pola są 2x mniejsze -> rozmiar w kratkach x2
+    // Na wsi duże parcele rolnicze (farma 3x4 -> 6x8, sad 2x2 -> 4x4) zajmują 2x więcej małych pól
     return {
       sizeX: baseSizeX * 2,
       sizeY: baseSizeY * 2,
