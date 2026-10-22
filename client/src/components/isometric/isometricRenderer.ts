@@ -96,17 +96,17 @@ export function renderIsometricScene(p: RenderParams) {
       // Korony i pnie drzew zakotwiczone w dolnym wierzchołku diamentu
       const forestImg = assets[`tile_${tile.type}`];
       if (forestImg && forestImg.complete && forestImg.naturalWidth > 0) {
-        let baseWidth = 974;
-        let anchorX = 486;
-        let anchorY = 912;
+        let baseWidth = 702;
+        let anchorX = 428;
+        let anchorY = 992;
         if (tile.type === 'forest_pine') {
-          baseWidth = 726;
-          anchorX = 358;
-          anchorY = 907;
+          baseWidth = 509;
+          anchorX = 277;
+          anchorY = 956;
         } else if (tile.type === 'forest_grove') {
-          baseWidth = 902;
-          anchorX = 450;
-          anchorY = 879;
+          baseWidth = 702;
+          anchorX = 386;
+          anchorY = 987;
         }
 
         const scale = TILE_WIDTH / baseWidth;
