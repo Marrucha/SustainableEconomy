@@ -22,6 +22,7 @@ export const Isometric1880: React.FC = () => {
   const animFrameRef = useRef<number>(0);
 
   // Budowanie i interakcja
+  const [isBuildMode, setIsBuildMode] = useState<boolean>(true);
   const [selectedType, setSelectedType] = useState<BuildingCatalogItem | null>(null);
   const [activeCategory, setActiveCategory] = useState<BuildingCategory | 'Wszystkie'>('Wszystkie');
   const [buildRotation, setBuildRotation] = useState<0 | 90>(0);
@@ -45,7 +46,7 @@ export const Isometric1880: React.FC = () => {
   // Ładowanie zasobów graficznych
   const { assetsRef } = useIsometricAssets();
 
-  // Obsługa skrótów klawiaturowych
+  // Obsługa skrótów klawiaturowych oraz blokada menu kontekstowego przeglądarki
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'r' || e.key === 'R') {
@@ -59,8 +60,14 @@ export const Isometric1880: React.FC = () => {
         setRebuildTarget(null);
       }
     };
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
   }, [selectedType]);
 
   // Główna pętla renderowania Canvas 2D
@@ -180,7 +187,10 @@ export const Isometric1880: React.FC = () => {
     }
 
     // 2. Kliknięcie PRAWYM przyciskiem myszy (PPM) -> Menu Wyburzenia lub Przebudowy/Remontu
-    if (e.button === 2 && clickedTile) {
+    if (e.button === 2) {
+      e.preventDefault();
+      if (!clickedTile) return;
+
       if (selectedType) {
         setSelectedType(null);
       }
@@ -255,8 +265,9 @@ export const Isometric1880: React.FC = () => {
         return;
       }
 
-      // c) Kliknięcie w wolną parcelę terenu -> Otwórz Menu Budowlane na tym polu!
+      // c) Kliknięcie w wolną parcelę terenu -> Otwórz Menu Budowlane na tym polu (tylko w trybie budowy!)
       if (
+        isBuildMode &&
         clickedTile.x >= 2 &&
         clickedTile.x < GRID_SIZE_X &&
         clickedTile.y >= 0 &&
@@ -273,7 +284,7 @@ export const Isometric1880: React.FC = () => {
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     }
-  }, [placedBuildings, selectedType, buildRotation, gold, terrainTiles, pan, zoom]);
+  }, [placedBuildings, selectedType, buildRotation, gold, terrainTiles, pan, zoom, isBuildMode]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const tile = screenToTile(e.clientX, e.clientY, canvasRef.current, zoom, pan);
@@ -291,7 +302,10 @@ export const Isometric1880: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full h-full bg-stone-950 overflow-hidden select-none font-sans">
+    <div
+      onContextMenu={(e) => e.preventDefault()}
+      className="relative w-full h-full bg-stone-950 overflow-hidden select-none font-sans"
+    >
       <canvas
         ref={canvasRef}
         onMouseDown={handleMouseDown}
@@ -314,12 +328,19 @@ export const Isometric1880: React.FC = () => {
         />
       )}
 
-      {/* DOLNY PASEK BUDOWANIA I KATEGORII */}
+      {/* DOLNY PASEK BUDOWANIA I KATEGORII Z IKONKĄ DŹWIGU */}
       <BuildToolbar
         catalog={CATALOG}
         activeCategory={activeCategory}
         selectedType={selectedType}
         gold={gold}
+        isBuildMode={isBuildMode}
+        onToggleBuildMode={() => {
+          setIsBuildMode((prev) => {
+            if (prev) setSelectedType(null);
+            return !prev;
+          });
+        }}
         onSelectCategory={setActiveCategory}
         onSelectType={setSelectedType}
       />
