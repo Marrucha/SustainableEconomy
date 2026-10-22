@@ -114,19 +114,19 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
     }
   }
 
-  // Automatyczne wycięcie lasu pod początkowymi parcelami wiejskimi (Farma 6x8, Sad 4x4, Farma Hodowlana 6x4)
-  for (let tx = 5; tx <= 12; tx++) {
-    for (let ty = 1; ty <= 10; ty++) {
+  // Automatyczne wycięcie lasu pod początkowymi parcelami wiejskimi (Farma 8x6, Sad 4x4, Farma Hodowlana 6x4)
+  for (let tx = 5; tx <= 15; tx++) {
+    for (let ty = 1; ty <= 9; ty++) {
       initial[`${tx},${ty}`] = 'grass';
     }
   }
-  for (let tx = 13; tx <= 18; tx++) {
-    for (let ty = 3; ty <= 8; ty++) {
+  for (let tx = 13; tx <= 19; tx++) {
+    for (let ty = 3; ty <= 9; ty++) {
       initial[`${tx},${ty}`] = 'grass';
     }
   }
-  for (let tx = 5; tx <= 12; tx++) {
-    for (let ty = 13; ty <= 18; ty++) {
+  for (let tx = 5; tx <= 13; tx++) {
+    for (let ty = 13; ty <= 19; ty++) {
       initial[`${tx},${ty}`] = 'grass';
     }
   }
@@ -134,7 +134,7 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
   return initial;
 }
 
-// Na wsi: Farma Zbożowa 3x4 -> 6x8, Sad 2x2 -> 4x4, Farma Hodowlana 3x2 -> 6x4
+// Na wsi: Farma Zbożowa 4x3 -> 8x6, Sad 2x2 -> 4x4, Farma Hodowlana 3x2 -> 6x4
 export const INITIAL_RURAL_BUILDINGS: PlacedBuilding[] = [
   {
     id: 'rural_farm_init',
@@ -142,8 +142,8 @@ export const INITIAL_RURAL_BUILDINGS: PlacedBuilding[] = [
     name: 'Wielka Farma Zbożowa',
     x: 6,
     y: 2,
-    sizeX: 6, // 3 * 2
-    sizeY: 8, // 4 * 2
+    sizeX: 8, // 4 * 2
+    sizeY: 6, // 3 * 2
     rotation: 0,
     cost: 2800,
   },

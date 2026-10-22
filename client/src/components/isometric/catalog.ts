@@ -23,8 +23,8 @@ export const CATALOG: BuildingCatalogItem[] = [
     typeId: 'wheat_farm',
     name: 'Wielka Farma Zbożowa',
     category: 'Budynki rolnicze',
-    defaultSizeX: 3,
-    defaultSizeY: 4,
+    defaultSizeX: 4,
+    defaultSizeY: 3,
     isSquare: false,
     cost: 2800,
     spriteBaseName: 'wheat_farm',
@@ -54,9 +54,9 @@ export const CATALOG: BuildingCatalogItem[] = [
     isSquare: false,
     cost: 2400,
     spriteBaseName: 'livestock_farm',
-    anchorNormX: 483,
-    anchorNormY: 794,
-    baseWidth: 1110,
+    anchorNormX: 529,
+    anchorNormY: 659,
+    baseWidth: 1141,
   },
 
   // 2. BUDYNKI PRZEMYSŁOWE
