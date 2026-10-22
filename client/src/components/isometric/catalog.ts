@@ -45,6 +45,19 @@ export const CATALOG: BuildingCatalogItem[] = [
     anchorNormY: 707,
     baseWidth: 1011,
   },
+  {
+    typeId: 'livestock_farm',
+    name: 'Farma Bydła i Owiec',
+    category: 'Budynki rolnicze',
+    defaultSizeX: 3,
+    defaultSizeY: 2,
+    isSquare: false,
+    cost: 2400,
+    spriteBaseName: 'livestock_farm',
+    anchorNormX: 483,
+    anchorNormY: 794,
+    baseWidth: 1110,
+  },
 
   // 2. BUDYNKI PRZEMYSŁOWE
   {

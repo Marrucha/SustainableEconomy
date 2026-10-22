@@ -114,7 +114,7 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
     }
   }
 
-  // Automatyczne wycięcie lasu pod początkowymi parcelami wiejskimi (Farma 6x8 i Sad 4x4)
+  // Automatyczne wycięcie lasu pod początkowymi parcelami wiejskimi (Farma 6x8, Sad 4x4, Farma Hodowlana 6x4)
   for (let tx = 5; tx <= 12; tx++) {
     for (let ty = 1; ty <= 10; ty++) {
       initial[`${tx},${ty}`] = 'grass';
@@ -125,11 +125,16 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
       initial[`${tx},${ty}`] = 'grass';
     }
   }
+  for (let tx = 5; tx <= 12; tx++) {
+    for (let ty = 13; ty <= 18; ty++) {
+      initial[`${tx},${ty}`] = 'grass';
+    }
+  }
 
   return initial;
 }
 
-// Na wsi: Farma 3x4 formalnie ma rozmiar 6x8, a Sad 2x2 formalnie ma 4x4
+// Na wsi: Farma Zbożowa 3x4 -> 6x8, Sad 2x2 -> 4x4, Farma Hodowlana 3x2 -> 6x4
 export const INITIAL_RURAL_BUILDINGS: PlacedBuilding[] = [
   {
     id: 'rural_farm_init',
@@ -152,6 +157,17 @@ export const INITIAL_RURAL_BUILDINGS: PlacedBuilding[] = [
     sizeY: 4, // 2 * 2
     rotation: 0,
     cost: 1800,
+  },
+  {
+    id: 'rural_livestock_init',
+    typeId: 'livestock_farm',
+    name: 'Farma Bydła i Owiec',
+    x: 6,
+    y: 14,
+    sizeX: 6, // 3 * 2
+    sizeY: 4, // 2 * 2
+    rotation: 0,
+    cost: 2400,
   },
 ];
 
