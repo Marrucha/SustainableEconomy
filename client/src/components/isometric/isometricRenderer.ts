@@ -113,9 +113,27 @@ export function renderIsometricScene(p: RenderParams) {
   });
 
   // 3. Rysowanie Obiektów Wznoszących się w Pionie (Budynki + Drzewa Leśne)
+  // Topologiczne sortowanie głębokości: drzewa i obiekty leżące poniżej krawędzi ogrodzenia
+  // są bezwzględnie rysowane PO budynku, dzięki czemu korony drzew naturalnie przykrywają płot.
   type ElevatedItem =
-    | { kind: 'building'; bldg: PlacedBuilding; depth: number }
-    | { kind: 'forest'; tile: TileDef; depth: number };
+    | {
+        kind: 'building';
+        bldg: PlacedBuilding;
+        x: number;
+        y: number;
+        sizeX: number;
+        sizeY: number;
+        depth: number;
+      }
+    | {
+        kind: 'forest';
+        tile: TileDef;
+        x: number;
+        y: number;
+        sizeX: number;
+        sizeY: number;
+        depth: number;
+      };
 
   const elevatedItems: ElevatedItem[] = [];
 
@@ -123,6 +141,10 @@ export function renderIsometricScene(p: RenderParams) {
     elevatedItems.push({
       kind: 'building',
       bldg,
+      x: bldg.x,
+      y: bldg.y,
+      sizeX: bldg.sizeX,
+      sizeY: bldg.sizeY,
       depth: bldg.x + bldg.sizeX + bldg.y + bldg.sizeY,
     });
   });
@@ -146,13 +168,28 @@ export function renderIsometricScene(p: RenderParams) {
       elevatedItems.push({
         kind: 'forest',
         tile,
+        x: tile.x,
+        y: tile.y,
+        sizeX: 1,
+        sizeY: 1,
         depth: tile.x + 1 + tile.y + 1,
       });
     }
   });
 
-  // Sortowanie rosnąco po głębokości (od góry ekranu do dołu ekranu)
-  elevatedItems.sort((a, b) => a.depth - b.depth);
+  // Komparator topologiczny dla rzutu izometrycznego 2.5D
+  elevatedItems.sort((a, b) => {
+    // A leży przed krawędziami B w stronę kamery (A zasłania B)
+    if (a.x >= b.x + b.sizeX && a.y + a.sizeY > b.y && a.y <= b.y + b.sizeY) return 1;
+    if (a.y >= b.y + b.sizeY && a.x + a.sizeX > b.x && a.x <= b.x + b.sizeX) return 1;
+
+    // B leży przed krawędziami A w stronę kamery (B zasłania A)
+    if (b.x >= a.x + a.sizeX && b.y + b.sizeY > a.y && b.y <= a.y + a.sizeY) return -1;
+    if (b.y >= a.y + a.sizeY && b.x + b.sizeX > a.x && b.x <= a.x + a.sizeX) return -1;
+
+    // Domyślne sortowanie rosnąco po głębokości narożnika
+    return a.depth - b.depth;
+  });
 
   elevatedItems.forEach((item) => {
     if (item.kind === 'building') {
