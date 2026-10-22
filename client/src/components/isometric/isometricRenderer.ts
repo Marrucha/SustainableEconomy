@@ -81,20 +81,114 @@ export function renderIsometricScene(p: RenderParams) {
       tileImgKey = 'tile_quay';
     }
 
-    const isForest =
+    // Rysowanie płaskiego podłoża (trawa, droga, nabrzeże, woda)
+    const tileImg = assets[tileImgKey] || assets['tile_grass'];
+    if (tileImg && tileImg.complete && tileImg.naturalWidth > 0) {
+      ctx.drawImage(tileImg, screenX, screenY, TILE_WIDTH, TILE_HEIGHT);
+    }
+
+    // Subtelna siatka
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.lineTo(topX + TILE_WIDTH / 2, topY + TILE_HEIGHT / 2);
+    ctx.lineTo(topX, topY + TILE_HEIGHT);
+    ctx.lineTo(topX - TILE_WIDTH / 2, topY + TILE_HEIGHT / 2);
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 0.75;
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // 3. Rysowanie Obiektów Wznoszących się w Pionie (Budynki + Drzewa Leśne)
+  // Ścisły Painter's Algorithm: wszystko co jest poniżej na ekranie (większa głębokość x + y)
+  // jest rysowane PÓŹNIEJ, a więc NA WIERZCHU obiektów położonych powyżej.
+  type ElevatedItem =
+    | { kind: 'building'; bldg: PlacedBuilding; depth: number }
+    | { kind: 'forest'; tile: TileDef; depth: number };
+
+  const elevatedItems: ElevatedItem[] = [];
+
+  p.placedBuildings.forEach((bldg) => {
+    elevatedItems.push({
+      kind: 'building',
+      bldg,
+      depth: bldg.x + bldg.sizeX + bldg.y + bldg.sizeY,
+    });
+  });
+
+  allTiles.forEach((tile) => {
+    if (
       tile.type === 'forest_oak' ||
       tile.type === 'forest_pine' ||
-      tile.type === 'forest_grove';
+      tile.type === 'forest_grove'
+    ) {
+      elevatedItems.push({
+        kind: 'forest',
+        tile,
+        depth: tile.x + 1 + tile.y + 1,
+      });
+    }
+  });
 
-    if (isForest) {
-      // Podłoże pod lasem (zielona trawa)
-      const grassImg = assets['tile_grass'];
-      if (grassImg && grassImg.complete && grassImg.naturalWidth > 0) {
-        ctx.drawImage(grassImg, screenX, screenY, TILE_WIDTH, TILE_HEIGHT);
+  // Sortowanie rosnąco po głębokości (od góry ekranu do dołu ekranu)
+  elevatedItems.sort((a, b) => a.depth - b.depth);
+
+  elevatedItems.forEach((item) => {
+    if (item.kind === 'building') {
+      const bldg = item.bldg;
+      const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
+      if (!catItem) return;
+
+      const rot = bldg.rotation || 0;
+      const spriteKey = `${catItem.spriteBaseName}_${rot === 0 ? 'norm' : 'rot90'}`;
+      const img = assets[spriteKey];
+
+      if (img && img.complete && img.naturalWidth > 0) {
+        const topX = (bldg.x - bldg.y) * (TILE_WIDTH / 2);
+        const topY = (bldg.x + bldg.y) * (TILE_HEIGHT / 2);
+        const rightX = (bldg.x + bldg.sizeX - bldg.y) * (TILE_WIDTH / 2);
+        const rightY = (bldg.x + bldg.sizeX + bldg.y) * (TILE_HEIGHT / 2);
+        const bottomX = (bldg.x + bldg.sizeX - (bldg.y + bldg.sizeY)) * (TILE_WIDTH / 2);
+        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (TILE_HEIGHT / 2);
+        const leftX = (bldg.x - (bldg.y + bldg.sizeY)) * (TILE_WIDTH / 2);
+        const leftY = (bldg.x + (bldg.y + bldg.sizeY)) * (TILE_HEIGHT / 2);
+
+        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (TILE_WIDTH / 2);
+        const scale = currentPlotWidth / catItem.baseWidth;
+        const w = img.naturalWidth * scale;
+        const h = img.naturalHeight * scale;
+
+        let anchorX = catItem.anchorNormX;
+        const anchorY = catItem.anchorNormY;
+        if (rot === 90 && !catItem.isSquare) {
+          anchorX = img.naturalWidth - catItem.anchorNormX;
+        }
+
+        const drawX = bottomX - anchorX * scale;
+        const drawY = bottomY - anchorY * scale;
+
+        // Cień pod budynkiem
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(topX, topY);
+        ctx.lineTo(rightX, rightY);
+        ctx.lineTo(bottomX, bottomY);
+        ctx.lineTo(leftX, leftY);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+        ctx.fill();
+        ctx.restore();
+
+        ctx.drawImage(img, drawX, drawY, w, h);
       }
-
-      // Korony i pnie drzew zakotwiczone w dolnym wierzchołku diamentu
+    } else {
+      // Rysowanie drzew leśnych
+      const tile = item.tile;
+      const { x: topX, y: topY } = tileToScreen(tile.x, tile.y);
       const forestImg = assets[`tile_${tile.type}`];
+
       if (forestImg && forestImg.complete && forestImg.naturalWidth > 0) {
         let baseWidth = 702;
         let anchorX = 428;
@@ -119,77 +213,6 @@ export function renderIsometricScene(p: RenderParams) {
 
         ctx.drawImage(forestImg, drawX, drawY, w, h);
       }
-    } else {
-      const tileImg = assets[tileImgKey];
-      if (tileImg && tileImg.complete && tileImg.naturalWidth > 0) {
-        ctx.drawImage(tileImg, screenX, screenY, TILE_WIDTH, TILE_HEIGHT);
-      }
-    }
-
-    // Subtelna siatka
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(topX, topY);
-    ctx.lineTo(topX + TILE_WIDTH / 2, topY + TILE_HEIGHT / 2);
-    ctx.lineTo(topX, topY + TILE_HEIGHT);
-    ctx.lineTo(topX - TILE_WIDTH / 2, topY + TILE_HEIGHT / 2);
-    ctx.closePath();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 0.75;
-    ctx.stroke();
-    ctx.restore();
-  });
-
-  // 3. Rysowanie Budynków (Painter's algorithm - sortowanie po głębokości)
-  const sortedBuildings = [...p.placedBuildings].sort(
-    (a, b) => a.x + a.sizeX + a.y + a.sizeY - (b.x + b.sizeX + b.y + b.sizeY)
-  );
-
-  sortedBuildings.forEach((bldg) => {
-    const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
-    if (!catItem) return;
-
-    const rot = bldg.rotation || 0;
-    const spriteKey = `${catItem.spriteBaseName}_${rot === 0 ? 'norm' : 'rot90'}`;
-    const img = assets[spriteKey];
-
-    if (img && img.complete && img.naturalWidth > 0) {
-      const topX = (bldg.x - bldg.y) * (TILE_WIDTH / 2);
-      const topY = (bldg.x + bldg.y) * (TILE_HEIGHT / 2);
-      const rightX = (bldg.x + bldg.sizeX - bldg.y) * (TILE_WIDTH / 2);
-      const rightY = (bldg.x + bldg.sizeX + bldg.y) * (TILE_HEIGHT / 2);
-      const bottomX = (bldg.x + bldg.sizeX - (bldg.y + bldg.sizeY)) * (TILE_WIDTH / 2);
-      const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (TILE_HEIGHT / 2);
-      const leftX = (bldg.x - (bldg.y + bldg.sizeY)) * (TILE_WIDTH / 2);
-      const leftY = (bldg.x + (bldg.y + bldg.sizeY)) * (TILE_HEIGHT / 2);
-
-      const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (TILE_WIDTH / 2);
-      const scale = currentPlotWidth / catItem.baseWidth;
-      const w = img.naturalWidth * scale;
-      const h = img.naturalHeight * scale;
-
-      let anchorX = catItem.anchorNormX;
-      const anchorY = catItem.anchorNormY;
-      if (rot === 90 && !catItem.isSquare) {
-        anchorX = img.naturalWidth - catItem.anchorNormX;
-      }
-
-      const drawX = bottomX - anchorX * scale;
-      const drawY = bottomY - anchorY * scale;
-
-      // Cień pod budynkiem
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(topX, topY);
-      ctx.lineTo(rightX, rightY);
-      ctx.lineTo(bottomX, bottomY);
-      ctx.lineTo(leftX, leftY);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
-      ctx.fill();
-      ctx.restore();
-
-      ctx.drawImage(img, drawX, drawY, w, h);
     }
   });
 
