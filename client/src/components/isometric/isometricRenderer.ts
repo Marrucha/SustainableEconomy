@@ -179,26 +179,30 @@ export function renderIsometricScene(p: RenderParams) {
 
   // Komparator głębokości dla rzutu izometrycznego 2.5D
   elevatedItems.sort((a, b) => {
-    // Relacja drzewo vs duży budynek:
-    // Drzewo przykrywa płot TYLKO wtedy, gdy leży na wysokości lub poniżej skrajnej komórki narożnej (a.depth >= b.depth - 1).
-    // Jeśli drzewo jest poniżej środka farmy, ale powyżej jej skrajnego narożnika, to narożnik farmy jest na wierzchu!
+    // Relacja: Drzewo vs Budynek
+    // Jeżeli drzewo znajduje się poniżej/przed prawą lub lewą przednią krawędzią budynku,
+    // to jest PRZED budynkiem i musi być narysowane PO nim (na wierzchu).
     if (a.kind === 'forest' && b.kind === 'building') {
-      if (a.depth < b.depth - 1) {
-        return -1; // Skrajny narożnik farmy na wierzchu drzewa
-      }
-      if (a.x >= b.x + b.sizeX || a.y >= b.y + b.sizeY) {
-        return 1; // Drzewo na wysokości lub poniżej narożnika przykrywa płot
-      }
+      const inFrontOfRightEdge = a.x >= b.x + b.sizeX && a.y >= b.y;
+      const inFrontOfLeftEdge = a.y >= b.y + b.sizeY && a.x >= b.x;
+      if (inFrontOfRightEdge || inFrontOfLeftEdge) return 1;
+      if (a.x < b.x + b.sizeX && a.y < b.y + b.sizeY) return -1;
+      return a.depth - b.depth;
     }
 
-    if (b.kind === 'forest' && a.kind === 'building') {
-      if (b.depth < a.depth - 1) {
-        return 1; // Skrajny narożnik farmy na wierzchu drzewa
-      }
-      if (b.x >= a.x + a.sizeX || b.y >= a.y + a.sizeY) {
-        return -1; // Drzewo na wysokości lub poniżej narożnika przykrywa płot
-      }
+    if (a.kind === 'building' && b.kind === 'forest') {
+      const inFrontOfRightEdge = b.x >= a.x + a.sizeX && b.y >= a.y;
+      const inFrontOfLeftEdge = b.y >= a.y + a.sizeY && b.x >= a.x;
+      if (inFrontOfRightEdge || inFrontOfLeftEdge) return -1;
+      if (b.x < a.x + a.sizeX && b.y < a.y + a.sizeY) return 1;
+      return a.depth - b.depth;
     }
+
+    // Budynek vs Budynek lub Drzewo vs Drzewo
+    if (a.x >= b.x + b.sizeX && a.y + a.sizeY > b.y) return 1;
+    if (a.y >= b.y + b.sizeY && a.x + a.sizeX > b.x) return 1;
+    if (b.x >= a.x + a.sizeX && b.y + b.sizeY > a.y) return -1;
+    if (b.y >= a.y + a.sizeY && b.x + b.sizeX > a.x) return -1;
 
     // Domyślne sortowanie rosnąco po głębokości rzutu
     return a.depth - b.depth;
