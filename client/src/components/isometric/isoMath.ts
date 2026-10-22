@@ -13,10 +13,15 @@ export interface ScreenCoord {
 /**
  * Konwertuje współrzędne siatki (x, y) na współrzędne ekranu (wierzchołek górny rombu kafelka).
  */
-export function tileToScreen(x: number, y: number): ScreenCoord {
+export function tileToScreen(
+  x: number,
+  y: number,
+  tileWidth: number = TILE_WIDTH,
+  tileHeight: number = TILE_HEIGHT
+): ScreenCoord {
   return {
-    x: (x - y) * (TILE_WIDTH / 2),
-    y: (x + y) * (TILE_HEIGHT / 2),
+    x: (x - y) * (tileWidth / 2),
+    y: (x + y) * (tileHeight / 2),
   };
 }
 
@@ -28,7 +33,11 @@ export function screenToTile(
   clientY: number,
   canvas: HTMLCanvasElement | null,
   zoom: number,
-  pan: { x: number; y: number }
+  pan: { x: number; y: number },
+  tileWidth: number = TILE_WIDTH,
+  tileHeight: number = TILE_HEIGHT,
+  gridSizeX: number = GRID_SIZE_X,
+  gridSizeY: number = GRID_SIZE_Y
 ): GridCoord | null {
   if (!canvas) return null;
   const rect = canvas.getBoundingClientRect();
@@ -36,13 +45,13 @@ export function screenToTile(
   const mouseX = (clientX - rect.left - rect.width / 2) / zoom - pan.x;
   const mouseY = (clientY - rect.top) / zoom - 60 - pan.y;
 
-  const u = mouseX / (TILE_WIDTH / 2);
-  const v = mouseY / (TILE_HEIGHT / 2);
+  const u = mouseX / (tileWidth / 2);
+  const v = mouseY / (tileHeight / 2);
 
   const tileX = Math.floor((u + v) / 2);
   const tileY = Math.floor((v - u) / 2);
 
-  if (tileX >= 0 && tileX < GRID_SIZE_X && tileY >= 0 && tileY < GRID_SIZE_Y) {
+  if (tileX >= 0 && tileX < gridSizeX && tileY >= 0 && tileY < gridSizeY) {
     return { x: tileX, y: tileY };
   }
   return null;

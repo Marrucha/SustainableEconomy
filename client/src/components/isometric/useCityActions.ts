@@ -1,6 +1,6 @@
 import React from 'react';
 import type { PlacedBuilding, TileDef, BuildingCatalogItem } from './types';
-import { GRID_SIZE_X, GRID_SIZE_Y } from './catalog';
+import { getBuildingGridDimensions, isBuildingAllowedOnMap, type MapType } from './mapConfig';
 
 interface UseCityActionsParams {
   placedBuildings: PlacedBuilding[];
@@ -13,6 +13,9 @@ interface UseCityActionsParams {
   setRoadTypes: React.Dispatch<React.SetStateAction<Record<string, 'curb' | 'seamless' | 'dirt'>>>;
   gold: number;
   setGold: React.Dispatch<React.SetStateAction<number>>;
+  mapType: MapType;
+  gridSizeX: number;
+  gridSizeY: number;
 }
 
 export function useCityActions(p: UseCityActionsParams) {
@@ -27,6 +30,9 @@ export function useCityActions(p: UseCityActionsParams) {
     setRoadTypes,
     gold,
     setGold,
+    mapType,
+    gridSizeX,
+    gridSizeY,
   } = p;
 
   const demolishBuilding = (buildingId: string) => {
@@ -76,8 +82,12 @@ export function useCityActions(p: UseCityActionsParams) {
   };
 
   const buildOnCoord = (item: BuildingCatalogItem, rot: 0 | 90, coord: { x: number; y: number }): boolean => {
-    const curSizeX = rot === 0 ? item.defaultSizeX : item.defaultSizeY;
-    const curSizeY = rot === 0 ? item.defaultSizeY : item.defaultSizeX;
+    // 1. Weryfikacja czy budynek jest dozwolony na aktywnej mapie
+    if (!isBuildingAllowedOnMap(item.typeId, mapType)) {
+      return false;
+    }
+
+    const { sizeX: curSizeX, sizeY: curSizeY } = getBuildingGridDimensions(item, mapType, rot);
 
     const isCollision = placedBuildings.some((b) =>
       coord.x < b.x + b.sizeX &&
@@ -85,11 +95,13 @@ export function useCityActions(p: UseCityActionsParams) {
       coord.y < b.y + b.sizeY &&
       coord.y + curSizeY > b.y
     );
+
+    const minWaterX = mapType === 'rural' ? 2 : 1;
     const isWaterOrOut =
-      coord.x <= 1 ||
-      coord.x + curSizeX > GRID_SIZE_X ||
+      coord.x <= minWaterX ||
+      coord.x + curSizeX > gridSizeX ||
       coord.y < 0 ||
-      coord.y + curSizeY > GRID_SIZE_Y;
+      coord.y + curSizeY > gridSizeY;
 
     if (item.typeId.startsWith('road')) {
       if (isWaterOrOut || isCollision || gold < item.cost) return false;

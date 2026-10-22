@@ -1,16 +1,19 @@
-import { GRID_SIZE_X, GRID_SIZE_Y } from './catalog';
+import { CITY_GEOMETRY, RURAL_GEOMETRY } from './mapConfig';
 import type { TileDef, PlacedBuilding } from './types';
 
-export function createInitialTerrain(): Record<string, TileDef['type']> {
+// ==========================================
+// 1. MAPA MIEJSKA (CITY) - Siatka 14x12, kafle 128x64
+// ==========================================
+export function createInitialCityTerrain(): Record<string, TileDef['type']> {
   const initial: Record<string, TileDef['type']> = {};
-  for (let x = 0; x < GRID_SIZE_X; x++) {
-    for (let y = 0; y < GRID_SIZE_Y; y++) {
+  for (let x = 0; x < CITY_GEOMETRY.gridSizeX; x++) {
+    for (let y = 0; y < CITY_GEOMETRY.gridSizeY; y++) {
       let type: TileDef['type'] = 'grass';
       if (x === 0) type = 'water';
       else if (x === 1) type = 'quay';
       else if (x === 2 || (x > 2 && y === 2)) type = 'road';
       else {
-        // Naturalne strefy leśne na obrzeżach mapy (dąb, sosna, zagajnik)
+        // Naturalne strefy leśne na obrzeżach miasta
         const isNorthEastForest = x >= 12 && y <= 6 && (x + y) % 5 !== 0;
         const isEastForest = x >= 14 && y >= 7 && (x * 2 + y) % 7 !== 0;
         const isSouthForest = x >= 4 && x <= 10 && y >= 11 && (x + y) % 4 !== 0;
@@ -25,7 +28,7 @@ export function createInitialTerrain(): Record<string, TileDef['type']> {
   return initial;
 }
 
-export const INITIAL_BUILDINGS: PlacedBuilding[] = [
+export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
   {
     id: 'town_hall_init',
     typeId: 'town_hall',
@@ -82,3 +85,63 @@ export const INITIAL_BUILDINGS: PlacedBuilding[] = [
     cost: 1200,
   },
 ];
+
+// ==========================================
+// 2. MAPA WIEJSKA (RURAL) - Siatka 28x24, pola 2x mniejsze (64x32)
+// ==========================================
+export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
+  const initial: Record<string, TileDef['type']> = {};
+  for (let x = 0; x < RURAL_GEOMETRY.gridSizeX; x++) {
+    for (let y = 0; y < RURAL_GEOMETRY.gridSizeY; y++) {
+      let type: TileDef['type'] = 'grass';
+
+      // Rzeka wiejska na skraju mapy (2-krotna szerokość)
+      if (x <= 1) type = 'water';
+      else if (x === 2) type = 'quay';
+      // Główny wiejski trakt polny biegnący przez wieś
+      else if (x === 4 || (x >= 4 && y === 12)) type = 'road';
+      else {
+        // Gęste pasy lasu, zagajniki brzozowe i dąbrowy na obrzeżach wsi
+        const isNorthWoods = y <= 3 && (x * 3 + y) % 5 !== 0;
+        const isEastWoods = x >= 22 && (x + y * 2) % 6 !== 0;
+        const isSouthWoods = y >= 20 && (x * 2 + y) % 5 !== 0;
+        if (isNorthWoods || isEastWoods || isSouthWoods) {
+          const hash = (x * 43 + y * 19) % 3;
+          type = hash === 0 ? 'forest_pine' : hash === 1 ? 'forest_oak' : 'forest_grove';
+        }
+      }
+      initial[`${x},${y}`] = type;
+    }
+  }
+  return initial;
+}
+
+// Na wsi: Farma 3x4 formalnie ma rozmiar 6x8, a Sad 2x2 formalnie ma 4x4
+export const INITIAL_RURAL_BUILDINGS: PlacedBuilding[] = [
+  {
+    id: 'rural_farm_init',
+    typeId: 'wheat_farm',
+    name: 'Wielka Farma Zbożowa',
+    x: 6,
+    y: 2,
+    sizeX: 6, // 3 * 2
+    sizeY: 8, // 4 * 2
+    rotation: 0,
+    cost: 2800,
+  },
+  {
+    id: 'rural_orchard_init',
+    typeId: 'orchard',
+    name: 'Sad Owocowy',
+    x: 14,
+    y: 4,
+    sizeX: 4, // 2 * 2
+    sizeY: 4, // 2 * 2
+    rotation: 0,
+    cost: 1800,
+  },
+];
+
+// Wsteczna kompatybilność aliasów
+export const createInitialTerrain = createInitialCityTerrain;
+export const INITIAL_BUILDINGS = INITIAL_CITY_BUILDINGS;

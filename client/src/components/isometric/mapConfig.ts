@@ -1,0 +1,84 @@
+import type { BuildingCatalogItem } from './types';
+
+export type MapType = 'city' | 'rural';
+
+export interface MapGeometry {
+  tileWidth: number;
+  tileHeight: number;
+  gridSizeX: number;
+  gridSizeY: number;
+}
+
+export const CITY_GEOMETRY: MapGeometry = {
+  tileWidth: 128,
+  tileHeight: 64,
+  gridSizeX: 14,
+  gridSizeY: 12,
+};
+
+// Na wsi pola są 2x mniejsze (64x32), więc siatka ma 2x więcej pól (28x24)
+export const RURAL_GEOMETRY: MapGeometry = {
+  tileWidth: 64,
+  tileHeight: 32,
+  gridSizeX: 28,
+  gridSizeY: 24,
+};
+
+// Budynki dozwolone wyłącznie w widoku wiejskim (wieś / rolnictwo / surowce)
+export const RURAL_ALLOWED_BUILDINGS = new Set([
+  'wheat_farm',
+  'orchard',
+  'livestock_farm',
+  'coal_mine',
+  'sawmill',
+  'road_dirt',
+]);
+
+// Budynki dozwolone w widoku miejskim (miasto / kamienice / przemysł / usługi miejskie)
+export const CITY_ALLOWED_BUILDINGS = new Set([
+  'mill',
+  'coal_plant',
+  'bakery',
+  'blacksmith',
+  'tenement_workers',
+  'tenement_middle',
+  'tenement_elite',
+  'town_hall',
+  'oak',
+  'road_curb',
+  'road_seamless',
+]);
+
+/**
+ * Zwraca wymiary budynku na siatce w zależności od aktywnej mapy.
+ * W widoku wiejskim pola są 2x mniejsze, więc budynki wiejskie formalnie zajmują 2x więcej kratek:
+ * np. Farma 3x4 -> 6x8, Sad 2x2 -> 4x4.
+ */
+export function getBuildingGridDimensions(
+  item: BuildingCatalogItem,
+  mapType: MapType,
+  rotation: 0 | 90 = 0
+): { sizeX: number; sizeY: number } {
+  const baseSizeX = rotation === 0 ? item.defaultSizeX : item.defaultSizeY;
+  const baseSizeY = rotation === 0 ? item.defaultSizeY : item.defaultSizeX;
+
+  if (mapType === 'rural') {
+    // Na wsi pola są 2x mniejsze -> rozmiar w kratkach x2
+    return {
+      sizeX: baseSizeX * 2,
+      sizeY: baseSizeY * 2,
+    };
+  }
+
+  return {
+    sizeX: baseSizeX,
+    sizeY: baseSizeY,
+  };
+}
+
+export function isBuildingAllowedOnMap(typeId: string, mapType: MapType): boolean {
+  if (mapType === 'rural') {
+    return RURAL_ALLOWED_BUILDINGS.has(typeId);
+  }
+  return CITY_ALLOWED_BUILDINGS.has(typeId);
+}

@@ -1,6 +1,7 @@
 import { TILE_WIDTH, TILE_HEIGHT, GRID_SIZE_X, GRID_SIZE_Y, CATALOG } from './catalog';
 import type { TileDef } from './types';
 import { tileToScreen } from './isoMath';
+import { getBuildingGridDimensions, type MapType } from './mapConfig';
 import type { PlacedBuilding, BuildingCatalogItem } from './types';
 
 export interface RenderParams {
@@ -20,10 +21,20 @@ export interface RenderParams {
   gold: number;
   inspectingBuilding: PlacedBuilding | null;
   inspectingRoad: { x: number; y: number } | null;
+  mapType?: MapType;
+  tileWidth?: number;
+  tileHeight?: number;
+  gridSizeX?: number;
+  gridSizeY?: number;
 }
 
 export function renderIsometricScene(p: RenderParams) {
   const { ctx, canvasWidth, dpr, zoom, pan, assets } = p;
+  const tileW = p.tileWidth || TILE_WIDTH;
+  const tileH = p.tileHeight || TILE_HEIGHT;
+  const gridX = p.gridSizeX || GRID_SIZE_X;
+  const gridY = p.gridSizeY || GRID_SIZE_Y;
+  const mapType = p.mapType || 'city';
 
   ctx.save();
   ctx.scale(dpr * zoom, dpr * zoom);
@@ -35,16 +46,16 @@ export function renderIsometricScene(p: RenderParams) {
 
   // 2. Rysowanie kafelków terenu
   const allTiles: TileDef[] = [];
-  for (let x = 0; x < GRID_SIZE_X; x++) {
-    for (let y = 0; y < GRID_SIZE_Y; y++) {
+  for (let x = 0; x < gridX; x++) {
+    for (let y = 0; y < gridY; y++) {
       allTiles.push({ x, y, type: p.terrainTiles[`${x},${y}`] || 'grass' });
     }
   }
   const sortedTiles = allTiles.sort((a, b) => a.x + a.y - (b.x + b.y));
 
   sortedTiles.forEach((tile) => {
-    const { x: topX, y: topY } = tileToScreen(tile.x, tile.y);
-    const screenX = topX - TILE_WIDTH / 2;
+    const { x: topX, y: topY } = tileToScreen(tile.x, tile.y, tileW, tileH);
+    const screenX = topX - tileW / 2;
     const screenY = topY;
 
     let tileImgKey = 'tile_grass';
@@ -84,16 +95,16 @@ export function renderIsometricScene(p: RenderParams) {
     // Rysowanie płaskiego podłoża (trawa, droga, nabrzeże, woda)
     const tileImg = assets[tileImgKey] || assets['tile_grass'];
     if (tileImg && tileImg.complete && tileImg.naturalWidth > 0) {
-      ctx.drawImage(tileImg, screenX, screenY, TILE_WIDTH, TILE_HEIGHT);
+      ctx.drawImage(tileImg, screenX, screenY, tileW, tileH);
     }
 
     // Subtelna siatka
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(topX, topY);
-    ctx.lineTo(topX + TILE_WIDTH / 2, topY + TILE_HEIGHT / 2);
-    ctx.lineTo(topX, topY + TILE_HEIGHT);
-    ctx.lineTo(topX - TILE_WIDTH / 2, topY + TILE_HEIGHT / 2);
+    ctx.lineTo(topX + tileW / 2, topY + tileH / 2);
+    ctx.lineTo(topX, topY + tileH);
+    ctx.lineTo(topX - tileW / 2, topY + tileH / 2);
     ctx.closePath();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 0.75;
@@ -102,8 +113,6 @@ export function renderIsometricScene(p: RenderParams) {
   });
 
   // 3. Rysowanie Obiektów Wznoszących się w Pionie (Budynki + Drzewa Leśne)
-  // Ścisły Painter's Algorithm: wszystko co jest poniżej na ekranie (większa głębokość x + y)
-  // jest rysowane PÓŹNIEJ, a więc NA WIERZCHU obiektów położonych powyżej.
   type ElevatedItem =
     | { kind: 'building'; bldg: PlacedBuilding; depth: number }
     | { kind: 'forest'; tile: TileDef; depth: number };
@@ -146,16 +155,16 @@ export function renderIsometricScene(p: RenderParams) {
       const img = assets[spriteKey];
 
       if (img && img.complete && img.naturalWidth > 0) {
-        const topX = (bldg.x - bldg.y) * (TILE_WIDTH / 2);
-        const topY = (bldg.x + bldg.y) * (TILE_HEIGHT / 2);
-        const rightX = (bldg.x + bldg.sizeX - bldg.y) * (TILE_WIDTH / 2);
-        const rightY = (bldg.x + bldg.sizeX + bldg.y) * (TILE_HEIGHT / 2);
-        const bottomX = (bldg.x + bldg.sizeX - (bldg.y + bldg.sizeY)) * (TILE_WIDTH / 2);
-        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (TILE_HEIGHT / 2);
-        const leftX = (bldg.x - (bldg.y + bldg.sizeY)) * (TILE_WIDTH / 2);
-        const leftY = (bldg.x + (bldg.y + bldg.sizeY)) * (TILE_HEIGHT / 2);
+        const topX = (bldg.x - bldg.y) * (tileW / 2);
+        const topY = (bldg.x + bldg.y) * (tileH / 2);
+        const rightX = (bldg.x + bldg.sizeX - bldg.y) * (tileW / 2);
+        const rightY = (bldg.x + bldg.sizeX + bldg.y) * (tileH / 2);
+        const bottomX = (bldg.x + bldg.sizeX - (bldg.y + bldg.sizeY)) * (tileW / 2);
+        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
+        const leftX = (bldg.x - (bldg.y + bldg.sizeY)) * (tileW / 2);
+        const leftY = (bldg.x + (bldg.y + bldg.sizeY)) * (tileH / 2);
 
-        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (TILE_WIDTH / 2);
+        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
         const scale = currentPlotWidth / catItem.baseWidth;
         const w = img.naturalWidth * scale;
         const h = img.naturalHeight * scale;
@@ -186,7 +195,7 @@ export function renderIsometricScene(p: RenderParams) {
     } else {
       // Rysowanie drzew leśnych
       const tile = item.tile;
-      const { x: topX, y: topY } = tileToScreen(tile.x, tile.y);
+      const { x: topX, y: topY } = tileToScreen(tile.x, tile.y, tileW, tileH);
       const forestImg = assets[`tile_${tile.type}`];
 
       if (forestImg && forestImg.complete && forestImg.naturalWidth > 0) {
@@ -203,11 +212,11 @@ export function renderIsometricScene(p: RenderParams) {
           anchorY = 987;
         }
 
-        const scale = TILE_WIDTH / baseWidth;
+        const scale = tileW / baseWidth;
         const w = forestImg.naturalWidth * scale;
         const h = forestImg.naturalHeight * scale;
         const bottomX = topX;
-        const bottomY = topY + TILE_HEIGHT;
+        const bottomY = topY + tileH;
         const drawX = bottomX - anchorX * scale;
         const drawY = bottomY - anchorY * scale;
 
@@ -219,17 +228,20 @@ export function renderIsometricScene(p: RenderParams) {
   // 4. Podgląd stawiania (Ghost Preview)
   if (p.selectedType && p.hoverTile) {
     const curRotation = p.selectedType.isSquare ? 0 : p.buildRotation;
-    const curSizeX = curRotation === 0 ? p.selectedType.defaultSizeX : p.selectedType.defaultSizeY;
-    const curSizeY = curRotation === 0 ? p.selectedType.defaultSizeY : p.selectedType.defaultSizeX;
+    const { sizeX: curSizeX, sizeY: curSizeY } = getBuildingGridDimensions(
+      p.selectedType,
+      mapType,
+      curRotation
+    );
 
-    const topX = (p.hoverTile.x - p.hoverTile.y) * (TILE_WIDTH / 2);
-    const topY = (p.hoverTile.x + p.hoverTile.y) * (TILE_HEIGHT / 2);
-    const rightX = (p.hoverTile.x + curSizeX - p.hoverTile.y) * (TILE_WIDTH / 2);
-    const rightY = (p.hoverTile.x + curSizeX + p.hoverTile.y) * (TILE_HEIGHT / 2);
-    const bottomX = (p.hoverTile.x + curSizeX - (p.hoverTile.y + curSizeY)) * (TILE_WIDTH / 2);
-    const bottomY = (p.hoverTile.x + curSizeX + (p.hoverTile.y + curSizeY)) * (TILE_HEIGHT / 2);
-    const leftX = (p.hoverTile.x - (p.hoverTile.y + curSizeY)) * (TILE_WIDTH / 2);
-    const leftY = (p.hoverTile.x + (p.hoverTile.y + curSizeY)) * (TILE_HEIGHT / 2);
+    const topX = (p.hoverTile.x - p.hoverTile.y) * (tileW / 2);
+    const topY = (p.hoverTile.x + p.hoverTile.y) * (tileH / 2);
+    const rightX = (p.hoverTile.x + curSizeX - p.hoverTile.y) * (tileW / 2);
+    const rightY = (p.hoverTile.x + curSizeX + p.hoverTile.y) * (tileH / 2);
+    const bottomX = (p.hoverTile.x + curSizeX - (p.hoverTile.y + curSizeY)) * (tileW / 2);
+    const bottomY = (p.hoverTile.x + curSizeX + (p.hoverTile.y + curSizeY)) * (tileH / 2);
+    const leftX = (p.hoverTile.x - (p.hoverTile.y + curSizeY)) * (tileW / 2);
+    const leftY = (p.hoverTile.x + (p.hoverTile.y + curSizeY)) * (tileH / 2);
 
     const isCollision = p.placedBuildings.some(
       (b) =>
@@ -239,11 +251,12 @@ export function renderIsometricScene(p: RenderParams) {
         p.hoverTile!.y + curSizeY > b.y
     );
 
+    const minXBoundary = mapType === 'rural' ? 2 : 1;
     const isWaterOrOut =
-      p.hoverTile.x <= 1 ||
-      p.hoverTile.x + curSizeX > GRID_SIZE_X ||
+      p.hoverTile.x <= minXBoundary ||
+      p.hoverTile.x + curSizeX > gridX ||
       p.hoverTile.y < 0 ||
-      p.hoverTile.y + curSizeY > GRID_SIZE_Y;
+      p.hoverTile.y + curSizeY > gridY;
 
     const isRoadMode = p.selectedType.typeId.startsWith('road');
     const isHoveringRoad = p.terrainTiles[`${p.hoverTile.x},${p.hoverTile.y}`] === 'road';
@@ -286,14 +299,14 @@ export function renderIsometricScene(p: RenderParams) {
       const rImg = assets[roadImgKey];
       if (rImg && rImg.complete && rImg.naturalWidth > 0) {
         ctx.globalAlpha = 0.8;
-        ctx.drawImage(rImg, topX - TILE_WIDTH / 2, topY, TILE_WIDTH, TILE_HEIGHT);
+        ctx.drawImage(rImg, topX - tileW / 2, topY, tileW, tileH);
       }
     } else {
       const spriteKey = `${p.selectedType.spriteBaseName}_${curRotation === 0 ? 'norm' : 'rot90'}`;
       const img = assets[spriteKey];
       if (img && img.complete && img.naturalWidth > 0) {
         ctx.globalAlpha = 0.75;
-        const currentPlotWidth = (curSizeX + curSizeY) * (TILE_WIDTH / 2);
+        const currentPlotWidth = (curSizeX + curSizeY) * (tileW / 2);
         const scale = currentPlotWidth / p.selectedType.baseWidth;
         const w = img.naturalWidth * scale;
         const h = img.naturalHeight * scale;
@@ -315,13 +328,13 @@ export function renderIsometricScene(p: RenderParams) {
 
   // 5. Wyróżnienie inspekcji (Droga)
   if (p.inspectingRoad) {
-    const { x: topX, y: topY } = tileToScreen(p.inspectingRoad.x, p.inspectingRoad.y);
+    const { x: topX, y: topY } = tileToScreen(p.inspectingRoad.x, p.inspectingRoad.y, tileW, tileH);
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(topX, topY);
-    ctx.lineTo(topX + TILE_WIDTH / 2, topY + TILE_HEIGHT / 2);
-    ctx.lineTo(topX, topY + TILE_HEIGHT);
-    ctx.lineTo(topX - TILE_WIDTH / 2, topY + TILE_HEIGHT / 2);
+    ctx.lineTo(topX + tileW / 2, topY + tileH / 2);
+    ctx.lineTo(topX, topY + tileH);
+    ctx.lineTo(topX - tileW / 2, topY + tileH / 2);
     ctx.closePath();
     ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
     ctx.fill();
@@ -334,14 +347,14 @@ export function renderIsometricScene(p: RenderParams) {
   // 6. Wyróżnienie inspekcji (Budynek)
   if (p.inspectingBuilding) {
     const b = p.inspectingBuilding;
-    const topX = (b.x - b.y) * (TILE_WIDTH / 2);
-    const topY = (b.x + b.y) * (TILE_HEIGHT / 2);
-    const rightX = (b.x + b.sizeX - b.y) * (TILE_WIDTH / 2);
-    const rightY = (b.x + b.sizeX + b.y) * (TILE_HEIGHT / 2);
-    const bottomX = (b.x + b.sizeX - (b.y + b.sizeY)) * (TILE_WIDTH / 2);
-    const bottomY = (b.x + b.sizeX + (b.y + b.sizeY)) * (TILE_HEIGHT / 2);
-    const leftX = (b.x - (b.y + b.sizeY)) * (TILE_WIDTH / 2);
-    const leftY = (b.x + (b.y + b.sizeY)) * (TILE_HEIGHT / 2);
+    const topX = (b.x - b.y) * (tileW / 2);
+    const topY = (b.x + b.y) * (tileH / 2);
+    const rightX = (b.x + b.sizeX - b.y) * (tileW / 2);
+    const rightY = (b.x + b.sizeX + b.y) * (tileH / 2);
+    const bottomX = (b.x + b.sizeX - (b.y + b.sizeY)) * (tileW / 2);
+    const bottomY = (b.x + b.sizeX + (b.y + b.sizeY)) * (tileH / 2);
+    const leftX = (b.x - (b.y + b.sizeY)) * (tileW / 2);
+    const leftY = (b.x + (b.y + b.sizeY)) * (tileH / 2);
 
     ctx.save();
     ctx.beginPath();

@@ -1,5 +1,6 @@
 import React from 'react';
 import { CATEGORIES } from './catalog';
+import { getBuildingGridDimensions, isBuildingAllowedOnMap, type MapType } from './mapConfig';
 import type { BuildingCatalogItem, BuildingCategory } from './types';
 
 interface BuildToolbarProps {
@@ -7,6 +8,7 @@ interface BuildToolbarProps {
   activeCategory: BuildingCategory | 'Wszystkie';
   selectedType: BuildingCatalogItem | null;
   gold: number;
+  currentMap: MapType;
   isBuildMode: boolean;
   isDemolishMode: boolean;
   onToggleBuildMode: () => void;
@@ -20,6 +22,7 @@ export const BuildToolbar: React.FC<BuildToolbarProps> = ({
   activeCategory,
   selectedType,
   gold,
+  currentMap,
   isBuildMode,
   isDemolishMode,
   onToggleBuildMode,
@@ -56,10 +59,15 @@ export const BuildToolbar: React.FC<BuildToolbarProps> = ({
     );
   }
 
+  // Budynki dozwolone na aktywnej mapie (wieś vs miasto)
+  const mapAllowedCatalog = catalog.filter((item) =>
+    isBuildingAllowedOnMap(item.typeId, currentMap)
+  );
+
   const filteredCatalog =
     activeCategory === 'Wszystkie'
-      ? catalog
-      : catalog.filter((item) => item.category === activeCategory);
+      ? mapAllowedCatalog
+      : mapAllowedCatalog.filter((item) => item.category === activeCategory);
 
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-stone-900/95 border border-amber-600/40 rounded-2xl p-3 backdrop-blur-md shadow-2xl flex flex-col gap-2.5 max-w-[95vw]">
@@ -70,6 +78,9 @@ export const BuildToolbar: React.FC<BuildToolbarProps> = ({
             <span className="text-lg">🏗️</span>
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
               Tryb budowlany
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-800 text-amber-200 border border-stone-700">
+              {currentMap === 'rural' ? '🌾 Strefa Wiejska (2x siatka)' : '🏙️ Strefa Miejska'}
             </span>
           </div>
 
@@ -117,37 +128,45 @@ export const BuildToolbar: React.FC<BuildToolbarProps> = ({
 
       {/* LISTA BUDYNKÓW W KATEGORII */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
-        {filteredCatalog.map((item) => {
-          const isSelected = selectedType?.typeId === item.typeId;
-          const canAfford = gold >= item.cost;
-          return (
-            <button
-              key={item.typeId}
-              onClick={() => {
-                if (isSelected) onSelectType(null);
-                else onSelectType(item);
-              }}
-              className={`flex flex-col items-start p-2.5 rounded-xl border text-left transition-all cursor-pointer min-w-[155px] shrink-0 ${
-                isSelected
-                  ? 'bg-amber-500/20 border-amber-400 text-amber-100 shadow-lg scale-105'
-                  : 'bg-stone-800/60 border-stone-700/60 hover:bg-stone-700/60 text-stone-300'
-              } ${!canAfford ? 'opacity-50' : ''}`}
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-[10px] uppercase font-mono text-amber-400 font-semibold truncate max-w-[95px]">
-                  {item.category}
+        {filteredCatalog.length === 0 ? (
+          <div className="text-xs text-stone-400 py-3 px-4 italic">
+            Brak obiektów w tej kategorii dla strefy {currentMap === 'rural' ? 'wiejskiej' : 'miejskiej'}.
+          </div>
+        ) : (
+          filteredCatalog.map((item) => {
+            const isSelected = selectedType?.typeId === item.typeId;
+            const canAfford = gold >= item.cost;
+            const { sizeX, sizeY } = getBuildingGridDimensions(item, currentMap);
+
+            return (
+              <button
+                key={item.typeId}
+                onClick={() => {
+                  if (isSelected) onSelectType(null);
+                  else onSelectType(item);
+                }}
+                className={`flex flex-col items-start p-2.5 rounded-xl border text-left transition-all cursor-pointer min-w-[155px] shrink-0 ${
+                  isSelected
+                    ? 'bg-amber-500/20 border-amber-400 text-amber-100 shadow-lg scale-105'
+                    : 'bg-stone-800/60 border-stone-700/60 hover:bg-stone-700/60 text-stone-300'
+                } ${!canAfford ? 'opacity-50' : ''}`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-[10px] uppercase font-mono text-amber-400 font-semibold truncate max-w-[95px]">
+                    {item.category}
+                  </span>
+                  <span className="text-[10px] text-stone-300 font-mono font-bold bg-stone-900/80 px-1.5 py-0.2 rounded">
+                    {sizeX}x{sizeY}
+                  </span>
+                </div>
+                <span className="font-bold text-xs mt-1 truncate max-w-[145px]">{item.name}</span>
+                <span className="text-[11px] font-mono font-semibold text-emerald-400 mt-0.5">
+                  £ {item.cost.toLocaleString('en-US')}
                 </span>
-                <span className="text-[10px] text-stone-400 font-mono">
-                  {item.defaultSizeX}x{item.defaultSizeY}
-                </span>
-              </div>
-              <span className="font-bold text-xs mt-1 truncate max-w-[145px]">{item.name}</span>
-              <span className="text-[11px] font-mono font-semibold text-emerald-400 mt-0.5">
-                £ {item.cost.toLocaleString('en-US')}
-              </span>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })
+        )}
       </div>
     </div>
   );
