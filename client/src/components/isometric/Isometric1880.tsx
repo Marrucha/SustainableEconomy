@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { BuildingModal } from './BuildingModal';
-import { RoadModal } from './RoadModal';
-import { TerrainModal } from './modal/TerrainModal';
+import { BuildPickerModal } from './modal/BuildPickerModal';
+import { RebuildDemolishModal, type RebuildTarget } from './modal/RebuildDemolishModal';
 import { IsometricHeader } from './IsometricHeader';
 import { BuildToolbar } from './BuildToolbar';
 import { BuildCursorBanner } from './BuildCursorBanner';
 import { CATALOG, GRID_SIZE_X, GRID_SIZE_Y } from './catalog';
+import { createInitialTerrain, INITIAL_BUILDINGS } from './initialWorld';
 import type { TileDef } from './types';
 import { screenToTile } from './isoMath';
 import { useIsometricAssets } from './useIsometricAssets';
@@ -28,107 +29,18 @@ export const Isometric1880: React.FC = () => {
   const [gold, setGold] = useState<number>(35000);
 
   // Dynamiczna siatka terenu i kierunki dróg
-  const [terrainTiles, setTerrainTiles] = useState<Record<string, TileDef['type']>>(() => {
-    const initial: Record<string, TileDef['type']> = {};
-    for (let x = 0; x < GRID_SIZE_X; x++) {
-      for (let y = 0; y < GRID_SIZE_Y; y++) {
-        let type: TileDef['type'] = 'grass';
-        if (x === 0) type = 'water';
-        else if (x === 1) type = 'quay';
-        else if (x === 2 || (x > 2 && y === 2)) type = 'road';
-        else {
-          // Opcja B: Naturalne strefy leśne na obrzeżach mapy (las dębowy, bór sosnowy, zagajnik)
-          const isNorthEastForest = x >= 12 && y <= 6 && (x + y) % 5 !== 0;
-          const isEastForest = x >= 14 && y >= 7 && (x * 2 + y) % 7 !== 0;
-          const isSouthForest = x >= 4 && x <= 10 && y >= 11 && (x + y) % 4 !== 0;
-          if (isNorthEastForest || isEastForest || isSouthForest) {
-            const hash = (x * 37 + y * 17) % 3;
-            type = hash === 0 ? 'forest_oak' : hash === 1 ? 'forest_pine' : 'forest_grove';
-          }
-        }
-        initial[`${x},${y}`] = type;
-      }
-    }
-    return initial;
-  });
+  const [terrainTiles, setTerrainTiles] = useState<Record<string, TileDef['type']>>(createInitialTerrain);
   const [roadOrientations, setRoadOrientations] = useState<Record<string, 0 | 90>>({});
   const [roadTypes, setRoadTypes] = useState<Record<string, 'curb' | 'seamless' | 'dirt'>>({});
 
-  // Inspekcja budynku, drogi i parceli terenu (Modal akcji)
+  // Modale akcji i inspekcji
   const [inspectingBuilding, setInspectingBuilding] = useState<PlacedBuilding | null>(null);
-  const [inspectingRoad, setInspectingRoad] = useState<{ x: number; y: number } | null>(null);
-  const [inspectingTerrain, setInspectingTerrain] = useState<{ x: number; y: number } | null>(null);
+  const [buildPickerCoord, setBuildPickerCoord] = useState<{ x: number; y: number } | null>(null);
+  const [rebuildTarget, setRebuildTarget] = useState<RebuildTarget | null>(null);
   const [buildingsState, setBuildingsState] = useState<Record<string, BuildingState>>({});
 
-  // Postawione budynki na mapie (dokładnie wyrównane na parcelach, z dala od dróg)
-  const [placedBuildings, setPlacedBuildings] = useState<PlacedBuilding[]>([
-    {
-      id: 'town_hall_init',
-      typeId: 'town_hall',
-      name: 'Wiktoriański Ratusz',
-      x: 8,
-      y: 4,
-      sizeX: 3,
-      sizeY: 3,
-      rotation: 0,
-      cost: 15000,
-    },
-    {
-      id: 'mill_init',
-      typeId: 'mill',
-      name: 'Młyn Parowy',
-      x: 4,
-      y: 0,
-      sizeX: 1,
-      sizeY: 2,
-      rotation: 0,
-      cost: 3500,
-    },
-    {
-      id: 'coal_init',
-      typeId: 'coal_plant',
-      name: 'Elektrociepłownia Węglowa',
-      x: 6,
-      y: 0,
-      sizeX: 1,
-      sizeY: 2,
-      rotation: 0,
-      cost: 6200,
-    },
-    {
-      id: 'tenements_init',
-      typeId: 'tenement_middle',
-      name: 'Kamienica Mieszczańska',
-      x: 4,
-      y: 4,
-      sizeX: 1,
-      sizeY: 2,
-      rotation: 0,
-      cost: 2600,
-    },
-    {
-      id: 'workers_init',
-      typeId: 'tenement_workers',
-      name: 'Kamienica Robotnicza',
-      x: 6,
-      y: 4,
-      sizeX: 1,
-      sizeY: 2,
-      rotation: 0,
-      cost: 1200,
-    },
-    {
-      id: 'oak_init',
-      typeId: 'oak',
-      name: 'Park z Dębem',
-      x: 4,
-      y: 7,
-      sizeX: 2,
-      sizeY: 2,
-      rotation: 0,
-      cost: 1500,
-    },
-  ]);
+  // Postawione budynki na mapie
+  const [placedBuildings, setPlacedBuildings] = useState<PlacedBuilding[]>(INITIAL_BUILDINGS);
 
   // Ładowanie zasobów graficznych
   const { assetsRef } = useIsometricAssets();
@@ -143,8 +55,8 @@ export const Isometric1880: React.FC = () => {
       } else if (e.key === 'Escape') {
         setSelectedType(null);
         setInspectingBuilding(null);
-        setInspectingRoad(null);
-        setInspectingTerrain(null);
+        setBuildPickerCoord(null);
+        setRebuildTarget(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -182,7 +94,7 @@ export const Isometric1880: React.FC = () => {
         hoverTile,
         gold,
         inspectingBuilding,
-        inspectingRoad,
+        inspectingRoad: rebuildTarget && rebuildTarget.kind === 'road' ? { x: rebuildTarget.x, y: rebuildTarget.y } : null,
       });
 
       animFrameRef.current = requestAnimationFrame(render);
@@ -190,7 +102,7 @@ export const Isometric1880: React.FC = () => {
 
     render();
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [zoom, pan, placedBuildings, selectedType, buildRotation, hoverTile, gold, terrainTiles, roadOrientations, roadTypes, inspectingBuilding, inspectingRoad]);
+  }, [zoom, pan, placedBuildings, selectedType, buildRotation, hoverTile, gold, terrainTiles, roadOrientations, roadTypes, inspectingBuilding, rebuildTarget]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const clickedTile = screenToTile(e.clientX, e.clientY, canvasRef.current, zoom, pan);
@@ -267,9 +179,55 @@ export const Isometric1880: React.FC = () => {
       return;
     }
 
-    // 2. Kliknięcie lewym przyciskiem myszy w element na mapie gdy NIE budujemy -> Inspekcja i Wyburzanie
+    // 2. Kliknięcie PRAWYM przyciskiem myszy (PPM) -> Menu Wyburzenia lub Przebudowy/Remontu
+    if (e.button === 2 && clickedTile) {
+      if (selectedType) {
+        setSelectedType(null);
+      }
+      setBuildPickerCoord(null);
+      setInspectingBuilding(null);
+
+      // a) Kliknięcie PPM w budynek
+      const clickedBuilding = [...placedBuildings]
+        .reverse()
+        .find(
+          (b) =>
+            clickedTile.x >= b.x &&
+            clickedTile.x < b.x + b.sizeX &&
+            clickedTile.y >= b.y &&
+            clickedTile.y < b.y + b.sizeY
+        );
+
+      if (clickedBuilding) {
+        setRebuildTarget({ kind: 'building', building: clickedBuilding });
+        return;
+      }
+
+      // b) Kliknięcie PPM w drogę
+      if (terrainTiles[`${clickedTile.x},${clickedTile.y}`] === 'road') {
+        const subType = roadTypes[`${clickedTile.x},${clickedTile.y}`] || 'curb';
+        const ori = roadOrientations[`${clickedTile.x},${clickedTile.y}`] || 0;
+        setRebuildTarget({ kind: 'road', x: clickedTile.x, y: clickedTile.y, roadType: subType, orientation: ori });
+        return;
+      }
+
+      // c) Kliknięcie PPM w parcelę terenu / las
+      if (
+        clickedTile.x >= 2 &&
+        clickedTile.x < GRID_SIZE_X &&
+        clickedTile.y >= 0 &&
+        clickedTile.y < GRID_SIZE_Y
+      ) {
+        const tType = terrainTiles[`${clickedTile.x},${clickedTile.y}`] || 'grass';
+        setRebuildTarget({ kind: 'terrain', x: clickedTile.x, y: clickedTile.y, terrainType: tType });
+        return;
+      }
+      return;
+    }
+
+    // 3. Kliknięcie LEWYM przyciskiem myszy (LPM) w element na mapie gdy NIE budujemy
     if (e.button === 0 && !selectedType && clickedTile) {
-      // a) Kliknięcie w budynek
+      // a) Kliknięcie w budynek -> Otwórz pulpit zarządzania
       const clickedBuilding = [...placedBuildings]
         .reverse()
         .find(
@@ -282,28 +240,31 @@ export const Isometric1880: React.FC = () => {
 
       if (clickedBuilding) {
         setInspectingBuilding(clickedBuilding);
-        setInspectingRoad(null);
+        setRebuildTarget(null);
+        setBuildPickerCoord(null);
         return;
       }
 
       // b) Kliknięcie w drogę
       if (terrainTiles[`${clickedTile.x},${clickedTile.y}`] === 'road') {
-        setInspectingRoad({ x: clickedTile.x, y: clickedTile.y });
+        const subType = roadTypes[`${clickedTile.x},${clickedTile.y}`] || 'curb';
+        const ori = roadOrientations[`${clickedTile.x},${clickedTile.y}`] || 0;
+        setRebuildTarget({ kind: 'road', x: clickedTile.x, y: clickedTile.y, roadType: subType, orientation: ori });
         setInspectingBuilding(null);
-        setInspectingTerrain(null);
+        setBuildPickerCoord(null);
         return;
       }
 
-      // c) Kliknięcie w wolną parcelę terenu (trawa lub las) -> Opcja C (Modal Terenu)
+      // c) Kliknięcie w wolną parcelę terenu -> Otwórz Menu Budowlane na tym polu!
       if (
         clickedTile.x >= 2 &&
         clickedTile.x < GRID_SIZE_X &&
         clickedTile.y >= 0 &&
         clickedTile.y < GRID_SIZE_Y
       ) {
-        setInspectingTerrain({ x: clickedTile.x, y: clickedTile.y });
+        setBuildPickerCoord({ x: clickedTile.x, y: clickedTile.y });
         setInspectingBuilding(null);
-        setInspectingRoad(null);
+        setRebuildTarget(null);
         return;
       }
     }
@@ -386,26 +347,83 @@ export const Isometric1880: React.FC = () => {
         />
       )}
 
-      {/* MODAL ZARZĄDZANIA I WYBURZANIA DROGI */}
-      {inspectingRoad && (
-        <RoadModal
-          x={inspectingRoad.x}
-          y={inspectingRoad.y}
-          roadType={roadTypes[`${inspectingRoad.x},${inspectingRoad.y}`] || 'curb'}
-          onChangeType={(newType) => {
-            setRoadTypes((prev) => ({
-              ...prev,
-              [`${inspectingRoad.x},${inspectingRoad.y}`]: newType,
-            }));
+      {/* MENU BUDOWLANE (LPM NA WOLNE POLE) */}
+      {buildPickerCoord && (
+        <BuildPickerModal
+          coord={buildPickerCoord}
+          gold={gold}
+          onSelectAndBuild={(item, rot) => {
+            const curSizeX = rot === 0 ? item.defaultSizeX : item.defaultSizeY;
+            const curSizeY = rot === 0 ? item.defaultSizeY : item.defaultSizeX;
+            const isCollision = placedBuildings.some((b) =>
+              buildPickerCoord.x < b.x + b.sizeX &&
+              buildPickerCoord.x + curSizeX > b.x &&
+              buildPickerCoord.y < b.y + b.sizeY &&
+              buildPickerCoord.y + curSizeY > b.y
+            );
+            const isWaterOrOut =
+              buildPickerCoord.x <= 1 ||
+              buildPickerCoord.x + curSizeX > GRID_SIZE_X ||
+              buildPickerCoord.y < 0 ||
+              buildPickerCoord.y + curSizeY > GRID_SIZE_Y;
+
+            if (item.typeId.startsWith('road')) {
+              setTerrainTiles((prev) => ({ ...prev, [`${buildPickerCoord.x},${buildPickerCoord.y}`]: 'road' }));
+              setRoadOrientations((prev) => ({ ...prev, [`${buildPickerCoord.x},${buildPickerCoord.y}`]: rot }));
+              setRoadTypes((prev) => ({ ...prev, [`${buildPickerCoord.x},${buildPickerCoord.y}`]: item.roadSubType || 'curb' }));
+              setGold((g) => g - item.cost);
+              setBuildPickerCoord(null);
+              return;
+            }
+
+            let isOnRoad = false;
+            for (let tx = buildPickerCoord.x; tx < buildPickerCoord.x + curSizeX; tx++) {
+              for (let ty = buildPickerCoord.y; ty < buildPickerCoord.y + curSizeY; ty++) {
+                if (terrainTiles[`${tx},${ty}`] === 'road') isOnRoad = true;
+              }
+            }
+
+            if (!isCollision && !isWaterOrOut && !isOnRoad && gold >= item.cost) {
+              setPlacedBuildings((prev) => [
+                ...prev,
+                {
+                  id: `${item.typeId}_${Date.now()}`,
+                  typeId: item.typeId,
+                  name: item.name,
+                  x: buildPickerCoord.x,
+                  y: buildPickerCoord.y,
+                  sizeX: curSizeX,
+                  sizeY: curSizeY,
+                  rotation: rot,
+                  cost: item.cost,
+                },
+              ]);
+              setGold((g) => g - item.cost);
+              setBuildPickerCoord(null);
+            }
           }}
-          onDemolish={() => {
-            const key = `${inspectingRoad.x},${inspectingRoad.y}`;
+          onClose={() => setBuildPickerCoord(null)}
+        />
+      )}
+
+      {/* MENU WYBURZENIA LUB PRZEBUDOWY/REMONTU (PPM NA DOWOLNY ELEMENT) */}
+      {rebuildTarget && (
+        <RebuildDemolishModal
+          target={rebuildTarget}
+          gold={gold}
+          onDemolishBuilding={(id) => {
+            const b = placedBuildings.find((x) => x.id === id);
+            if (b) {
+              setPlacedBuildings((prev) => prev.filter((x) => x.id !== id));
+              setGold((g) => g + Math.floor(b.cost * 0.5));
+            }
+            setRebuildTarget(null);
+          }}
+          onDemolishRoad={(x, y) => {
+            const key = `${x},${y}`;
             const subType = roadTypes[key] || 'curb';
             const refund = subType === 'dirt' ? 8 : 25;
-            setTerrainTiles((prev) => ({
-              ...prev,
-              [key]: 'grass',
-            }));
+            setTerrainTiles((prev) => ({ ...prev, [key]: 'grass' }));
             setRoadOrientations((prev) => {
               const next = { ...prev };
               delete next[key];
@@ -417,29 +435,33 @@ export const Isometric1880: React.FC = () => {
               return next;
             });
             setGold((g) => g + refund);
-            setInspectingRoad(null);
+            setRebuildTarget(null);
           }}
-          onClose={() => setInspectingRoad(null)}
-        />
-      )}
-
-      {/* MODAL GOSPODARKI TERENEM (ZALESIANIE / WYCINKA LASU) */}
-      {inspectingTerrain && (
-        <TerrainModal
-          tileCoord={inspectingTerrain}
-          currentType={
-            terrainTiles[`${inspectingTerrain.x},${inspectingTerrain.y}`] || 'grass'
-          }
-          gold={gold}
-          onSetTerrain={(newType, goldDelta) => {
-            setTerrainTiles((prev) => ({
-              ...prev,
-              [`${inspectingTerrain.x},${inspectingTerrain.y}`]: newType,
-            }));
-            setGold((g) => g + goldDelta);
-            setInspectingTerrain(null);
+          onChangeRoadType={(x, y, newType) => {
+            setRoadTypes((prev) => ({ ...prev, [`${x},${y}`]: newType }));
+            setRebuildTarget((prev) => (prev && prev.kind === 'road' ? { ...prev, roadType: newType } : prev));
           }}
-          onClose={() => setInspectingTerrain(null)}
+          onRotateRoad={(x, y) => {
+            const curOri = roadOrientations[`${x},${y}`] || 0;
+            const newOri = curOri === 0 ? 90 : 0;
+            setRoadOrientations((prev) => ({ ...prev, [`${x},${y}`]: newOri }));
+            setRebuildTarget((prev) => (prev && prev.kind === 'road' ? { ...prev, orientation: newOri } : prev));
+          }}
+          onRenovateBuilding={(bldg) => {
+            setInspectingBuilding(bldg);
+            setRebuildTarget(null);
+          }}
+          onClearForest={(x, y) => {
+            setTerrainTiles((prev) => ({ ...prev, [`${x},${y}`]: 'grass' }));
+            setGold((g) => g + 15);
+            setRebuildTarget(null);
+          }}
+          onChangeTerrainType={(x, y, newType, costDelta) => {
+            setTerrainTiles((prev) => ({ ...prev, [`${x},${y}`]: newType }));
+            setGold((g) => g + costDelta);
+            setRebuildTarget(null);
+          }}
+          onClose={() => setRebuildTarget(null)}
         />
       )}
     </div>
