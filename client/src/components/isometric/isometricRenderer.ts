@@ -242,17 +242,19 @@ export function renderIsometricScene(p: RenderParams) {
         const drawX = bottomX - anchorX * scale;
         const drawY = bottomY - anchorY * scale;
 
-        // Cień pod budynkiem
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(topX, topY);
-        ctx.lineTo(rightX, rightY);
-        ctx.lineTo(bottomX, bottomY);
-        ctx.lineTo(leftX, leftY);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
-        ctx.fill();
-        ctx.restore();
+        // Cień pod budynkiem (wyłączony dla obiektów rolniczych z pełnym podłożem)
+        if (catItem.category !== 'Budynki rolnicze') {
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(topX, topY);
+          ctx.lineTo(rightX, rightY);
+          ctx.lineTo(bottomX, bottomY);
+          ctx.lineTo(leftX, leftY);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+          ctx.fill();
+          ctx.restore();
+        }
 
         ctx.drawImage(img, drawX, drawY, w, h);
       }
