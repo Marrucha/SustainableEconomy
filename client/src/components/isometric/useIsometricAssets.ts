@@ -74,7 +74,7 @@ export function useIsometricAssets() {
       tile_forest_grove: '/sprites/assets_1880/tile_forest_grove.png',
     };
 
-    const ts = Date.now();
+    const ts = Date.now() + 2;
     let loadedCount = 0;
     const totalCount = Object.keys(assetUrls).length;
 
