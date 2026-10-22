@@ -54,9 +54,9 @@ export const CATALOG: BuildingCatalogItem[] = [
     isSquare: false,
     cost: 2400,
     spriteBaseName: 'livestock_farm',
-    anchorNormX: 529,
-    anchorNormY: 655,
-    baseWidth: 1083,
+    anchorNormX: 524,
+    anchorNormY: 650,
+    baseWidth: 1078,
   },
 
   // 2. BUDYNKI PRZEMYSŁOWE
