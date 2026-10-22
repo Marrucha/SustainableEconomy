@@ -120,6 +120,32 @@ export function useCityActions(p: UseCityActionsParams) {
     }
 
     if (!isCollision && !isWaterOrOut && !isOnRoad && gold >= item.cost) {
+      // Automatyczne wycięcie / wykarczowanie lasu pod nowym budynkiem (np. farmą, sadem)
+      setTerrainTiles((prev) => {
+        let hasForest = false;
+        for (let tx = coord.x; tx < coord.x + curSizeX; tx++) {
+          for (let ty = coord.y; ty < coord.y + curSizeY; ty++) {
+            if (prev[`${tx},${ty}`]?.startsWith('forest')) {
+              hasForest = true;
+              break;
+            }
+          }
+          if (hasForest) break;
+        }
+
+        if (!hasForest) return prev;
+
+        const next = { ...prev };
+        for (let tx = coord.x; tx < coord.x + curSizeX; tx++) {
+          for (let ty = coord.y; ty < coord.y + curSizeY; ty++) {
+            if (next[`${tx},${ty}`]?.startsWith('forest')) {
+              next[`${tx},${ty}`] = 'grass';
+            }
+          }
+        }
+        return next;
+      });
+
       setPlacedBuildings((prev) => [
         ...prev,
         {

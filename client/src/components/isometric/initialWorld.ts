@@ -113,6 +113,19 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
       initial[`${x},${y}`] = type;
     }
   }
+
+  // Automatyczne wycięcie lasu pod początkowymi parcelami wiejskimi (Farma 6x8 i Sad 4x4)
+  for (let tx = 5; tx <= 12; tx++) {
+    for (let ty = 1; ty <= 10; ty++) {
+      initial[`${tx},${ty}`] = 'grass';
+    }
+  }
+  for (let tx = 13; tx <= 18; tx++) {
+    for (let ty = 3; ty <= 8; ty++) {
+      initial[`${tx},${ty}`] = 'grass';
+    }
+  }
+
   return initial;
 }
 

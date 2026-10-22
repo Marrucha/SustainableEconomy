@@ -133,6 +133,16 @@ export function renderIsometricScene(p: RenderParams) {
       tile.type === 'forest_pine' ||
       tile.type === 'forest_grove'
     ) {
+      // Zabezpieczenie: jeśli na tym kafelku stoi jakikolwiek budynek, las nie może się rysować
+      const isUnderBuilding = p.placedBuildings.some(
+        (b) =>
+          tile.x >= b.x &&
+          tile.x < b.x + b.sizeX &&
+          tile.y >= b.y &&
+          tile.y < b.y + b.sizeY
+      );
+      if (isUnderBuilding) return;
+
       elevatedItems.push({
         kind: 'forest',
         tile,
