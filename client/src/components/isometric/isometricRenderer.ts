@@ -214,8 +214,8 @@ export function renderIsometricScene(p: RenderParams) {
       const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
       if (!catItem) return;
 
-      const useNorm = catItem.isSquare || bldg.sizeX >= bldg.sizeY;
-      const spriteKey = `${catItem.spriteBaseName}_${useNorm ? 'norm' : 'rot90'}`;
+      const rot = bldg.rotation || 0;
+      const spriteKey = `${catItem.spriteBaseName}_${rot === 0 ? 'norm' : 'rot90'}`;
       const img = assets[spriteKey];
 
       if (img && img.complete && img.naturalWidth > 0) {
@@ -235,7 +235,7 @@ export function renderIsometricScene(p: RenderParams) {
 
         let anchorX = catItem.anchorNormX;
         const anchorY = catItem.anchorNormY;
-        if (!useNorm && !catItem.isSquare) {
+        if (rot === 90 && !catItem.isSquare) {
           anchorX = img.naturalWidth - catItem.anchorNormX;
         }
 
@@ -368,8 +368,7 @@ export function renderIsometricScene(p: RenderParams) {
         ctx.drawImage(rImg, topX - tileW / 2, topY, tileW, tileH);
       }
     } else {
-      const useNorm = p.selectedType.isSquare || curSizeX >= curSizeY;
-      const spriteKey = `${p.selectedType.spriteBaseName}_${useNorm ? 'norm' : 'rot90'}`;
+      const spriteKey = `${p.selectedType.spriteBaseName}_${curRotation === 0 ? 'norm' : 'rot90'}`;
       const img = assets[spriteKey];
       if (img && img.complete && img.naturalWidth > 0) {
         ctx.globalAlpha = 0.75;
@@ -380,7 +379,7 @@ export function renderIsometricScene(p: RenderParams) {
 
         let anchorX = p.selectedType.anchorNormX;
         const anchorY = p.selectedType.anchorNormY;
-        if (!useNorm && !p.selectedType.isSquare) {
+        if (curRotation === 90 && !p.selectedType.isSquare) {
           anchorX = img.naturalWidth - p.selectedType.anchorNormX;
         }
 
