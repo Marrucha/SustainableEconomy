@@ -8,7 +8,9 @@ interface BuildToolbarProps {
   selectedType: BuildingCatalogItem | null;
   gold: number;
   isBuildMode: boolean;
+  isDemolishMode: boolean;
   onToggleBuildMode: () => void;
+  onToggleDemolishMode: () => void;
   onSelectCategory: (category: BuildingCategory | 'Wszystkie') => void;
   onSelectType: (item: BuildingCatalogItem | null) => void;
 }
@@ -19,21 +21,36 @@ export const BuildToolbar: React.FC<BuildToolbarProps> = ({
   selectedType,
   gold,
   isBuildMode,
+  isDemolishMode,
   onToggleBuildMode,
+  onToggleDemolishMode,
   onSelectCategory,
   onSelectType,
 }) => {
-  // Gdy tryb budowlany jest zwinięty: wyświetl tylko stylizowaną ikonkę dźwigu
+  // Gdy tryb budowlany jest zwinięty: wyświetl ikonkę dźwigu oraz ikonkę wyburzania
   if (!isBuildMode) {
     return (
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
         <button
           onClick={onToggleBuildMode}
           title="Włącz tryb budowlany"
-          className="group flex items-center gap-2.5 px-4 py-2.5 bg-stone-900/95 hover:bg-stone-800 border-2 border-amber-500/80 hover:border-amber-400 rounded-full shadow-2xl backdrop-blur-md text-amber-300 font-bold text-xs tracking-wide transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+          className="group flex items-center gap-2 px-4 py-2.5 bg-stone-900/95 hover:bg-stone-800 border-2 border-amber-500/80 hover:border-amber-400 rounded-full shadow-2xl backdrop-blur-md text-amber-300 font-bold text-xs tracking-wide transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
         >
           <span className="text-xl group-hover:rotate-12 transition-transform">🏗️</span>
           <span>Tryb budowy</span>
+        </button>
+
+        <button
+          onClick={onToggleDemolishMode}
+          title="Tryb wyburzania (drzewa i drogi bez pytania, budynki za potwierdzeniem)"
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-md font-bold text-xs tracking-wide transition-all transform hover:scale-105 active:scale-95 cursor-pointer border-2 ${
+            isDemolishMode
+              ? 'bg-rose-900/95 border-rose-400 text-rose-100 shadow-rose-900/50 animate-pulse'
+              : 'bg-stone-900/95 hover:bg-stone-800 border-rose-700/60 hover:border-rose-500 text-rose-300'
+          }`}
+        >
+          <span className="text-xl">🔨</span>
+          <span>{isDemolishMode ? 'Burzenie aktywne' : 'Burzenie'}</span>
         </button>
       </div>
     );
@@ -46,14 +63,31 @@ export const BuildToolbar: React.FC<BuildToolbarProps> = ({
 
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-stone-900/95 border border-amber-600/40 rounded-2xl p-3 backdrop-blur-md shadow-2xl flex flex-col gap-2.5 max-w-[95vw]">
-      {/* NAGŁÓWEK Z IKONĄ DŹWIGU I PRZYCISKIEM ZWIJANIA */}
-      <div className="flex items-center justify-between border-b border-stone-800/80 pb-1.5 px-0.5">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🏗️</span>
-          <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-            Tryb budowlany
-          </span>
+      {/* NAGŁÓWEK Z IKONAMI DŹWIGU, BURZENIA I PRZYCISKIEM ZWIJANIA */}
+      <div className="flex items-center justify-between border-b border-stone-800/80 pb-2 px-0.5 gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🏗️</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+              Tryb budowlany
+            </span>
+          </div>
+
+          {/* Przycisk trybu wyburzania */}
+          <button
+            onClick={onToggleDemolishMode}
+            title="Włącz tryb wyburzania (usuwa drzewa i drogi bez pytania, budynki za potwierdzeniem)"
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+              isDemolishMode
+                ? 'bg-rose-900/90 border-rose-400 text-rose-100 shadow-lg shadow-rose-950/60 animate-pulse'
+                : 'bg-stone-800 hover:bg-rose-950/40 border-rose-800/60 hover:border-rose-600 text-rose-300'
+            }`}
+          >
+            <span>🔨</span>
+            <span>{isDemolishMode ? 'Burzenie: WŁĄCZONE' : 'Burzenie'}</span>
+          </button>
         </div>
+
         <button
           onClick={onToggleBuildMode}
           title="Zwiń do ikonki dźwigu"
