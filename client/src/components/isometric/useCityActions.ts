@@ -4,6 +4,8 @@ import { getBuildingGridDimensions, isBuildingAllowedOnMap, type MapType } from 
 import {
   isPasture,
   canPlacePasture,
+  isWheatField,
+  canPlaceWheatField,
   canDemolishBuildingWithPastureRules,
 } from './pastureTopology';
 
@@ -101,8 +103,11 @@ export function useCityActions(p: UseCityActionsParams) {
 
     const { sizeX: curSizeX, sizeY: curSizeY } = getBuildingGridDimensions(item, mapType, rot);
 
-    // 2. Walidacja sąsiedztwa pastwisk: pastwisko musi stykać się z fermą lub innym pastwiskiem
+    // 2. Walidacja sąsiedztwa pastwisk i pól pszenicy (styk krawędzią z fermą macierzystą lub innym satelitą)
     if (isPasture(item.typeId) && !canPlacePasture(coord, curSizeX, curSizeY, placedBuildings)) {
+      return false;
+    }
+    if (isWheatField(item.typeId) && !canPlaceWheatField(coord, curSizeX, curSizeY, placedBuildings)) {
       return false;
     }
 

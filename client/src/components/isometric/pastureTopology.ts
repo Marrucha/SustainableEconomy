@@ -14,6 +14,20 @@ export function isLivestockFarm(typeId: string): boolean {
   return typeId === 'livestock_farm';
 }
 
+/**
+ * Sprawdza czy dany identyfikator budynku to pole pszenicy.
+ */
+export function isWheatField(typeId: string): boolean {
+  return typeId === 'wheat_field';
+}
+
+/**
+ * Sprawdza czy dany budynek to wielka farma zbożowa.
+ */
+export function isWheatFarm(typeId: string): boolean {
+  return typeId === 'wheat_farm';
+}
+
 export interface GridRect {
   x: number;
   y: number;
@@ -59,92 +73,142 @@ export function canPlacePasture(
   });
 }
 
+/**
+ * Reguła stawiania pola pszenicy:
+ * Pole pszenicy musi stykać się co najmniej jedną krawędzią z Farmą Zbożową lub z innym istniejącym polem pszenicy.
+ */
+export function canPlaceWheatField(
+  coord: { x: number; y: number },
+  sizeX: number,
+  sizeY: number,
+  placedBuildings: PlacedBuilding[]
+): boolean {
+  const newRect: GridRect = { x: coord.x, y: coord.y, sizeX, sizeY };
+
+  return placedBuildings.some((b) => {
+    if (isWheatFarm(b.typeId) || isWheatField(b.typeId)) {
+      return doRectanglesShareEdge(newRect, b);
+    }
+    return false;
+  });
+}
+
 export interface DemolishValidationResult {
   allowed: boolean;
   reason?: string;
 }
 
 /**
- * Reguły wyburzania dla Fermy Zwierzęcej i Pastwisk:
- * 1. Nie można usunąć farmy, dopóki styka się z choć jednym pastwiskiem.
- * 2. Nie można usunąć pastwiska, jeżeli po jego usunięciu jakiekolwiek pastwisko
- *    na mapie straci połączenie (ścieżkę grafu sąsiedztwa krawędziowego) z Farmą.
+ * Pomocniczy algorytm BFS weryfikacji spójności grafu satelitów (pastwisk / pól) względem ich ferm macierzystych.
+ */
+function validateSatelliteDemolish(
+  building: PlacedBuilding,
+  placedBuildings: PlacedBuilding[],
+  isHub: (typeId: string) => boolean,
+  isSatellite: (typeId: string) => boolean,
+  hubName: string,
+  satelliteName: string
+): DemolishValidationResult {
+  // 1. Walidacja wyburzenia Farmy Głównej (Hub)
+  if (isHub(building.typeId)) {
+    const hasAdjacentSatellite = placedBuildings.some(
+      (b) => isSatellite(b.typeId) && doRectanglesShareEdge(building, b)
+    );
+    if (hasAdjacentSatellite) {
+      return {
+        allowed: false,
+        reason: `Nie można wyburzyć ${hubName}: do farmy przylegają ${satelliteName}. Najpierw usuń przylegające ${satelliteName}!`,
+      };
+    }
+    return { allowed: true };
+  }
+
+  // 2. Walidacja wyburzenia Obiektu Satelitarnego (np. pastwisko / pole)
+  if (isSatellite(building.typeId)) {
+    const remainingBuildings = placedBuildings.filter((b) => b.id !== building.id);
+    const remainingSatellites = remainingBuildings.filter((b) => isSatellite(b.typeId));
+
+    // Jeśli na mapie nie ma już żadnych innych satelitów tego typu, usunięcie jest bezpieczne
+    if (remainingSatellites.length === 0) {
+      return { allowed: true };
+    }
+
+    const hubs = remainingBuildings.filter((b) => isHub(b.typeId));
+    if (hubs.length === 0) {
+      return {
+        allowed: false,
+        reason: `Nie można wyburzyć obiektu: na mapie brak ${hubName} zasilającej pozostałe ${satelliteName}!`,
+      };
+    }
+
+    // BFS po grafie sąsiedztwa wychodzącym od ferm
+    const visitedIds = new Set<string>();
+    const queue: PlacedBuilding[] = [];
+
+    for (const sat of remainingSatellites) {
+      if (hubs.some((h) => doRectanglesShareEdge(sat, h))) {
+        visitedIds.add(sat.id);
+        queue.push(sat);
+      }
+    }
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      for (const nextSat of remainingSatellites) {
+        if (!visitedIds.has(nextSat.id) && doRectanglesShareEdge(current, nextSat)) {
+          visitedIds.add(nextSat.id);
+          queue.push(nextSat);
+        }
+      }
+    }
+
+    const disconnectedCount = remainingSatellites.filter((s) => !visitedIds.has(s.id)).length;
+    if (disconnectedCount > 0) {
+      return {
+        allowed: false,
+        reason: `Nie można wyburzyć obiektu: jego usunięcie odetnie ${
+          disconnectedCount === 1 ? `inne ${satelliteName}` : `${disconnectedCount} inne ${satelliteName}`
+        } od ${hubName}!`,
+      };
+    }
+
+    return { allowed: true };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Reguły wyburzania dla obiektów wiejskich (Pastwiska <-> Ferma Zwierzęca oraz Pola Pszenicy <-> Farma Zbożowa).
  */
 export function canDemolishBuildingWithPastureRules(
   building: PlacedBuilding,
   placedBuildings: PlacedBuilding[]
 ): DemolishValidationResult {
-  // 1. Walidacja wyburzenia Fermy Zwierzęcej
-  if (isLivestockFarm(building.typeId)) {
-    const hasAdjacentPasture = placedBuildings.some(
-      (b) => isPasture(b.typeId) && doRectanglesShareEdge(building, b)
+  // Walidacja ekosystemu Fermy Zwierzęcej i Pastwisk
+  if (isLivestockFarm(building.typeId) || isPasture(building.typeId)) {
+    return validateSatelliteDemolish(
+      building,
+      placedBuildings,
+      isLivestockFarm,
+      isPasture,
+      'Fermy Zwierzęcej',
+      'pastwiska'
     );
-    if (hasAdjacentPasture) {
-      return {
-        allowed: false,
-        reason:
-          'Nie można wyburzyć Fermy Zwierzęcej: do farmy przylegają pastwiska. Najpierw usuń pastwiska!',
-      };
-    }
-    return { allowed: true };
   }
 
-  // 2. Walidacja wyburzenia Pastwiska
-  if (isPasture(building.typeId)) {
-    const remainingBuildings = placedBuildings.filter((b) => b.id !== building.id);
-    const remainingPastures = remainingBuildings.filter((b) => isPasture(b.typeId));
-
-    // Jeśli na mapie nie ma już żadnych innych pastwisk, usunięcie jest bezpieczne
-    if (remainingPastures.length === 0) {
-      return { allowed: true };
-    }
-
-    const farms = remainingBuildings.filter((b) => isLivestockFarm(b.typeId));
-    if (farms.length === 0) {
-      return {
-        allowed: false,
-        reason:
-          'Nie można wyburzyć pastwiska: na mapie brak Fermy Zwierzęcej zasilającej pozostałe pastwiska!',
-      };
-    }
-
-    // BFS (przeszukiwanie wszerz) po grafie sąsiedztwa pastwisk wychodzącym od ferm
-    const visitedPastureIds = new Set<string>();
-    const queue: PlacedBuilding[] = [];
-
-    // Dodajemy pastwiska bezpośrednio stykające się z którąkolwiek fermą
-    for (const pasture of remainingPastures) {
-      if (farms.some((f) => doRectanglesShareEdge(pasture, f))) {
-        visitedPastureIds.add(pasture.id);
-        queue.push(pasture);
-      }
-    }
-
-    // Eksplorujemy spójną sieć pastwisk
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      for (const nextPasture of remainingPastures) {
-        if (!visitedPastureIds.has(nextPasture.id) && doRectanglesShareEdge(current, nextPasture)) {
-          visitedPastureIds.add(nextPasture.id);
-          queue.push(nextPasture);
-        }
-      }
-    }
-
-    // Czy któreś pastwisko zostało odcięte od fermy?
-    const disconnectedCount = remainingPastures.filter((p) => !visitedPastureIds.has(p.id)).length;
-    if (disconnectedCount > 0) {
-      return {
-        allowed: false,
-        reason: `Nie można wyburzyć pastwiska: jego usunięcie odetnie ${
-          disconnectedCount === 1 ? 'inne pastwisko' : `${disconnectedCount} inne pastwiska`
-        } od Fermy Zwierzęcej!`,
-      };
-    }
-
-    return { allowed: true };
+  // Walidacja ekosystemu Farmy Zbożowej i Pól Pszenicy
+  if (isWheatFarm(building.typeId) || isWheatField(building.typeId)) {
+    return validateSatelliteDemolish(
+      building,
+      placedBuildings,
+      isWheatFarm,
+      isWheatField,
+      'Farmy Zbożowej',
+      'pola pszenicy'
+    );
   }
 
-  // Wszelkie inne budynki nie podlegają regułom pastwisk
+  // Wszelkie inne budynki nie podlegają tym regułom
   return { allowed: true };
 }

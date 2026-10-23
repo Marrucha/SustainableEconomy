@@ -30,6 +30,7 @@ Gra posiada dwa niezależne, zsynchronizowane widoki świata gry:
 | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :---: | :---: | :--- |
 | **Administracja** | **Wiktoriański Ratusz** *(Town Hall)* | **$3 \times 3$** | — | Tylko Miasto | £ 15,000 | 120t Cegła klinkierowa, 40t Drewno, 20t Żeliwo, 15t Miedź | 0 / 15 / 5 | 25 kWh | Centrum administracji, licencje, podatki |
 | **Rolnictwo** | **Wielka Farma Zbożowa** | **$3 \times 4$** / $4 \times 3$ | **$6 \times 8$** / $8 \times 6$ | Tylko Wieś | £ 2,800 | 35t Drewno, 10t Cegła, 2t Okucia żelazne | 12 / 1 / 0 | 0 kWh | 120t Pszenicy i Żyta / cykl |
+| **Rolnictwo** | **Pole Pszenicy** *(Wheat Field)* | **$3 \times 3$** | **$6 \times 6$** | Tylko Wieś | £ 900 | 5t Drewno (snopki/narzędzia), Ziarno siewne | 2 / 0 / 0 | 0 kWh | +45t Pszenicy / cykl (wymaga styku z Farmą) |
 | **Hodowla** | **Farma Bydła i Owiec** *(Livestock)* | **$3 \times 4$** / $4 \times 3$ | **$6 \times 8$** / $8 \times 6$ | Tylko Wieś | £ 2,400 | 40t Drewno, 15t Cegła, 10t Słoma i pasza | 8 / 1 / 0 | 0 kWh | 40t Mięsa, 25t Mleka, 15t Wełny, 20t Skór |
 | **Hodowla** | **Pastwisko Bydła** *(Cattle Pasture)* | **$2 \times 2$** | **$4 \times 4$** | Tylko Wieś | £ 1,200 | 20t Drewno, 5t Żelazo, 10t Pasza | 4 / 0 / 0 | 0 kWh | 30t Mleka, 25t Mięsa, 15t Skór / cykl |
 | **Hodowla** | **Pastwisko Owiec** *(Sheep Pasture)* | **$2 \times 2$** | **$4 \times 4$** | Tylko Wieś | £ 1,100 | 20t Drewno, 2t Żelazo, 8t Siano | 3 / 0 / 0 | 0 kWh | 25t Wełny, 15t Mięsa, 10t Mleka owczego / cykl |

@@ -3,7 +3,12 @@ import type { TileDef } from './types';
 import { tileToScreen } from './isoMath';
 import { getBuildingGridDimensions, type MapType } from './mapConfig';
 import type { PlacedBuilding, BuildingCatalogItem } from './types';
-import { isPasture, canPlacePasture } from './pastureTopology';
+import {
+  isPasture,
+  canPlacePasture,
+  isWheatField,
+  canPlaceWheatField,
+} from './pastureTopology';
 
 export interface RenderParams {
   ctx: CanvasRenderingContext2D;
@@ -342,7 +347,16 @@ export function renderIsometricScene(p: RenderParams) {
       const pastureValid =
         !isPasture(p.selectedType.typeId) ||
         canPlacePasture(p.hoverTile, curSizeX, curSizeY, p.placedBuildings);
-      canBuild = !isCollision && !isWaterOrOut && !isOnRoad && pastureValid && p.gold >= p.selectedType.cost;
+      const wheatFieldValid =
+        !isWheatField(p.selectedType.typeId) ||
+        canPlaceWheatField(p.hoverTile, curSizeX, curSizeY, p.placedBuildings);
+      canBuild =
+        !isCollision &&
+        !isWaterOrOut &&
+        !isOnRoad &&
+        pastureValid &&
+        wheatFieldValid &&
+        p.gold >= p.selectedType.cost;
     }
 
     ctx.save();

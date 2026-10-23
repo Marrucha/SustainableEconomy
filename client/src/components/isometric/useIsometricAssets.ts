@@ -7,9 +7,11 @@ export function useIsometricAssets() {
   useEffect(() => {
     const loadedAssets: Record<string, HTMLImageElement> = {};
     const assetUrls: Record<string, string> = {
-      // 1. Farma Zbożowa 3x4 (oraz obrót 4x3)
+      // 1. Farma Zbożowa 3x4 (oraz obrót 4x3) i Pole Pszenicy 6x6
       wheat_farm_norm: '/sprites/assets_1880/wheat_farm_norm.png',
       wheat_farm_rot90: '/sprites/assets_1880/wheat_farm_rot90.png',
+      wheat_field_norm: '/sprites/assets_1880/wheat_field_norm.png',
+      wheat_field_rot90: '/sprites/assets_1880/wheat_field_rot90.png',
 
       // 2. Sad Owocowy 2x2
       orchard_norm: '/sprites/assets_1880/orchard_norm.png',

@@ -27,6 +27,7 @@ export const RURAL_GEOMETRY: MapGeometry = {
 // Budynki dozwolone wyłącznie w widoku wiejskim (wieś / rolnictwo / surowce)
 export const RURAL_ALLOWED_BUILDINGS = new Set([
   'wheat_farm',
+  'wheat_field',
   'orchard',
   'livestock_farm',
   'pasture_cattle',
