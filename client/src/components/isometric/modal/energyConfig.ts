@@ -16,6 +16,20 @@ export interface EnergySourceDetails {
 }
 
 export const ENERGY_SOURCES_INFO: Record<BusinessEnergySource, EnergySourceDetails> = {
+  konie: {
+    category: 'fuel',
+    name: 'Kierat Konny & Konie Kopalniane',
+    fuelName: 'Konie robocze i pociągowe z fermy',
+    icon: '🐎',
+    badge: 'Podstawowe 1880 r.',
+    baseCost: 4.5,
+    baseEfficiency: 20,
+    emissionLabel: 'Czysta (Biologiczna)',
+    emissionBadgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    hasChimneyTax: false,
+    logistics: 'Konie pociągowe i robocze z wiejskiej stajni / fermy',
+    description: 'Tradycyjne i podstawowe źródło energii w kopalniach 1880 r. Konie napędzają kierat wyciągowy nadszybia oraz przetaczają wózki z urobkiem w chodnikach dołowych. Zero dymu.',
+  },
   elektrownia: {
     category: 'grid',
     name: 'Zakup z Elektrowni Miejskiej',

@@ -2,14 +2,21 @@ import React, { useState } from 'react';
 import type { PlacedBuilding, BuildingState } from './types';
 import { canDemolishBuildingWithPastureRules } from './pastureTopology';
 import { FarmSection } from './modal/FarmSection';
+import { OrchardSection } from './modal/orchard/OrchardSection';
+import { FRUITS_CONFIG } from './modal/orchard/orchardTypes';
+import { LivestockSection } from './modal/livestock/LivestockSection';
+import { MineSection } from './modal/mine/MineSection';
+import { WoodcutterSection } from './modal/woodcutter/WoodcutterSection';
 import { ResidentialSection } from './modal/ResidentialSection';
 import { IndustrySection } from './modal/IndustrySection';
 import { TownHallSection } from './modal/TownHallSection';
+import type { UseGameClockReturn } from './clock/useGameClock';
 
 interface BuildingModalProps {
   building: PlacedBuilding;
   buildingState: BuildingState;
   placedBuildings?: PlacedBuilding[];
+  clock?: UseGameClockReturn;
   onUpdateState: (updates: Partial<BuildingState>) => void;
   onClose: () => void;
   onDemolish: () => void;
@@ -19,15 +26,23 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
   building,
   buildingState,
   placedBuildings = [],
+  clock,
   onUpdateState,
   onClose,
   onDemolish,
 }) => {
   const isFarm = building.typeId === 'wheat_farm';
+  const isOrchard = building.typeId.startsWith('orchard');
+  const isLivestock =
+    building.typeId === 'livestock_farm' ||
+    building.typeId === 'pasture_cattle' ||
+    building.typeId === 'pasture_sheep';
+  const isMine = building.typeId.startsWith('mine_');
+  const isWoodcutter = building.typeId === 'woodcutter';
   const isResidential = building.typeId.startsWith('tenement');
   const isTownHall = building.typeId === 'town_hall';
   const isPark = building.typeId === 'oak';
-  const isBusiness = isFarm || (!isResidential && !isTownHall && !isPark);
+  const isBusiness = isFarm || isOrchard || isLivestock || isMine || isWoodcutter || (!isResidential && !isTownHall && !isPark);
 
   const validation = canDemolishBuildingWithPastureRules(building, placedBuildings);
 
@@ -50,8 +65,8 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in select-none">
       <div
         className={`relative w-full ${
-          isTownHall ? 'max-w-4xl' : isBusiness ? 'max-w-2xl' : 'max-w-xl'
-        } bg-stone-900/95 border border-amber-500/50 rounded-3xl p-6 shadow-2xl text-stone-200 font-sans max-h-[88vh] flex flex-col transition-all duration-200`}
+          isFarm || isLivestock || isOrchard || isMine || isWoodcutter ? 'max-w-6xl' : isTownHall ? 'max-w-5xl' : isBusiness ? 'max-w-2xl' : 'max-w-xl'
+        } bg-stone-900/95 border border-amber-500/50 rounded-3xl p-6 shadow-2xl text-stone-200 font-sans max-h-[92vh] flex flex-col transition-all duration-200`}
       >
         {/* NAGŁÓWEK */}
         <div className="flex items-start justify-between border-b border-stone-800 pb-3 flex-shrink-0">
@@ -65,7 +80,9 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
               </span>
             </div>
             <h2 className="text-xl font-bold font-serif text-amber-100 mt-1">
-              {building.name}
+              {isOrchard && buildingState.orchardState?.isFruitLocked && buildingState.orchardState?.fruitType
+                ? `${building.name} • ${FRUITS_CONFIG[buildingState.orchardState.fruitType]?.name || ''}`
+                : building.name}
             </h2>
           </div>
           <button
@@ -88,8 +105,10 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
                     : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                 }`}
               >
-                <span className="text-lg">{isFarm ? '🌾' : '⚙️'}</span>
-                <span className="tracking-wide">{isFarm ? 'Uprawa i Załoga' : 'Profil Produkcji'}</span>
+                <span className="text-lg">{isFarm ? '🌾' : isOrchard ? '🍎' : isLivestock ? '🐄' : isMine ? '⛏️' : isWoodcutter ? '🪓' : '⚙️'}</span>
+                <span className="tracking-wide">
+                  {isFarm ? 'Uprawa i Załoga' : isOrchard ? 'Sadownictwo i Załoga' : isLivestock ? 'Hodowla i Załoga' : isMine ? 'Wydobycie i Załoga' : isWoodcutter ? 'Zrąb i Składnica' : 'Profil Produkcji'}
+                </span>
               </button>
 
               <button
@@ -147,6 +166,49 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
               buildingState={buildingState}
               businessTab={businessTab}
               hasGreenRelief={hasGreenRelief}
+              clock={clock}
+              onUpdateState={onUpdateState}
+            />
+          )}
+
+          {isOrchard && (
+            <OrchardSection
+              buildingState={buildingState}
+              businessTab={businessTab}
+              hasGreenRelief={hasGreenRelief}
+              clock={clock}
+              onUpdateState={onUpdateState}
+            />
+          )}
+
+          {isLivestock && (
+            <LivestockSection
+              buildingState={buildingState}
+              businessTab={businessTab}
+              hasGreenRelief={hasGreenRelief}
+              clock={clock}
+              onUpdateState={onUpdateState}
+            />
+          )}
+
+          {isMine && (
+            <MineSection
+              building={building}
+              buildingState={buildingState}
+              businessTab={businessTab}
+              hasGreenRelief={hasGreenRelief}
+              clock={clock}
+              onUpdateState={onUpdateState}
+            />
+          )}
+
+          {isWoodcutter && (
+            <WoodcutterSection
+              building={building}
+              buildingState={buildingState}
+              businessTab={businessTab}
+              hasGreenRelief={hasGreenRelief}
+              clock={clock}
               onUpdateState={onUpdateState}
             />
           )}
@@ -159,7 +221,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             />
           )}
 
-          {isBusiness && !isFarm && (
+          {isBusiness && !isFarm && !isOrchard && !isLivestock && !isMine && !isWoodcutter && (
             <IndustrySection
               building={building}
               buildingState={buildingState}
@@ -188,9 +250,9 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
 
         {/* DOLNE PRZYCISKI AKCJI */}
         <div className="flex items-center justify-between pt-4 mt-3 border-t border-stone-800 flex-shrink-0">
-          {isTownHall ? (
+          {isTownHall || building.typeId === 'city_miniature' ? (
             <div className="flex items-center gap-2 text-stone-400 text-xs font-mono">
-              <span>🏛️ Siedziba Magistratu (Obiekt Nienaruszalny)</span>
+              <span>🏛️ Stały Ośrodek Obszaru (Obiekt Nienaruszalny)</span>
             </div>
           ) : (
             <div className="flex items-center gap-2">

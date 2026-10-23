@@ -10,16 +10,20 @@ import type { RebuildTarget } from './modal/RebuildDemolishModal';
 import { screenToTile } from './isoMath';
 import { useIsometricAssets } from './useIsometricAssets';
 import { useCityActions } from './useCityActions';
+import { useGameClock } from './clock/useGameClock';
+import { useMineMonthlyTick } from './useMineMonthlyTick';
+import { useWoodcutterMonthlyTick } from './useWoodcutterMonthlyTick';
 import { renderIsometricScene } from './isometricRenderer';
 import type { PlacedBuilding, BuildingState, BuildingCatalogItem, BuildingCategory } from './types';
 
 export const Isometric1880: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [zoom, setZoom] = useState(0.95);
+  const [zoom, setZoom] = useState(0.85);
   const [pan, setPan] = useState({ x: -20, y: 40 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const mouseDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const mousePosRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const animFrameRef = useRef<number>(0);
 
   // Zarządzanie dwiema mapami (Miasto 🏙️ vs Wieś 🌾)
@@ -45,6 +49,19 @@ export const Isometric1880: React.FC = () => {
   const [rebuildTarget, setRebuildTarget] = useState<RebuildTarget | null>(null);
   const [buildingsState, setBuildingsState] = useState<Record<string, BuildingState>>({});
 
+  // Globalny zegar gry 1880 (harmonogram wegetacyjny i cykl rolniczy)
+  const gameClock = useGameClock(1880);
+  const clockDateRef = useRef(gameClock.date);
+  clockDateRef.current = gameClock.date;
+  const buildingsStateRef = useRef(buildingsState);
+  buildingsStateRef.current = buildingsState;
+
+  // Miesięczny cykl wydobycia kopalń (zapełnianie hałdy na koniec miesiąca)
+  useMineMonthlyTick({ clockDate: gameClock.date, placedBuildings, buildingsState, setBuildingsState, setGold });
+
+  // Miesięczny cykl urobku Wyrębu Drewna (pozyskanie dłużycy)
+  useWoodcutterMonthlyTick({ clockDate: gameClock.date, placedBuildings, buildingsState, setBuildingsState });
+
   // Zunifikowane akcje modyfikacji miasta
   const {
     demolishBuilding, demolishRoad, clearForest,
@@ -58,6 +75,7 @@ export const Isometric1880: React.FC = () => {
     mapType: currentMap,
     gridSizeX: activeGeometry.gridSizeX,
     gridSizeY: activeGeometry.gridSizeY,
+    setBuildingsState,
   });
 
   // Ładowanie zasobów graficznych
@@ -104,6 +122,16 @@ export const Isometric1880: React.FC = () => {
       canvas.width = canvasWidth;
       canvas.height = canvasHeight;
 
+      let mouseWorldPos: { x: number; y: number } | null = null;
+      if (mousePosRef.current && canvas.parentElement) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = mousePosRef.current.clientX - rect.left;
+        const mouseY = mousePosRef.current.clientY - rect.top;
+        const worldX = mouseX / zoom - (canvasWidth / (2 * dpr * zoom) + pan.x);
+        const worldY = mouseY / zoom - (60 + pan.y);
+        mouseWorldPos = { x: worldX, y: worldY };
+      }
+
       renderIsometricScene({
         ctx,
         canvasWidth,
@@ -126,6 +154,9 @@ export const Isometric1880: React.FC = () => {
         tileHeight: activeGeometry.tileHeight,
         gridSizeX: activeGeometry.gridSizeX,
         gridSizeY: activeGeometry.gridSizeY,
+        buildingsState: buildingsStateRef.current,
+        clockDate: clockDateRef.current,
+        mouseWorldPos,
       });
 
       animFrameRef.current = requestAnimationFrame(render);
@@ -148,6 +179,8 @@ export const Isometric1880: React.FC = () => {
     rebuildTarget,
     currentMap,
     activeGeometry,
+    buildingsState,
+    gameClock.date,
   ]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -232,6 +265,7 @@ export const Isometric1880: React.FC = () => {
   ]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    mousePosRef.current = { clientX: e.clientX, clientY: e.clientY };
     const tile = screenToTile(
       e.clientX,
       e.clientY,
@@ -334,7 +368,8 @@ export const Isometric1880: React.FC = () => {
   }, [zoom, pan, activeGeometry, placedBuildings, currentMap]);
 
   const handleWheel = (e: React.WheelEvent) => {
-    setZoom((prev) => Math.max(0.4, Math.min(1.8, prev - e.deltaY * 0.001)));
+    // Limit przybliżenia max 1.05 (aby uniknąć pikselozy) i min 0.35 dla pełnego widoku mapy
+    setZoom((prev) => Math.max(0.35, Math.min(1.05, prev - e.deltaY * 0.001)));
   };
 
   return (
@@ -365,8 +400,8 @@ export const Isometric1880: React.FC = () => {
         }}
       />
 
-      {/* PASEK SKARBCU I INFORMACJI */}
-      <IsometricHeader gold={gold} />
+      {/* PASEK SKARBCU I ZEGAR GRY 1880 */}
+      <IsometricHeader gold={gold} clock={gameClock} />
 
       {/* BANER TRYBU WYBURZANIA */}
       {isDemolishMode && (
@@ -427,34 +462,19 @@ export const Isometric1880: React.FC = () => {
         terrainTiles={terrainTiles}
         gold={gold}
         placedBuildings={placedBuildings}
+        clock={gameClock}
         onUpdateBuildingState={(id, newState) => {
-          setBuildingsState((prev) => ({
-            ...prev,
-            [id]: { ...(prev[id] || {}), ...newState },
-          }));
+          setBuildingsState((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...newState } }));
         }}
-        onDemolishBuilding={(id) => {
-          demolishBuilding(id);
-          setInspectingBuilding(null);
-          setRebuildTarget(null);
-        }}
+        onDemolishBuilding={(id) => { demolishBuilding(id); setInspectingBuilding(null); setRebuildTarget(null); }}
         onCloseInspectingBuilding={() => setInspectingBuilding(null)}
-        onSetTerrain={(x, y, newType, goldDelta) => {
-          changeTerrainType(x, y, newType, goldDelta);
-          setRebuildTarget(null);
-        }}
+        onSetTerrain={(x, y, newType, goldDelta) => { changeTerrainType(x, y, newType, goldDelta); setRebuildTarget(null); }}
         onCloseInspectingTerrain={() => setInspectingTerrain(null)}
         onConfirmDemolishTarget={() => {
-          if (demolishTargetBuilding) {
-            demolishBuilding(demolishTargetBuilding.id);
-            setDemolishTargetBuilding(null);
-          }
+          if (demolishTargetBuilding) { demolishBuilding(demolishTargetBuilding.id); setDemolishTargetBuilding(null); }
         }}
         onCancelDemolishTarget={() => setDemolishTargetBuilding(null)}
-        onDemolishRoad={(x, y) => {
-          demolishRoad(x, y);
-          setRebuildTarget(null);
-        }}
+        onDemolishRoad={(x, y) => { demolishRoad(x, y); setRebuildTarget(null); }}
         onChangeRoadType={(x, y, newType) => {
           changeRoadType(x, y, newType);
           setRebuildTarget((prev) => (prev && prev.kind === 'road' ? { ...prev, roadType: newType } : prev));
@@ -463,14 +483,8 @@ export const Isometric1880: React.FC = () => {
           rotateRoad(x, y);
           setRebuildTarget((prev) => (prev && prev.kind === 'road' ? { ...prev, orientation: prev.orientation === 0 ? 90 : 0 } : prev));
         }}
-        onRenovateBuilding={(bldg) => {
-          setInspectingBuilding(bldg);
-          setRebuildTarget(null);
-        }}
-        onClearForest={(x, y) => {
-          clearForest(x, y);
-          setRebuildTarget(null);
-        }}
+        onRenovateBuilding={(bldg) => { setInspectingBuilding(bldg); setRebuildTarget(null); }}
+        onClearForest={(x, y) => { clearForest(x, y); setRebuildTarget(null); }}
         onCloseRebuildTarget={() => setRebuildTarget(null)}
       />
     </div>

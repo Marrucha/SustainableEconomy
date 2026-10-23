@@ -64,6 +64,14 @@ export const BuildToolbar: React.FC<BuildToolbarProps> = ({
     isBuildingAllowedOnMap(item.typeId, currentMap)
   );
 
+  // W strefie wiejskiej usuwamy opcje budynków mieszkalnych i przemysłowych
+  const availableCategories = CATEGORIES.filter((cat) => {
+    if (currentMap === 'rural') {
+      if (cat === 'Budynki mieszkalne' || cat === 'Budynki przemysłowe') return false;
+    }
+    return true;
+  });
+
   const filteredCatalog =
     activeCategory === 'Wszystkie'
       ? mapAllowedCatalog
@@ -111,7 +119,7 @@ export const BuildToolbar: React.FC<BuildToolbarProps> = ({
 
       {/* ZAKŁADKI KATEGORII */}
       <div className="flex items-center gap-1.5 border-b border-stone-800 pb-2 overflow-x-auto">
-        {CATEGORIES.map((cat) => (
+        {availableCategories.map((cat) => (
           <button
             key={cat}
             onClick={() => onSelectCategory(cat)}

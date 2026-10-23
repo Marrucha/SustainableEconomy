@@ -44,7 +44,7 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
 
       <div>
         <label className="block text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">
-          1. Wybierz źródło napędu i paliwa (5 opcji)
+          1. Wybierz źródło napędu i paliwa ({Object.keys(ENERGY_SOURCES_INFO).length} opcji)
         </label>
         <div className="space-y-2">
           {(Object.entries(ENERGY_SOURCES_INFO) as [BusinessEnergySource, typeof ENERGY_SOURCES_INFO[BusinessEnergySource]][]).map(

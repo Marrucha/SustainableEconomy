@@ -1,15 +1,15 @@
 import { TILE_WIDTH, TILE_HEIGHT, GRID_SIZE_X, GRID_SIZE_Y, CATALOG } from './catalog';
-import type { TileDef } from './types';
+import type { TileDef, BuildingState } from './types';
 import { tileToScreen } from './isoMath';
-import { getBuildingGridDimensions, type MapType } from './mapConfig';
+import { type MapType } from './mapConfig';
 import type { PlacedBuilding, BuildingCatalogItem } from './types';
-import {
-  isPasture,
-  canPlacePasture,
-  isWheatField,
-  canPlaceWheatField,
-  isBuildingAdjacentToRoad,
-} from './pastureTopology';
+import type { GameDate } from './clock/gameClockTypes';
+import { renderGhostPreview } from './ghostPreviewRenderer';
+import { renderFarmProgressOverlay } from './farmOverlayRenderer';
+import { renderLivestockProgressOverlay } from './livestockOverlayRenderer';
+import { renderOrchardProgressOverlay } from './orchardOverlayRenderer';
+import { renderMineOverlay } from './mineOverlayRenderer';
+import { renderWoodcutterOverlay } from './woodcutterOverlayRenderer';
 
 export interface RenderParams {
   ctx: CanvasRenderingContext2D;
@@ -33,6 +33,9 @@ export interface RenderParams {
   tileHeight?: number;
   gridSizeX?: number;
   gridSizeY?: number;
+  buildingsState?: Record<string, BuildingState>;
+  clockDate?: GameDate;
+  mouseWorldPos?: { x: number; y: number } | null;
 }
 
 export function renderIsometricScene(p: RenderParams) {
@@ -46,6 +49,8 @@ export function renderIsometricScene(p: RenderParams) {
   ctx.save();
   ctx.scale(dpr * zoom, dpr * zoom);
   ctx.translate(canvasWidth / (2 * dpr * zoom) + pan.x, 60 + pan.y);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
   // 1. Tło planszy (dostosowane również do wielkich map 100x100)
   ctx.fillStyle = '#141416';
@@ -311,126 +316,115 @@ export function renderIsometricScene(p: RenderParams) {
     }
   });
 
+  // 3.5. Paski postępu nad budynkami rolniczymi (np. Farma Zbożowa w widoku wiejskim)
+  if (mapType === 'rural') {
+    p.placedBuildings.forEach((bldg) => {
+      if (bldg.typeId === 'wheat_farm') {
+        const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
+        if (!catItem) return;
+        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
+        const scale = currentPlotWidth / catItem.baseWidth;
+        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
+        const drawY = bottomY - catItem.anchorNormY * scale;
+
+        renderFarmProgressOverlay({
+          ctx,
+          bldg,
+          catItem,
+          tileW,
+          tileH,
+          drawY,
+          farmState: p.buildingsState?.[bldg.id]?.farmCapitalism,
+          clockDate: p.clockDate,
+          mouseWorldPos: p.mouseWorldPos,
+        });
+      }
+
+      if (bldg.typeId === 'livestock_farm') {
+        const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
+        if (!catItem) return;
+        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
+        const scale = currentPlotWidth / (catItem.baseWidth || 1095);
+        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
+        const drawY = bottomY - catItem.anchorNormY * scale;
+
+        renderLivestockProgressOverlay({
+          ctx,
+          bldg,
+          catItem,
+          tileW,
+          tileH,
+          drawY,
+          livestockState: p.buildingsState?.[bldg.id]?.livestockState,
+          clockDate: p.clockDate,
+          mouseWorldPos: p.mouseWorldPos,
+        });
+      }
+
+      if (bldg.typeId.startsWith('orchard')) {
+        const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
+        if (!catItem) return;
+        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
+        const scale = currentPlotWidth / (catItem.baseWidth || 1011);
+        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
+        const drawY = bottomY - catItem.anchorNormY * scale;
+
+        renderOrchardProgressOverlay({
+          ctx,
+          bldg,
+          catItem,
+          tileW,
+          tileH,
+          drawY,
+          orchardState: p.buildingsState?.[bldg.id]?.orchardState,
+          clockDate: p.clockDate,
+          mouseWorldPos: p.mouseWorldPos,
+        });
+      }
+
+      if (bldg.typeId.startsWith('mine_')) {
+        const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
+        if (!catItem) return;
+        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
+        const scale = currentPlotWidth / (catItem.baseWidth || 1007);
+        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
+        const drawY = bottomY - (catItem.anchorNormY || 909) * scale;
+        const centerX = (bldg.x + bldg.sizeX / 2 - (bldg.y + bldg.sizeY / 2)) * (tileW / 2);
+
+        renderMineOverlay(ctx, bldg, centerX, drawY + 80, p.buildingsState?.[bldg.id], p.clockDate);
+      }
+
+      if (bldg.typeId === 'woodcutter') {
+        const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
+        if (!catItem) return;
+        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
+        const scale = currentPlotWidth / (catItem.baseWidth || 1290);
+        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
+        const drawY = bottomY - (catItem.anchorNormY || 671) * scale;
+        const centerX = (bldg.x + bldg.sizeX / 2 - (bldg.y + bldg.sizeY / 2)) * (tileW / 2);
+
+        renderWoodcutterOverlay(ctx, bldg, centerX, drawY + 40, p.buildingsState?.[bldg.id]);
+      }
+    });
+  }
+
   // 4. Podgląd stawiania (Ghost Preview)
   if (p.selectedType && p.hoverTile) {
-    const curRotation = p.selectedType.isSquare ? 0 : p.buildRotation;
-    const { sizeX: curSizeX, sizeY: curSizeY } = getBuildingGridDimensions(
-      p.selectedType,
+    renderGhostPreview({
+      ctx,
+      selectedType: p.selectedType,
+      hoverTile: p.hoverTile,
+      buildRotation: p.buildRotation,
       mapType,
-      curRotation
-    );
-
-    const topX = (p.hoverTile.x - p.hoverTile.y) * (tileW / 2);
-    const topY = (p.hoverTile.x + p.hoverTile.y) * (tileH / 2);
-    const rightX = (p.hoverTile.x + curSizeX - p.hoverTile.y) * (tileW / 2);
-    const rightY = (p.hoverTile.x + curSizeX + p.hoverTile.y) * (tileH / 2);
-    const bottomX = (p.hoverTile.x + curSizeX - (p.hoverTile.y + curSizeY)) * (tileW / 2);
-    const bottomY = (p.hoverTile.x + curSizeX + (p.hoverTile.y + curSizeY)) * (tileH / 2);
-    const leftX = (p.hoverTile.x - (p.hoverTile.y + curSizeY)) * (tileW / 2);
-    const leftY = (p.hoverTile.x + (p.hoverTile.y + curSizeY)) * (tileH / 2);
-
-    const isCollision = p.placedBuildings.some(
-      (b) =>
-        p.hoverTile!.x < b.x + b.sizeX &&
-        p.hoverTile!.x + curSizeX > b.x &&
-        p.hoverTile!.y < b.y + b.sizeY &&
-        p.hoverTile!.y + curSizeY > b.y
-    );
-
-    const minXBoundary = mapType === 'rural' ? 2 : 1;
-    const isWaterOrOut =
-      p.hoverTile.x <= minXBoundary ||
-      p.hoverTile.x + curSizeX > gridX ||
-      p.hoverTile.y < 0 ||
-      p.hoverTile.y + curSizeY > gridY;
-
-    const isRoadMode = p.selectedType.typeId.startsWith('road');
-    const isHoveringRoad = p.terrainTiles[`${p.hoverTile.x},${p.hoverTile.y}`] === 'road';
-
-    let isOnRoad = false;
-    for (let tx = p.hoverTile.x; tx < p.hoverTile.x + curSizeX; tx++) {
-      for (let ty = p.hoverTile.y; ty < p.hoverTile.y + curSizeY; ty++) {
-        if (p.terrainTiles[`${tx},${ty}`] === 'road') isOnRoad = true;
-      }
-    }
-
-    let canBuild = false;
-    if (isRoadMode) {
-      canBuild = !isWaterOrOut && !isCollision && !isHoveringRoad && p.gold >= p.selectedType.cost;
-    } else {
-      const pastureValid =
-        !isPasture(p.selectedType.typeId) ||
-        canPlacePasture(p.hoverTile, curSizeX, curSizeY, p.placedBuildings);
-      const wheatFieldValid =
-        !isWheatField(p.selectedType.typeId) ||
-        canPlaceWheatField(p.hoverTile, curSizeX, curSizeY, p.placedBuildings);
-      const isAgriculturalModule =
-        isPasture(p.selectedType.typeId) || isWheatField(p.selectedType.typeId);
-      const isRoadExempt =
-        isAgriculturalModule || p.selectedType.typeId === 'city_miniature';
-      const roadValid =
-        isRoadExempt ||
-        isBuildingAdjacentToRoad(p.hoverTile, curSizeX, curSizeY, p.terrainTiles);
-
-      canBuild =
-        !isCollision &&
-        !isWaterOrOut &&
-        !isOnRoad &&
-        pastureValid &&
-        wheatFieldValid &&
-        roadValid &&
-        p.gold >= p.selectedType.cost;
-    }
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(topX, topY);
-    ctx.lineTo(rightX, rightY);
-    ctx.lineTo(bottomX, bottomY);
-    ctx.lineTo(leftX, leftY);
-    ctx.closePath();
-
-    ctx.fillStyle = canBuild ? 'rgba(74, 222, 128, 0.35)' : 'rgba(239, 68, 68, 0.4)';
-    ctx.fill();
-    ctx.strokeStyle = canBuild ? '#22c55e' : '#ef4444';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    if (isRoadMode) {
-      const subType = p.selectedType.roadSubType || 'curb';
-      let baseKey = 'tile_road';
-      if (subType === 'seamless') baseKey = 'tile_road_cobble_seamless';
-      else if (subType === 'dirt') baseKey = 'tile_road_dirt';
-
-      const roadImgKey = curRotation === 0 ? `${baseKey}_y` : `${baseKey}_x`;
-      const rImg = assets[roadImgKey];
-      if (rImg && rImg.complete && rImg.naturalWidth > 0) {
-        ctx.globalAlpha = 0.8;
-        ctx.drawImage(rImg, topX - tileW / 2, topY, tileW, tileH);
-      }
-    } else {
-      const spriteKey = `${p.selectedType.spriteBaseName}_${curRotation === 0 ? 'norm' : 'rot90'}`;
-      const img = assets[spriteKey];
-      if (img && img.complete && img.naturalWidth > 0) {
-        ctx.globalAlpha = 0.75;
-        const currentPlotWidth = (curSizeX + curSizeY) * (tileW / 2);
-        const scale = currentPlotWidth / p.selectedType.baseWidth;
-        const w = img.naturalWidth * scale;
-        const h = img.naturalHeight * scale;
-
-        let anchorX = p.selectedType.anchorNormX;
-        const anchorY = p.selectedType.anchorNormY;
-        if (curRotation === 90 && !p.selectedType.isSquare) {
-          anchorX = img.naturalWidth - p.selectedType.anchorNormX;
-        }
-
-        const drawX = bottomX - anchorX * scale;
-        const drawY = bottomY - anchorY * scale;
-
-        ctx.drawImage(img, drawX, drawY, w, h);
-      }
-    }
-    ctx.restore();
+      tileW,
+      tileH,
+      gridX,
+      gridY,
+      placedBuildings: p.placedBuildings,
+      terrainTiles: p.terrainTiles,
+      gold: p.gold,
+      assets,
+    });
   }
 
   // 5. Wyróżnienie inspekcji (Droga)

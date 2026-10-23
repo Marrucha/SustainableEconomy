@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PlacedBuilding, TileDef, BuildingCatalogItem } from './types';
+import type { PlacedBuilding, TileDef, BuildingCatalogItem, BuildingState } from './types';
 import { getBuildingGridDimensions, isBuildingAllowedOnMap, type MapType } from './mapConfig';
 import {
   isPasture,
@@ -24,6 +24,7 @@ interface UseCityActionsParams {
   mapType: MapType;
   gridSizeX: number;
   gridSizeY: number;
+  setBuildingsState?: React.Dispatch<React.SetStateAction<Record<string, BuildingState>>>;
 }
 
 export function useCityActions(p: UseCityActionsParams) {
@@ -41,6 +42,7 @@ export function useCityActions(p: UseCityActionsParams) {
     mapType,
     gridSizeX,
     gridSizeY,
+    setBuildingsState,
   } = p;
 
   const demolishBuilding = (buildingId: string): boolean => {
@@ -115,9 +117,27 @@ export function useCityActions(p: UseCityActionsParams) {
     // 3. Walidacja przylegania do drogi: każdy budynek (poza samą drogą, polami/pastwiskami oraz metropolią) musi przylegać do drogi
     const isRoadItem = item.typeId.startsWith('road') || item.roadSubType !== undefined;
     const isAgriculturalModule = isPasture(item.typeId) || isWheatField(item.typeId);
-    const isRoadExempt = isRoadItem || isAgriculturalModule || item.typeId === 'city_miniature';
+    const isRoadExempt =
+      isRoadItem ||
+      isAgriculturalModule ||
+      item.typeId === 'city_miniature';
     if (!isRoadExempt && !isBuildingAdjacentToRoad(coord, curSizeX, curSizeY, terrainTiles)) {
       return false;
+    }
+
+    // Walidacja Wyrębu Drewna: można postawić WYŁĄCZNIE na lesie (min. 1 pole leśne pod parcelą)
+    let woodcutterForestTiles = 0;
+    if (item.typeId === 'woodcutter') {
+      for (let tx = coord.x; tx < coord.x + curSizeX; tx++) {
+        for (let ty = coord.y; ty < coord.y + curSizeY; ty++) {
+          if (terrainTiles[`${tx},${ty}`]?.startsWith('forest')) {
+            woodcutterForestTiles++;
+          }
+        }
+      }
+      if (woodcutterForestTiles === 0) {
+        return false;
+      }
     }
 
     const isCollision = placedBuildings.some((b) =>
@@ -151,36 +171,52 @@ export function useCityActions(p: UseCityActionsParams) {
     }
 
     if (!isCollision && !isWaterOrOut && !isOnRoad && gold >= item.cost) {
-      // Automatyczne wycięcie / wykarczowanie lasu pod nowym budynkiem (np. farmą, sadem)
-      setTerrainTiles((prev) => {
-        let hasForest = false;
-        for (let tx = coord.x; tx < coord.x + curSizeX; tx++) {
-          for (let ty = coord.y; ty < coord.y + curSizeY; ty++) {
-            if (prev[`${tx},${ty}`]?.startsWith('forest')) {
-              hasForest = true;
-              break;
+      // Automatyczne wycięcie / wykarczowanie lasu pod nowym budynkiem (poza Wyrębem Drewna, który czerpie z lasu pod sobą)
+      if (item.typeId !== 'woodcutter') {
+        setTerrainTiles((prev) => {
+          let hasForest = false;
+          for (let tx = coord.x; tx < coord.x + curSizeX; tx++) {
+            for (let ty = coord.y; ty < coord.y + curSizeY; ty++) {
+              if (prev[`${tx},${ty}`]?.startsWith('forest')) {
+                hasForest = true;
+                break;
+              }
+            }
+            if (hasForest) break;
+          }
+
+          if (!hasForest) return prev;
+
+          const next = { ...prev };
+          for (let tx = coord.x; tx < coord.x + curSizeX; tx++) {
+            for (let ty = coord.y; ty < coord.y + curSizeY; ty++) {
+              if (next[`${tx},${ty}`]?.startsWith('forest')) {
+                next[`${tx},${ty}`] = 'grass';
+              }
             }
           }
-          if (hasForest) break;
-        }
+          return next;
+        });
+      }
 
-        if (!hasForest) return prev;
-
-        const next = { ...prev };
-        for (let tx = coord.x; tx < coord.x + curSizeX; tx++) {
-          for (let ty = coord.y; ty < coord.y + curSizeY; ty++) {
-            if (next[`${tx},${ty}`]?.startsWith('forest')) {
-              next[`${tx},${ty}`] = 'grass';
-            }
-          }
-        }
-        return next;
-      });
+      const newBuildingId = `${item.typeId}_${Date.now()}`;
+      if (item.typeId === 'woodcutter' && setBuildingsState) {
+        const maxRural = 32;
+        const eff = Math.min(100, Math.round((woodcutterForestTiles / maxRural) * 100));
+        setBuildingsState((prev) => ({
+          ...prev,
+          [newBuildingId]: {
+            woodcutterForestTiles,
+            woodcutterEfficiency: eff,
+            woodcutterStock: 0,
+          },
+        }));
+      }
 
       setPlacedBuildings((prev) => [
         ...prev,
         {
-          id: `${item.typeId}_${Date.now()}`,
+          id: newBuildingId,
           typeId: item.typeId,
           name: item.name,
           x: coord.x,

@@ -1,3 +1,8 @@
+import type { FarmCapitalismState } from './modal/farmGridTypes';
+import type { LivestockCapitalismState } from './modal/livestock/livestockTypes';
+import type { OrchardCapitalismState, FruitType } from './modal/orchard/orchardTypes';
+import type { MineDepositType, MineStaffState } from './modal/mine/mineTypes';
+
 export interface PlacedBuilding {
   id: string;
   typeId: string;
@@ -25,7 +30,7 @@ export interface TileDef {
   type: TerrainType;
 }
 
-export type BusinessEnergySource = 'elektrownia' | 'drewno' | 'wegiel' | 'gaz' | 'wodor';
+export type BusinessEnergySource = 'elektrownia' | 'drewno' | 'wegiel' | 'gaz' | 'wodor' | 'konie';
 export type BusinessEnergyScale = 'eco' | 'standard' | 'turbo';
 
 export interface BuildingState {
@@ -34,12 +39,32 @@ export interface BuildingState {
   businessEnergyScale?: BusinessEnergyScale;
 
   // Farma Zbożowa
+  farmCapitalism?: FarmCapitalismState;
   cropType?: 'pszenica' | 'zyto' | 'owies' | 'jeczmien';
+
+  // Sad Owocowy
+  orchardState?: OrchardCapitalismState;
+  fruitType?: FruitType;
+
+  // Ferma Bydła i Owiec
+  livestockState?: LivestockCapitalismState;
   workersCount?: number;
   workerWage?: number; // £ / dzień
   managersCount?: number; // Liczba zarządców i agronomów (Klasa M)
   managerWage?: number; // £ / dzień
   farmEnergySource?: 'reczna' | 'wiatrak' | 'maszyna_parowa' | 'siec_elektryczna';
+
+  // Kopalnia Węgla i Rudy (Wiejska 8x8)
+  mineDepositType?: MineDepositType;
+  mineStock?: number; // zapas wydobytego urobku na hałdzie (t)
+  mineCycleStage?: number; // etap cyklu wydobywczego (1..7)
+  mineDestination?: 'sell_market' | 'store_silo'; // przeznaczenie: natychmiastowa sprzedaż lub magazyn
+  mineStaff?: MineStaffState; // załoga kopalni: górnicy, konie, pracownicy naziemni, kupiec
+
+  // Wyręb Drewna (Wiejski 8x4)
+  woodcutterForestTiles?: number; // Liczba pól leśnych pod parcelą (1..32)
+  woodcutterEfficiency?: number; // Wydajność zrębu (0..100%, max 32 pola = 100%)
+  woodcutterStock?: number; // Zapas ściętych bali drewnianych (t)
 
   // Kamienica Mieszkaniowa
   rentPerApartment?: number; // £ / miesiąc

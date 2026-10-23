@@ -95,16 +95,12 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
     for (let y = 0; y < RURAL_GEOMETRY.gridSizeY; y++) {
       let type: TileDef['type'] = 'grass';
 
-      // Rzeka wiejska na skraju mapy (2-krotna szerokość)
-      if (x <= 1) type = 'water';
-      else if (x === 2) type = 'quay';
-      // Główny wiejski trakt polny biegnący przez wieś z dojazdami do farm i sadu oraz arterią do miasteczka w centrum
-      else if (
-        x === 4 ||
-        (x >= 4 && (y === 12 || y === 35 || y === 60 || y === 85)) ||
-        (y === 54 && x >= 4 && x <= 54) ||
-        (y === 6 && x >= 4 && x <= 6) ||
-        (y === 6 && x >= 12 && x <= 14)
+      // 4 arterie radialne od bram miasta w 4 strony świata (zgodnie z korektą pozycji)
+      if (
+        (y === 45 && x <= 43) || // NW (o 5 pól w górę: y=45)
+        (y === 48 && x >= 56) || // SE (o 2 kratki w górę: y=48)
+        (x === 45 && y <= 43) || // NE (skorygowana o 2 w dół: x=45)
+        (x === 48 && y >= 56)    // SW (o 2 kratki w górę: x=48)
       ) {
         type = 'road';
       } else {
@@ -143,12 +139,18 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
     }
   }
 
-  // Automatyczne wycięcie lasu pod Wiktoriańskim Miasteczkiem w centrum siatki 100x100
-  for (let tx = 43; tx <= 56; tx++) {
-    for (let ty = 43; ty <= 56; ty++) {
+  // Automatyczne wycięcie lasu pod Wiktoriańskim Średnim Miastem (12x12) w centrum siatki 100x100
+  for (let tx = 42; tx <= 57; tx++) {
+    for (let ty = 42; ty <= 57; ty++) {
       initial[`${tx},${ty}`] = 'grass';
     }
   }
+
+  // Doprowadzenie 4 dróg radialnych bezpośrednio do 4 bram miasta
+  for (let x = 42; x <= 43; x++) initial[`${x},45`] = 'road'; // Brama NW (y=45)
+  for (let x = 56; x <= 57; x++) initial[`${x},48`] = 'road'; // Brama SE (y=48)
+  for (let y = 42; y <= 43; y++) initial[`45,${y}`] = 'road'; // Brama NE (x=45)
+  for (let y = 56; y <= 57; y++) initial[`48,${y}`] = 'road'; // Brama SW (x=48)
 
   return initial;
 }
@@ -157,13 +159,13 @@ export const INITIAL_RURAL_BUILDINGS: PlacedBuilding[] = [
   {
     id: 'rural_city_center',
     typeId: 'city_miniature',
-    name: 'Wiktoriańskie Miasteczko',
-    x: 46,
-    y: 46,
-    sizeX: 8, // 4 * 2
-    sizeY: 8, // 4 * 2
+    name: 'Wiktoriańskie Średnie Miasto',
+    x: 44,
+    y: 44,
+    sizeX: 12, // 6 * 2
+    sizeY: 12, // 6 * 2
     rotation: 0,
-    cost: 5000,
+    cost: 12000,
   },
   {
     id: 'rural_farm_init',

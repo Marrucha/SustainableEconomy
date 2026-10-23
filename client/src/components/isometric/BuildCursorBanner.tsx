@@ -36,6 +36,18 @@ export const BuildCursorBanner: React.FC<BuildCursorBannerProps> = ({
         <p className="text-xs text-amber-200">
           Wymiary na siatce: <span className="font-mono font-bold text-white">{sizeX}x{sizeY}</span> kratek • Koszt: £ {selectedType.cost.toLocaleString('en-US')}
         </p>
+        {selectedType.typeId === 'mine_shaft' && (
+          <p className="text-[11px] text-amber-300 mt-1 flex items-center gap-1 font-semibold">
+            <span>🚜</span>
+            <span>Wymaga bezpośredniego dostępu do drogi (traktu polnego).</span>
+          </p>
+        )}
+        {selectedType.typeId === 'woodcutter' && (
+          <p className="text-[11px] text-emerald-300 mt-1 flex items-center gap-1 font-semibold">
+            <span>🌲</span>
+            <span>Wymaga terenu leśnego oraz bezpośredniego styku z drogą (traktem)! Wydajność: max 32 pola leśne.</span>
+          </p>
+        )}
       </div>
       {!selectedType.isSquare && (
         <button

@@ -114,6 +114,12 @@ export function isBuildingAdjacentToRoad(
     if (terrainTiles[`${coord.x + sizeX},${ty}`] === 'road') return true;
   }
 
+  // 3. Cztery narożniki stykowe działki (np. zakończenie drogi przy narożniku)
+  if (terrainTiles[`${coord.x - 1},${coord.y - 1}`] === 'road') return true;
+  if (terrainTiles[`${coord.x + sizeX},${coord.y - 1}`] === 'road') return true;
+  if (terrainTiles[`${coord.x - 1},${coord.y + sizeY}`] === 'road') return true;
+  if (terrainTiles[`${coord.x + sizeX},${coord.y + sizeY}`] === 'road') return true;
+
   return false;
 }
 
@@ -209,6 +215,14 @@ export function canDemolishBuildingWithPastureRules(
   building: PlacedBuilding,
   placedBuildings: PlacedBuilding[]
 ): DemolishValidationResult {
+  // Miasto i Ratusz to obiekty stałe, nienaruszalne
+  if (building.typeId === 'city_miniature' || building.typeId === 'town_hall') {
+    return {
+      allowed: false,
+      reason: 'Ośrodek metropolitalny jest stałym elementem obszaru geograficznego i nie może zostać wyburzony.',
+    };
+  }
+
   // Walidacja ekosystemu Fermy Zwierzęcej i Pastwisk
   if (isLivestockFarm(building.typeId) || isPasture(building.typeId)) {
     return validateSatelliteDemolish(

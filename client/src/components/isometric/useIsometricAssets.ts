@@ -25,9 +25,23 @@ export function useIsometricAssets() {
       pasture_sheep_norm: '/sprites/assets_1880/pasture_sheep_norm.png',
       pasture_sheep_rot90: '/sprites/assets_1880/pasture_sheep_rot90.png',
 
-      // 2c. Miniatura Miasta 12x12 (Dla widoku wiejskiego)
+      // 2c. Średnie Miasto 12x12 (Dla widoku wiejskiego)
       city_miniature_norm: '/sprites/assets_1880/city_miniature_norm.png',
       city_miniature_rot90: '/sprites/assets_1880/city_miniature_rot90.png',
+      city_medium_12x12_norm: '/sprites/assets_1880/city_medium_12x12_norm.png',
+      city_medium_12x12_rot90: '/sprites/assets_1880/city_medium_12x12_rot90.png',
+
+      // 2d. Kopalnia Węgla i Rudy (Wiejska 8x8)
+      mine_shaft_norm: '/sprites/assets_1880/mine_shaft_rectified_norm.png',
+      mine_shaft_rot90: '/sprites/assets_1880/mine_shaft_rectified_rot90.png',
+      mine_shaft_rectified_norm: '/sprites/assets_1880/mine_shaft_rectified_norm.png',
+      mine_shaft_rectified_rot90: '/sprites/assets_1880/mine_shaft_rectified_rot90.png',
+
+      // 2e. Wyręb Drewna 8x4 wiejski (4x2 miejski)
+      woodcutter_8x4_norm: '/sprites/assets_1880/woodcutter_8x4_norm.png?v=2',
+      woodcutter_8x4_rot90: '/sprites/assets_1880/woodcutter_8x4_rot90.png?v=2',
+      woodcutter_norm: '/sprites/assets_1880/woodcutter_8x4_norm.png?v=2',
+      woodcutter_rot90: '/sprites/assets_1880/woodcutter_8x4_rot90.png?v=2',
 
       // 3. Wiktoriański Młyn Parowy 1x2
       mill_norm: '/sprites/assets_1880/mill_norm.png',
@@ -84,7 +98,7 @@ export function useIsometricAssets() {
       tile_forest_grove: '/sprites/assets_1880/tile_forest_grove.png',
     };
 
-    const ts = Date.now() + 4;
+    const ts = Date.now() + 2000;
     let loadedCount = 0;
     const totalCount = Object.keys(assetUrls).length;
 
