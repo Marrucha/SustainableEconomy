@@ -6,6 +6,7 @@ import {
   canPlacePasture,
   isWheatField,
   canPlaceWheatField,
+  isBuildingAdjacentToRoad,
   canDemolishBuildingWithPastureRules,
 } from './pastureTopology';
 
@@ -108,6 +109,13 @@ export function useCityActions(p: UseCityActionsParams) {
       return false;
     }
     if (isWheatField(item.typeId) && !canPlaceWheatField(coord, curSizeX, curSizeY, placedBuildings)) {
+      return false;
+    }
+
+    // 3. Walidacja przylegania do drogi: każdy budynek (poza samą drogą oraz polami/pastwiskami) musi przylegać do drogi
+    const isRoadItem = item.typeId.startsWith('road') || item.roadSubType !== undefined;
+    const isAgriculturalModule = isPasture(item.typeId) || isWheatField(item.typeId);
+    if (!isRoadItem && !isAgriculturalModule && !isBuildingAdjacentToRoad(coord, curSizeX, curSizeY, terrainTiles)) {
       return false;
     }
 

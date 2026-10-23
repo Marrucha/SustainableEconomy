@@ -93,6 +93,30 @@ export function canPlaceWheatField(
   });
 }
 
+/**
+ * Sprawdza czy dany budynek przylega przynajmniej jednym polem krawędzi (bok-bok) do kafelka drogi.
+ */
+export function isBuildingAdjacentToRoad(
+  coord: { x: number; y: number },
+  sizeX: number,
+  sizeY: number,
+  terrainTiles: Record<string, string>
+): boolean {
+  // 1. Górna krawędź (y - 1) oraz dolna krawędź (y + sizeY)
+  for (let tx = coord.x; tx < coord.x + sizeX; tx++) {
+    if (terrainTiles[`${tx},${coord.y - 1}`] === 'road') return true;
+    if (terrainTiles[`${tx},${coord.y + sizeY}`] === 'road') return true;
+  }
+
+  // 2. Lewa krawędź (x - 1) oraz prawa krawędź (x + sizeX)
+  for (let ty = coord.y; ty < coord.y + sizeY; ty++) {
+    if (terrainTiles[`${coord.x - 1},${ty}`] === 'road') return true;
+    if (terrainTiles[`${coord.x + sizeX},${ty}`] === 'road') return true;
+  }
+
+  return false;
+}
+
 export interface DemolishValidationResult {
   allowed: boolean;
   reason?: string;

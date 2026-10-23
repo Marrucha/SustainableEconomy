@@ -11,7 +11,7 @@ export function createInitialCityTerrain(): Record<string, TileDef['type']> {
       let type: TileDef['type'] = 'grass';
       if (x === 0) type = 'water';
       else if (x === 1) type = 'quay';
-      else if (x === 2 || (x > 2 && y === 2)) type = 'road';
+      else if (x === 2 || (x > 2 && y === 2) || (x >= 2 && x <= 11 && y === 3)) type = 'road';
       else {
         // Naturalne strefy leśne na obrzeżach miasta
         const isNorthEastForest = x >= 12 && y <= 6 && (x + y) % 5 !== 0;
@@ -98,8 +98,8 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
       // Rzeka wiejska na skraju mapy (2-krotna szerokość)
       if (x <= 1) type = 'water';
       else if (x === 2) type = 'quay';
-      // Główny wiejski trakt polny biegnący przez wieś
-      else if (x === 4 || (x >= 4 && y === 12)) type = 'road';
+      // Główny wiejski trakt polny biegnący przez wieś z dojazdami do farm i sadu
+      else if (x === 4 || (x >= 4 && y === 12) || (y === 6 && x >= 4 && x <= 6) || (y === 6 && x >= 12 && x <= 14)) type = 'road';
       else {
         // Gęste pasy lasu, zagajniki brzozowe i dąbrowy na obrzeżach wsi
         const isNorthWoods = y <= 3 && (x * 3 + y) % 5 !== 0;

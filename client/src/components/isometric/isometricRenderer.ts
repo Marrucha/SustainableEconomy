@@ -8,6 +8,7 @@ import {
   canPlacePasture,
   isWheatField,
   canPlaceWheatField,
+  isBuildingAdjacentToRoad,
 } from './pastureTopology';
 
 export interface RenderParams {
@@ -350,12 +351,19 @@ export function renderIsometricScene(p: RenderParams) {
       const wheatFieldValid =
         !isWheatField(p.selectedType.typeId) ||
         canPlaceWheatField(p.hoverTile, curSizeX, curSizeY, p.placedBuildings);
+      const isAgriculturalModule =
+        isPasture(p.selectedType.typeId) || isWheatField(p.selectedType.typeId);
+      const roadValid =
+        isAgriculturalModule ||
+        isBuildingAdjacentToRoad(p.hoverTile, curSizeX, curSizeY, p.terrainTiles);
+
       canBuild =
         !isCollision &&
         !isWaterOrOut &&
         !isOnRoad &&
         pastureValid &&
         wheatFieldValid &&
+        roadValid &&
         p.gold >= p.selectedType.cost;
     }
 
