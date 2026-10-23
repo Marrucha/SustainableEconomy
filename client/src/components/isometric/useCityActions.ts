@@ -112,10 +112,11 @@ export function useCityActions(p: UseCityActionsParams) {
       return false;
     }
 
-    // 3. Walidacja przylegania do drogi: każdy budynek (poza samą drogą oraz polami/pastwiskami) musi przylegać do drogi
+    // 3. Walidacja przylegania do drogi: każdy budynek (poza samą drogą, polami/pastwiskami oraz metropolią) musi przylegać do drogi
     const isRoadItem = item.typeId.startsWith('road') || item.roadSubType !== undefined;
     const isAgriculturalModule = isPasture(item.typeId) || isWheatField(item.typeId);
-    if (!isRoadItem && !isAgriculturalModule && !isBuildingAdjacentToRoad(coord, curSizeX, curSizeY, terrainTiles)) {
+    const isRoadExempt = isRoadItem || isAgriculturalModule || item.typeId === 'city_miniature';
+    if (!isRoadExempt && !isBuildingAdjacentToRoad(coord, curSizeX, curSizeY, terrainTiles)) {
       return false;
     }
 

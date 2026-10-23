@@ -366,8 +366,10 @@ export function renderIsometricScene(p: RenderParams) {
         canPlaceWheatField(p.hoverTile, curSizeX, curSizeY, p.placedBuildings);
       const isAgriculturalModule =
         isPasture(p.selectedType.typeId) || isWheatField(p.selectedType.typeId);
+      const isRoadExempt =
+        isAgriculturalModule || p.selectedType.typeId === 'city_miniature';
       const roadValid =
-        isAgriculturalModule ||
+        isRoadExempt ||
         isBuildingAdjacentToRoad(p.hoverTile, curSizeX, curSizeY, p.terrainTiles);
 
       canBuild =

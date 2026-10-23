@@ -98,10 +98,11 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
       // Rzeka wiejska na skraju mapy (2-krotna szerokość)
       if (x <= 1) type = 'water';
       else if (x === 2) type = 'quay';
-      // Główny wiejski trakt polny biegnący przez wieś z dojazdami do farm i sadu
+      // Główny wiejski trakt polny biegnący przez wieś z dojazdami do farm i sadu oraz arterią do miasta w centrum
       else if (
         x === 4 ||
         (x >= 4 && (y === 12 || y === 35 || y === 60 || y === 85)) ||
+        (y === 56 && x >= 4 && x <= 56) ||
         (y === 6 && x >= 4 && x <= 6) ||
         (y === 6 && x >= 12 && x <= 14)
       ) {
@@ -142,10 +143,28 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
     }
   }
 
+  // Automatyczne wycięcie lasu pod Miastem Wiktoriańskim w centrum siatki 100x100
+  for (let tx = 42; tx <= 58; tx++) {
+    for (let ty = 42; ty <= 58; ty++) {
+      initial[`${tx},${ty}`] = 'grass';
+    }
+  }
+
   return initial;
 }
 
 export const INITIAL_RURAL_BUILDINGS: PlacedBuilding[] = [
+  {
+    id: 'rural_city_center',
+    typeId: 'city_miniature',
+    name: 'Wiktoriańskie Miasto',
+    x: 44,
+    y: 44,
+    sizeX: 12, // 6 * 2
+    sizeY: 12, // 6 * 2
+    rotation: 0,
+    cost: 15000,
+  },
   {
     id: 'rural_farm_init',
     typeId: 'wheat_farm',

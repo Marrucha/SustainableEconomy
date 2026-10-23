@@ -214,7 +214,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     defaultSizeX: 6,
     defaultSizeY: 6,
     isSquare: true,
-    cost: 25000,
+    cost: 5000,
     spriteBaseName: 'city_miniature',
     anchorNormX: 488,
     anchorNormY: 619,
