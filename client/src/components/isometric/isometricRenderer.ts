@@ -3,6 +3,7 @@ import type { TileDef } from './types';
 import { tileToScreen } from './isoMath';
 import { getBuildingGridDimensions, type MapType } from './mapConfig';
 import type { PlacedBuilding, BuildingCatalogItem } from './types';
+import { isPasture, canPlacePasture } from './pastureTopology';
 
 export interface RenderParams {
   ctx: CanvasRenderingContext2D;
@@ -338,7 +339,10 @@ export function renderIsometricScene(p: RenderParams) {
     if (isRoadMode) {
       canBuild = !isWaterOrOut && !isCollision && !isHoveringRoad && p.gold >= p.selectedType.cost;
     } else {
-      canBuild = !isCollision && !isWaterOrOut && !isOnRoad && p.gold >= p.selectedType.cost;
+      const pastureValid =
+        !isPasture(p.selectedType.typeId) ||
+        canPlacePasture(p.hoverTile, curSizeX, curSizeY, p.placedBuildings);
+      canBuild = !isCollision && !isWaterOrOut && !isOnRoad && pastureValid && p.gold >= p.selectedType.cost;
     }
 
     ctx.save();

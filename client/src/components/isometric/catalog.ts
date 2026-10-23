@@ -67,9 +67,9 @@ export const CATALOG: BuildingCatalogItem[] = [
     isSquare: true,
     cost: 1200,
     spriteBaseName: 'pasture_cattle',
-    anchorNormX: 513,
-    anchorNormY: 837,
-    baseWidth: 989,
+    anchorNormX: 510,
+    anchorNormY: 834,
+    baseWidth: 984,
   },
   {
     typeId: 'pasture_sheep',

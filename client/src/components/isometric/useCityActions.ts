@@ -1,6 +1,11 @@
 import React from 'react';
 import type { PlacedBuilding, TileDef, BuildingCatalogItem } from './types';
 import { getBuildingGridDimensions, isBuildingAllowedOnMap, type MapType } from './mapConfig';
+import {
+  isPasture,
+  canPlacePasture,
+  canDemolishBuildingWithPastureRules,
+} from './pastureTopology';
 
 interface UseCityActionsParams {
   placedBuildings: PlacedBuilding[];
@@ -35,12 +40,19 @@ export function useCityActions(p: UseCityActionsParams) {
     gridSizeY,
   } = p;
 
-  const demolishBuilding = (buildingId: string) => {
+  const demolishBuilding = (buildingId: string): boolean => {
     const b = placedBuildings.find((x) => x.id === buildingId);
-    if (b) {
-      setPlacedBuildings((prev) => prev.filter((x) => x.id !== buildingId));
-      setGold((g) => g + Math.floor(b.cost * 0.5));
+    if (!b) return false;
+
+    const validation = canDemolishBuildingWithPastureRules(b, placedBuildings);
+    if (!validation.allowed) {
+      alert(validation.reason);
+      return false;
     }
+
+    setPlacedBuildings((prev) => prev.filter((x) => x.id !== buildingId));
+    setGold((g) => g + Math.floor(b.cost * 0.5));
+    return true;
   };
 
   const demolishRoad = (x: number, y: number) => {
@@ -88,6 +100,11 @@ export function useCityActions(p: UseCityActionsParams) {
     }
 
     const { sizeX: curSizeX, sizeY: curSizeY } = getBuildingGridDimensions(item, mapType, rot);
+
+    // 2. Walidacja sąsiedztwa pastwisk: pastwisko musi stykać się z fermą lub innym pastwiskiem
+    if (isPasture(item.typeId) && !canPlacePasture(coord, curSizeX, curSizeY, placedBuildings)) {
+      return false;
+    }
 
     const isCollision = placedBuildings.some((b) =>
       coord.x < b.x + b.sizeX &&

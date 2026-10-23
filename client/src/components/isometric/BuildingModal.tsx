@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { PlacedBuilding, BuildingState } from './types';
+import { canDemolishBuildingWithPastureRules } from './pastureTopology';
 import { FarmSection } from './modal/FarmSection';
 import { ResidentialSection } from './modal/ResidentialSection';
 import { IndustrySection } from './modal/IndustrySection';
@@ -8,6 +9,7 @@ import { TownHallSection } from './modal/TownHallSection';
 interface BuildingModalProps {
   building: PlacedBuilding;
   buildingState: BuildingState;
+  placedBuildings?: PlacedBuilding[];
   onUpdateState: (updates: Partial<BuildingState>) => void;
   onClose: () => void;
   onDemolish: () => void;
@@ -16,6 +18,7 @@ interface BuildingModalProps {
 export const BuildingModal: React.FC<BuildingModalProps> = ({
   building,
   buildingState,
+  placedBuildings = [],
   onUpdateState,
   onClose,
   onDemolish,
@@ -25,6 +28,8 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
   const isTownHall = building.typeId === 'town_hall';
   const isPark = building.typeId === 'oak';
   const isBusiness = isFarm || (!isResidential && !isTownHall && !isPark);
+
+  const validation = canDemolishBuildingWithPastureRules(building, placedBuildings);
 
   const [businessTab, setBusinessTab] = useState<'production' | 'energy'>('production');
   const [residentialTab, setResidentialTab] = useState<'rent' | 'energy'>('rent');
@@ -188,12 +193,31 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
               <span>🏛️ Siedziba Magistratu (Obiekt Nienaruszalny)</span>
             </div>
           ) : (
-            <button
-              onClick={onDemolish}
-              className="px-4 py-2 bg-red-950/60 hover:bg-red-900 border border-red-700/50 text-red-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-            >
-              🗑️ Wyburz budynek
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (validation.allowed) {
+                    onDemolish();
+                  } else {
+                    alert(validation.reason);
+                  }
+                }}
+                disabled={!validation.allowed}
+                title={validation.allowed ? 'Wyburz ten budynek' : validation.reason}
+                className={`px-4 py-2 border text-xs font-bold rounded-xl transition-colors ${
+                  validation.allowed
+                    ? 'bg-red-950/60 hover:bg-red-900 border-red-700/50 text-red-200 cursor-pointer'
+                    : 'bg-stone-800/60 border-stone-700/50 text-stone-400 cursor-not-allowed opacity-50'
+                }`}
+              >
+                🗑️ Wyburz budynek
+              </button>
+              {!validation.allowed && (
+                <span className="text-[11px] text-amber-300 max-w-xs truncate" title={validation.reason}>
+                  ⚠️ {validation.reason}
+                </span>
+              )}
+            </div>
           )}
 
           <button

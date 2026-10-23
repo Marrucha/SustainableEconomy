@@ -13,6 +13,7 @@ interface IsometricModalsProps {
   buildingsState: Record<string, BuildingState>;
   terrainTiles: Record<string, TileDef['type']>;
   gold: number;
+  placedBuildings: PlacedBuilding[];
   onUpdateBuildingState: (id: string, newState: Partial<BuildingState>) => void;
   onDemolishBuilding: (id: string) => void;
   onCloseInspectingBuilding: () => void;
@@ -36,6 +37,7 @@ export const IsometricModals: React.FC<IsometricModalsProps> = ({
   buildingsState,
   terrainTiles,
   gold,
+  placedBuildings,
   onUpdateBuildingState,
   onDemolishBuilding,
   onCloseInspectingBuilding,
@@ -57,6 +59,7 @@ export const IsometricModals: React.FC<IsometricModalsProps> = ({
         <BuildingModal
           building={inspectingBuilding}
           buildingState={buildingsState[inspectingBuilding.id] || {}}
+          placedBuildings={placedBuildings}
           onUpdateState={(newState) => onUpdateBuildingState(inspectingBuilding.id, newState)}
           onClose={onCloseInspectingBuilding}
           onDemolish={() => onDemolishBuilding(inspectingBuilding.id)}
@@ -80,6 +83,7 @@ export const IsometricModals: React.FC<IsometricModalsProps> = ({
       {demolishTargetBuilding && (
         <ConfirmDemolishModal
           building={demolishTargetBuilding}
+          placedBuildings={placedBuildings}
           onConfirm={onConfirmDemolishTarget}
           onCancel={onCancelDemolishTarget}
         />
@@ -90,6 +94,7 @@ export const IsometricModals: React.FC<IsometricModalsProps> = ({
         <RebuildDemolishModal
           target={rebuildTarget}
           gold={gold}
+          placedBuildings={placedBuildings}
           onDemolishBuilding={onDemolishBuilding}
           onDemolishRoad={onDemolishRoad}
           onChangeRoadType={onChangeRoadType}

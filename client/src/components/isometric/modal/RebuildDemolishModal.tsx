@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PlacedBuilding, TerrainType } from '../types';
+import { canDemolishBuildingWithPastureRules } from '../pastureTopology';
 
 export type RebuildTarget =
   | { kind: 'building'; building: PlacedBuilding }
@@ -9,6 +10,7 @@ export type RebuildTarget =
 interface RebuildDemolishModalProps {
   target: RebuildTarget;
   gold: number;
+  placedBuildings?: PlacedBuilding[];
   onDemolishBuilding: (buildingId: string) => void;
   onDemolishRoad: (x: number, y: number) => void;
   onChangeRoadType: (x: number, y: number, newType: 'curb' | 'seamless' | 'dirt') => void;
@@ -22,6 +24,7 @@ interface RebuildDemolishModalProps {
 export const RebuildDemolishModal: React.FC<RebuildDemolishModalProps> = ({
   target,
   gold,
+  placedBuildings = [],
   onDemolishBuilding,
   onDemolishRoad,
   onChangeRoadType,
@@ -34,6 +37,10 @@ export const RebuildDemolishModal: React.FC<RebuildDemolishModalProps> = ({
   const isBuilding = target.kind === 'building';
   const isRoad = target.kind === 'road';
   const isTerrain = target.kind === 'terrain';
+
+  const demolishValidation = isBuilding
+    ? canDemolishBuildingWithPastureRules(target.building, placedBuildings)
+    : { allowed: true };
 
   const title = isBuilding
     ? target.building.name
@@ -171,18 +178,31 @@ export const RebuildDemolishModal: React.FC<RebuildDemolishModalProps> = ({
                   🏛️ Ratusz Miejski stanowi siedzibę Magistratu i jest obiektem nienaruszalnym.
                 </div>
               ) : (
-                <button
-                  onClick={() => onDemolishBuilding(target.building.id)}
-                  className="w-full py-3 px-4 bg-red-950/50 hover:bg-red-900 border border-red-700/60 text-red-100 text-xs font-bold rounded-2xl transition-all cursor-pointer flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <span>🧨</span>
-                    <span>Wyburz budynek (Rozbiórka murów)</span>
-                  </span>
-                  <span className="font-mono text-emerald-400">
-                    +£ {Math.floor(target.building.cost * 0.5)} zwrotu
-                  </span>
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => onDemolishBuilding(target.building.id)}
+                    disabled={!demolishValidation.allowed}
+                    className={`w-full py-3 px-4 border text-xs font-bold rounded-2xl transition-all flex items-center justify-between ${
+                      demolishValidation.allowed
+                        ? 'bg-red-950/50 hover:bg-red-900 border-red-700/60 text-red-100 cursor-pointer'
+                        : 'bg-stone-800/60 border-stone-700/50 text-stone-400 cursor-not-allowed opacity-60'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>🧨</span>
+                      <span>Wyburz budynek (Rozbiórka murów)</span>
+                    </span>
+                    <span className="font-mono text-emerald-400">
+                      +£ {Math.floor(target.building.cost * 0.5)} zwrotu
+                    </span>
+                  </button>
+                  {!demolishValidation.allowed && (
+                    <div className="p-2.5 bg-amber-950/50 border border-amber-600/50 rounded-xl text-xs text-amber-200 flex items-start gap-2">
+                      <span className="text-sm shrink-0">⚠️</span>
+                      <span>{demolishValidation.reason}</span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}

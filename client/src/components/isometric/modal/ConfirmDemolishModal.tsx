@@ -1,18 +1,22 @@
 import React from 'react';
 import type { PlacedBuilding } from '../types';
+import { canDemolishBuildingWithPastureRules } from '../pastureTopology';
 
 interface ConfirmDemolishModalProps {
   building: PlacedBuilding;
+  placedBuildings?: PlacedBuilding[];
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 export const ConfirmDemolishModal: React.FC<ConfirmDemolishModalProps> = ({
   building,
+  placedBuildings = [],
   onConfirm,
   onCancel,
 }) => {
   const refund = Math.floor(building.cost * 0.5);
+  const validation = canDemolishBuildingWithPastureRules(building, placedBuildings);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 animate-in fade-in duration-150">
@@ -42,6 +46,13 @@ export const ConfirmDemolishModal: React.FC<ConfirmDemolishModalProps> = ({
           </div>
         </div>
 
+        {!validation.allowed && (
+          <div className="bg-amber-950/60 border border-amber-600/60 rounded-xl p-3 text-xs text-amber-200 flex items-start gap-2">
+            <span className="text-base shrink-0">⚠️</span>
+            <span>{validation.reason}</span>
+          </div>
+        )}
+
         <div className="flex items-center justify-end gap-2.5 pt-1">
           <button
             onClick={onCancel}
@@ -51,7 +62,12 @@ export const ConfirmDemolishModal: React.FC<ConfirmDemolishModalProps> = ({
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 active:scale-95 text-white text-xs font-bold shadow-lg shadow-rose-950/50 cursor-pointer transition-all flex items-center gap-1.5"
+            disabled={!validation.allowed}
+            className={`px-4 py-2 rounded-xl text-white text-xs font-bold shadow-lg transition-all flex items-center gap-1.5 ${
+              validation.allowed
+                ? 'bg-rose-700 hover:bg-rose-600 active:scale-95 shadow-rose-950/50 cursor-pointer'
+                : 'bg-stone-700 text-stone-400 cursor-not-allowed opacity-50 shadow-none'
+            }`}
           >
             <span>Wyburz</span>
             <span>🔨</span>

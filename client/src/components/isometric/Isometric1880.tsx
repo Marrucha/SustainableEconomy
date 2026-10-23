@@ -426,6 +426,7 @@ export const Isometric1880: React.FC = () => {
         buildingsState={buildingsState}
         terrainTiles={terrainTiles}
         gold={gold}
+        placedBuildings={placedBuildings}
         onUpdateBuildingState={(id, newState) => {
           setBuildingsState((prev) => ({
             ...prev,
