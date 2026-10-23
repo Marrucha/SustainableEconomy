@@ -32,6 +32,7 @@ export const RURAL_ALLOWED_BUILDINGS = new Set([
   'livestock_farm',
   'pasture_cattle',
   'pasture_sheep',
+  'city_miniature',
   'coal_mine',
   'sawmill',
   'road_dirt',

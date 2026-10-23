@@ -25,6 +25,10 @@ export function useIsometricAssets() {
       pasture_sheep_norm: '/sprites/assets_1880/pasture_sheep_norm.png',
       pasture_sheep_rot90: '/sprites/assets_1880/pasture_sheep_rot90.png',
 
+      // 2c. Miniatura Miasta 12x12 (Dla widoku wiejskiego)
+      city_miniature_norm: '/sprites/assets_1880/city_miniature_norm.png',
+      city_miniature_rot90: '/sprites/assets_1880/city_miniature_rot90.png',
+
       // 3. Wiktoriański Młyn Parowy 1x2
       mill_norm: '/sprites/assets_1880/mill_norm.png',
       mill_rot90: '/sprites/assets_1880/mill_rot90.png',
