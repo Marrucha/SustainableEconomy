@@ -47,9 +47,9 @@ export function renderIsometricScene(p: RenderParams) {
   ctx.scale(dpr * zoom, dpr * zoom);
   ctx.translate(canvasWidth / (2 * dpr * zoom) + pan.x, 60 + pan.y);
 
-  // 1. Tło planszy
+  // 1. Tło planszy (dostosowane również do wielkich map 100x100)
   ctx.fillStyle = '#141416';
-  ctx.fillRect(-3500, -2500, 7000, 5000);
+  ctx.fillRect(-10000, -3000, 20000, 12000);
 
   // 2. Rysowanie kafelków terenu
   const allTiles: TileDef[] = [];
@@ -60,8 +60,21 @@ export function renderIsometricScene(p: RenderParams) {
   }
   const sortedTiles = allTiles.sort((a, b) => a.x + a.y - (b.x + b.y));
 
+  const canvasH = p.ctx.canvas.height / (p.dpr || 1);
+  const transX = canvasWidth / (2 * dpr * zoom) + pan.x;
+  const transY = 60 + pan.y;
+
   sortedTiles.forEach((tile) => {
     const { x: topX, y: topY } = tileToScreen(tile.x, tile.y, tileW, tileH);
+
+    // Viewport Culling: pomijanie kafelków poza widokiem ekranu (błyskawiczne 60 FPS na mapie 100x100)
+    const pixelX = (topX + transX) * zoom;
+    const pixelY = (topY + transY) * zoom;
+    const margin = tileW * zoom * 1.5;
+    if (pixelX < -margin || pixelX > canvasWidth + margin || pixelY < -margin || pixelY > canvasH + margin) {
+      return;
+    }
+
     const screenX = topX - tileW / 2;
     const screenY = topY;
 

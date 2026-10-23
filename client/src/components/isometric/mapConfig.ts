@@ -16,12 +16,12 @@ export const CITY_GEOMETRY: MapGeometry = {
   gridSizeY: 12,
 };
 
-// Na wsi pola są 2x mniejsze (64x32), więc siatka ma 2x więcej pól (28x24)
+// Na wsi pola są 2x mniejsze (64x32), więc siatka ma rozmiar 100x100 pól
 export const RURAL_GEOMETRY: MapGeometry = {
   tileWidth: 64,
   tileHeight: 32,
-  gridSizeX: 28,
-  gridSizeY: 24,
+  gridSizeX: 100,
+  gridSizeY: 100,
 };
 
 // Budynki dozwolone wyłącznie w widoku wiejskim (wieś / rolnictwo / surowce)

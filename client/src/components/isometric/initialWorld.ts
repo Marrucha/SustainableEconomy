@@ -87,7 +87,7 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
 ];
 
 // ==========================================
-// 2. MAPA WIEJSKA (RURAL) - Siatka 28x24, pola 2x mniejsze (64x32)
+// 2. MAPA WIEJSKA (RURAL) - Siatka 100x100, pola 2x mniejsze (64x32)
 // ==========================================
 export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
   const initial: Record<string, TileDef['type']> = {};
@@ -99,13 +99,24 @@ export function createInitialRuralTerrain(): Record<string, TileDef['type']> {
       if (x <= 1) type = 'water';
       else if (x === 2) type = 'quay';
       // Główny wiejski trakt polny biegnący przez wieś z dojazdami do farm i sadu
-      else if (x === 4 || (x >= 4 && y === 12) || (y === 6 && x >= 4 && x <= 6) || (y === 6 && x >= 12 && x <= 14)) type = 'road';
-      else {
-        // Gęste pasy lasu, zagajniki brzozowe i dąbrowy na obrzeżach wsi
-        const isNorthWoods = y <= 3 && (x * 3 + y) % 5 !== 0;
-        const isEastWoods = x >= 22 && (x + y * 2) % 6 !== 0;
-        const isSouthWoods = y >= 20 && (x * 2 + y) % 5 !== 0;
-        if (isNorthWoods || isEastWoods || isSouthWoods) {
+      else if (
+        x === 4 ||
+        (x >= 4 && (y === 12 || y === 35 || y === 60 || y === 85)) ||
+        (y === 6 && x >= 4 && x <= 6) ||
+        (y === 6 && x >= 12 && x <= 14)
+      ) {
+        type = 'road';
+      } else {
+        // Gęste pasy lasu na dalekich obrzeżach wsi oraz malownicze zagajniki w terenie
+        const isBorderWoods = (y <= 3 || x >= 94 || y >= 94) && (x * 3 + y * 2) % 5 !== 0;
+        const isWildGrove =
+          x > 20 &&
+          x < 90 &&
+          y > 20 &&
+          y < 90 &&
+          ((x % 19 === 0 && y % 15 <= 3) || (y % 23 === 0 && x % 17 <= 3));
+
+        if (isBorderWoods || isWildGrove) {
           const hash = (x * 43 + y * 19) % 3;
           type = hash === 0 ? 'forest_pine' : hash === 1 ? 'forest_oak' : 'forest_grove';
         }

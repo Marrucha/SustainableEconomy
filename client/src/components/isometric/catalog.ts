@@ -216,9 +216,9 @@ export const CATALOG: BuildingCatalogItem[] = [
     isSquare: true,
     cost: 25000,
     spriteBaseName: 'city_miniature',
-    anchorNormX: 490,
-    anchorNormY: 613,
-    baseWidth: 980,
+    anchorNormX: 488,
+    anchorNormY: 619,
+    baseWidth: 978,
   },
   {
     typeId: 'road_curb',
