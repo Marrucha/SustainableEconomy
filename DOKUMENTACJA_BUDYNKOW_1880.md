@@ -29,7 +29,7 @@ Gra posiada dwa niezależne, zsynchronizowane widoki świata gry:
 | Kategoria | Budynek | Wymiar (Miasto) | Wymiar (Wieś) | Dozwolona mapa | Koszt (£) | Materiały budowlane | Załoga [R / M / E] | Energia | Funkcja / Produkcja |
 | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :---: | :---: | :--- |
 | **Administracja** | **Wiktoriański Ratusz** *(Town Hall)* | **$3 \times 3$** | — | Tylko Miasto | £ 15,000 | 120t Cegła klinkierowa, 40t Drewno, 20t Żeliwo, 15t Miedź | 0 / 15 / 5 | 25 kWh | Centrum administracji, licencje, podatki |
-| **Metropolia** | **Wiktoriańskie Miasto (Miniatura)** | — | **$12 \times 12$** | Tylko Wieś | £ 25,000 | 250t Cegła, 100t Drewno, 50t Żelazo | 0 / 25 / 10 | 100 kWh | Rynek zbytu towarów rolnych, administracja prowincji |
+| **Metropolia** | **Wiktoriańskie Miasteczko (Miniatura)** | — | **$8 \times 8$** | Tylko Wieś | £ 5,000 | 80t Cegła, 40t Drewno, 15t Żelazo | 0 / 12 / 4 | 40 kWh | Ośrodek handlowy i rynek zbytu dla wsi |
 | **Rolnictwo** | **Wielka Farma Zbożowa** | **$3 \times 4$** / $4 \times 3$ | **$6 \times 8$** / $8 \times 6$ | Tylko Wieś | £ 2,800 | 35t Drewno, 10t Cegła, 2t Okucia żelazne | 12 / 1 / 0 | 0 kWh | 120t Pszenicy i Żyta / cykl |
 | **Rolnictwo** | **Pole Pszenicy** *(Wheat Field)* | **$3 \times 3$** | **$6 \times 6$** | Tylko Wieś | £ 900 | 5t Drewno (snopki/narzędzia), Ziarno siewne | 2 / 0 / 0 | 0 kWh | +45t Pszenicy / cykl (wymaga styku z Farmą) |
 | **Hodowla** | **Farma Bydła i Owiec** *(Livestock)* | **$3 \times 4$** / $4 \times 3$ | **$6 \times 8$** / $8 \times 6$ | Tylko Wieś | £ 2,400 | 40t Drewno, 15t Cegła, 10t Słoma i pasza | 8 / 1 / 0 | 0 kWh | 40t Mięsa, 25t Mleka, 15t Wełny, 20t Skór |
