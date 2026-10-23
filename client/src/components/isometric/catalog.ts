@@ -58,6 +58,32 @@ export const CATALOG: BuildingCatalogItem[] = [
     anchorNormY: 842,
     baseWidth: 1095,
   },
+  {
+    typeId: 'pasture_cattle',
+    name: 'Pastwisko Bydła',
+    category: 'Budynki rolnicze',
+    defaultSizeX: 2,
+    defaultSizeY: 2,
+    isSquare: true,
+    cost: 1200,
+    spriteBaseName: 'pasture_cattle',
+    anchorNormX: 513,
+    anchorNormY: 837,
+    baseWidth: 989,
+  },
+  {
+    typeId: 'pasture_sheep',
+    name: 'Pastwisko Owiec',
+    category: 'Budynki rolnicze',
+    defaultSizeX: 2,
+    defaultSizeY: 2,
+    isSquare: true,
+    cost: 1100,
+    spriteBaseName: 'pasture_sheep',
+    anchorNormX: 511,
+    anchorNormY: 894,
+    baseWidth: 995,
+  },
 
   // 2. BUDYNKI PRZEMYSŁOWE
   {

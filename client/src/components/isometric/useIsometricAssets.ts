@@ -15,9 +15,13 @@ export function useIsometricAssets() {
       orchard_norm: '/sprites/assets_1880/orchard_norm.png',
       orchard_rot90: '/sprites/assets_1880/orchard_rot90.png',
 
-      // 2b. Farma Hodowlana 3x2 (miejsko) / 6x4 (wiejsko)
+      // 2b. Farma Hodowlana i Pastwiska
       livestock_farm_norm: '/sprites/assets_1880/livestock_farm_norm.png',
       livestock_farm_rot90: '/sprites/assets_1880/livestock_farm_rot90.png',
+      pasture_cattle_norm: '/sprites/assets_1880/pasture_cattle_norm.png',
+      pasture_cattle_rot90: '/sprites/assets_1880/pasture_cattle_rot90.png',
+      pasture_sheep_norm: '/sprites/assets_1880/pasture_sheep_norm.png',
+      pasture_sheep_rot90: '/sprites/assets_1880/pasture_sheep_rot90.png',
 
       // 3. Wiktoriański Młyn Parowy 1x2
       mill_norm: '/sprites/assets_1880/mill_norm.png',
