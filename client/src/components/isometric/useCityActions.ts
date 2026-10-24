@@ -6,6 +6,10 @@ import {
   canPlacePasture,
   isWheatField,
   canPlaceWheatField,
+  isFlaxField,
+  canPlaceFlaxField,
+  isHopField,
+  canPlaceHopField,
   isBuildingAdjacentToRoad,
   canDemolishBuildingWithPastureRules,
 } from './pastureTopology';
@@ -106,17 +110,27 @@ export function useCityActions(p: UseCityActionsParams) {
 
     const { sizeX: curSizeX, sizeY: curSizeY } = getBuildingGridDimensions(item, mapType, rot);
 
-    // 2. Walidacja sąsiedztwa pastwisk i pól pszenicy (styk krawędzią z fermą macierzystą lub innym satelitą)
+    // 2. Walidacja sąsiedztwa pastwisk, pól pszenicy i pól lnu (styk krawędzią z fermą macierzystą lub innym satelitą)
     if (isPasture(item.typeId) && !canPlacePasture(coord, curSizeX, curSizeY, placedBuildings)) {
       return false;
     }
     if (isWheatField(item.typeId) && !canPlaceWheatField(coord, curSizeX, curSizeY, placedBuildings)) {
       return false;
     }
+    if (isFlaxField(item.typeId) && !canPlaceFlaxField(coord, curSizeX, curSizeY, placedBuildings)) {
+      return false;
+    }
+    if (isHopField(item.typeId) && !canPlaceHopField(coord, curSizeX, curSizeY, placedBuildings)) {
+      return false;
+    }
 
     // 3. Walidacja przylegania do drogi: każdy budynek (poza samą drogą, polami/pastwiskami oraz metropolią) musi przylegać do drogi
     const isRoadItem = item.typeId.startsWith('road') || item.roadSubType !== undefined;
-    const isAgriculturalModule = isPasture(item.typeId) || isWheatField(item.typeId);
+    const isAgriculturalModule =
+      isPasture(item.typeId) ||
+      isWheatField(item.typeId) ||
+      isFlaxField(item.typeId) ||
+      isHopField(item.typeId);
     const isRoadExempt =
       isRoadItem ||
       isAgriculturalModule ||

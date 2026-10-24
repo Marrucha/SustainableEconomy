@@ -5,6 +5,10 @@ import {
   canPlacePasture,
   isWheatField,
   canPlaceWheatField,
+  isFlaxField,
+  canPlaceFlaxField,
+  isHopField,
+  canPlaceHopField,
   isBuildingAdjacentToRoad,
 } from './pastureTopology';
 
@@ -89,8 +93,17 @@ export function renderGhostPreview(p: GhostPreviewParams) {
     const wheatFieldValid =
       !isWheatField(selectedType.typeId) ||
       canPlaceWheatField(hoverTile, curSizeX, curSizeY, placedBuildings);
+    const flaxFieldValid =
+      !isFlaxField(selectedType.typeId) ||
+      canPlaceFlaxField(hoverTile, curSizeX, curSizeY, placedBuildings);
+    const hopFieldValid =
+      !isHopField(selectedType.typeId) ||
+      canPlaceHopField(hoverTile, curSizeX, curSizeY, placedBuildings);
     const isAgriculturalModule =
-      isPasture(selectedType.typeId) || isWheatField(selectedType.typeId);
+      isPasture(selectedType.typeId) ||
+      isWheatField(selectedType.typeId) ||
+      isFlaxField(selectedType.typeId) ||
+      isHopField(selectedType.typeId);
     const isRoadExempt =
       isAgriculturalModule ||
       selectedType.typeId === 'city_miniature';
@@ -107,6 +120,8 @@ export function renderGhostPreview(p: GhostPreviewParams) {
       !isOnRoad &&
       pastureValid &&
       wheatFieldValid &&
+      flaxFieldValid &&
+      hopFieldValid &&
       roadValid &&
       woodcutterValid &&
       gold >= selectedType.cost;

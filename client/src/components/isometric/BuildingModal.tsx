@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import type { PlacedBuilding, BuildingState } from './types';
 import { canDemolishBuildingWithPastureRules } from './pastureTopology';
 import { FarmSection } from './modal/FarmSection';
+import { FlaxSection } from './modal/flax/FlaxSection';
+import { HopSection } from './modal/hop/HopSection';
 import { OrchardSection } from './modal/orchard/OrchardSection';
 import { FRUITS_CONFIG } from './modal/orchard/orchardTypes';
 import { LivestockSection } from './modal/livestock/LivestockSection';
@@ -32,6 +34,8 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
   onDemolish,
 }) => {
   const isFarm = building.typeId === 'wheat_farm';
+  const isFlax = building.typeId === 'flax_farm' || building.typeId === 'flax_field';
+  const isHop = building.typeId === 'hop_farm' || building.typeId === 'hop_field';
   const isOrchard = building.typeId.startsWith('orchard');
   const isLivestock =
     building.typeId === 'livestock_farm' ||
@@ -42,7 +46,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
   const isResidential = building.typeId.startsWith('tenement');
   const isTownHall = building.typeId === 'town_hall';
   const isPark = building.typeId === 'oak';
-  const isBusiness = isFarm || isOrchard || isLivestock || isMine || isWoodcutter || (!isResidential && !isTownHall && !isPark);
+  const isBusiness = isFarm || isFlax || isHop || isOrchard || isLivestock || isMine || isWoodcutter || (!isResidential && !isTownHall && !isPark);
 
   const validation = canDemolishBuildingWithPastureRules(building, placedBuildings);
 
@@ -65,7 +69,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in select-none">
       <div
         className={`relative w-full ${
-          isFarm || isLivestock || isOrchard || isMine || isWoodcutter ? 'max-w-6xl' : isTownHall ? 'max-w-5xl' : isBusiness ? 'max-w-2xl' : 'max-w-xl'
+          isFarm || isFlax || isHop || isLivestock || isOrchard || isMine || isWoodcutter ? 'max-w-6xl' : isTownHall ? 'max-w-5xl' : isBusiness ? 'max-w-2xl' : 'max-w-xl'
         } bg-stone-900/95 border border-amber-500/50 rounded-3xl p-6 shadow-2xl text-stone-200 font-sans max-h-[92vh] flex flex-col transition-all duration-200`}
       >
         {/* NAGŁÓWEK */}
@@ -171,6 +175,26 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             />
           )}
 
+          {isFlax && (
+            <FlaxSection
+              buildingState={buildingState}
+              businessTab={businessTab}
+              hasGreenRelief={hasGreenRelief}
+              clock={clock}
+              onUpdateState={onUpdateState}
+            />
+          )}
+
+          {isHop && (
+            <HopSection
+              buildingState={buildingState}
+              businessTab={businessTab}
+              hasGreenRelief={hasGreenRelief}
+              clock={clock}
+              onUpdateState={onUpdateState}
+            />
+          )}
+
           {isOrchard && (
             <OrchardSection
               buildingState={buildingState}
@@ -221,7 +245,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             />
           )}
 
-          {isBusiness && !isFarm && !isOrchard && !isLivestock && !isMine && !isWoodcutter && (
+          {isBusiness && !isFarm && !isFlax && !isHop && !isOrchard && !isLivestock && !isMine && !isWoodcutter && (
             <IndustrySection
               building={building}
               buildingState={buildingState}

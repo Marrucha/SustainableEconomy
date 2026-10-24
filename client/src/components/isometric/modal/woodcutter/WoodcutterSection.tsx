@@ -4,6 +4,7 @@ import type { UseGameClockReturn } from '../../clock/useGameClock';
 import { BusinessEnergySection } from '../BusinessEnergySection';
 import { WoodcutterCycleSnake } from './WoodcutterCycleSnake';
 import { WoodcutterCrewTab } from './WoodcutterCrewTab';
+import { WoodcutterProgressBar } from './WoodcutterProgressBar';
 import { DEFAULT_WOODCUTTER_CREW, type WoodcutterCrewStaff } from './woodcutterTypes';
 
 interface WoodcutterSectionProps {
@@ -77,6 +78,13 @@ export const WoodcutterSection: React.FC<WoodcutterSectionProps> = ({
 
   return (
     <div className="space-y-4 animate-fade-in select-none">
+      {/* PASEK POSTĘPU CYKLU WYRĘBU I SEZONOWANIA (OD LISTOPADA) */}
+      <WoodcutterProgressBar
+        crew={crew}
+        efficiency={efficiency}
+        clock={clock}
+      />
+
       {/* GŁÓWNY PRZEŁĄCZNIK ZAKŁADEK */}
       <div className="flex bg-stone-950/80 p-1.5 rounded-2xl border border-stone-800 text-xs gap-2 shadow-inner">
         <button

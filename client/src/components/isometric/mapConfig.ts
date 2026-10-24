@@ -40,6 +40,10 @@ export const RURAL_ALLOWED_BUILDINGS = new Set([
   'coal_mine',
   'woodcutter',
   'sawmill',
+  'flax_farm',
+  'flax_field',
+  'hop_farm',
+  'hop_field',
   'road_dirt',
 ]);
 
@@ -49,6 +53,10 @@ export const CITY_ALLOWED_BUILDINGS = new Set([
   'coal_plant',
   'bakery',
   'blacksmith',
+  'sawmill',
+  'spinning_mill',
+  'sewing_factory',
+  'brewery',
   'tenement_workers',
   'tenement_middle',
   'tenement_elite',

@@ -2,6 +2,8 @@ import type { FarmCapitalismState } from './modal/farmGridTypes';
 import type { LivestockCapitalismState } from './modal/livestock/livestockTypes';
 import type { OrchardCapitalismState, FruitType } from './modal/orchard/orchardTypes';
 import type { MineDepositType, MineStaffState } from './modal/mine/mineTypes';
+import type { FlaxCapitalismState } from './modal/flax/flaxTypes';
+import type { HopCapitalismState } from './modal/hop/hopTypes';
 
 export interface PlacedBuilding {
   id: string;
@@ -41,6 +43,12 @@ export interface BuildingState {
   // Farma Zbożowa
   farmCapitalism?: FarmCapitalismState;
   cropType?: 'pszenica' | 'zyto' | 'owies' | 'jeczmien';
+
+  // Plantacja Lnu
+  flaxState?: FlaxCapitalismState;
+
+  // Farma Chmielu
+  hopState?: HopCapitalismState;
 
   // Sad Owocowy
   orchardState?: OrchardCapitalismState;

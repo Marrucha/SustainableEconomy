@@ -17,6 +17,18 @@ export function useIsometricAssets() {
       orchard_norm: '/sprites/assets_1880/orchard_norm.png',
       orchard_rot90: '/sprites/assets_1880/orchard_rot90.png',
 
+      // 2a. Plantacja Lnu 2x2 i Pole Lnu 2x2 (4x4 wiejskie)
+      flax_farm_norm: '/sprites/assets_1880/flax_farm_norm.png',
+      flax_farm_rot90: '/sprites/assets_1880/flax_farm_rot90.png',
+      flax_field_norm: '/sprites/assets_1880/flax_field_norm.png',
+      flax_field_rot90: '/sprites/assets_1880/flax_field_rot90.png',
+
+      // 2aa. Farma Chmielu 2x2 i Chmielnik 2x2 (4x4 wiejskie)
+      hop_farm_norm: '/sprites/assets_1880/hop_farm_norm.png',
+      hop_farm_rot90: '/sprites/assets_1880/hop_farm_rot90.png',
+      hop_field_norm: '/sprites/assets_1880/hop_field_norm.png',
+      hop_field_rot90: '/sprites/assets_1880/hop_field_rot90.png',
+
       // 2b. Farma Hodowlana i Pastwiska
       livestock_farm_norm: '/sprites/assets_1880/livestock_farm_norm.png',
       livestock_farm_rot90: '/sprites/assets_1880/livestock_farm_rot90.png',
@@ -46,6 +58,22 @@ export function useIsometricAssets() {
       // 3. Wiktoriański Młyn Parowy 1x2
       mill_norm: '/sprites/assets_1880/mill_norm.png',
       mill_rot90: '/sprites/assets_1880/mill_rot90.png',
+
+      // 3b. Wiktoriański Tartak Parowy 1x2
+      sawmill_norm: '/sprites/assets_1880/sawmill_norm.png',
+      sawmill_rot90: '/sprites/assets_1880/sawmill_rot90.png',
+
+      // 3c. Wiktoriańska Przędzalnia Parowa 1x2
+      spinning_mill_norm: '/sprites/assets_1880/spinning_mill_norm.png',
+      spinning_mill_rot90: '/sprites/assets_1880/spinning_mill_rot90.png',
+
+      // 3d. Wiktoriańska Szwalnia i Manufaktura Odzieżowa 1x2
+      sewing_factory_norm: '/sprites/assets_1880/sewing_factory_norm.png',
+      sewing_factory_rot90: '/sprites/assets_1880/sewing_factory_rot90.png',
+
+      // 3e. Wiktoriański Browar Parowy 2x1
+      brewery_norm: '/sprites/assets_1880/brewery_norm.png',
+      brewery_rot90: '/sprites/assets_1880/brewery_rot90.png',
 
       // 4. Elektrociepłownia Węglowa 1x2
       coal_plant_norm: '/sprites/assets_1880/coal_plant_norm.png',

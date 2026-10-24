@@ -5,11 +5,7 @@ import { type MapType } from './mapConfig';
 import type { PlacedBuilding, BuildingCatalogItem } from './types';
 import type { GameDate } from './clock/gameClockTypes';
 import { renderGhostPreview } from './ghostPreviewRenderer';
-import { renderFarmProgressOverlay } from './farmOverlayRenderer';
-import { renderLivestockProgressOverlay } from './livestockOverlayRenderer';
-import { renderOrchardProgressOverlay } from './orchardOverlayRenderer';
-import { renderMineOverlay } from './mineOverlayRenderer';
-import { renderWoodcutterOverlay } from './woodcutterOverlayRenderer';
+import { renderBuildingProgressOverlays } from './buildingProgressOverlays';
 
 export interface RenderParams {
   ctx: CanvasRenderingContext2D;
@@ -316,95 +312,16 @@ export function renderIsometricScene(p: RenderParams) {
     }
   });
 
-  // 3.5. Paski postępu nad budynkami rolniczymi (np. Farma Zbożowa w widoku wiejskim)
+  // 3.5. Paski postępu nad budynkami produkcyjnymi w widoku wiejskim
   if (mapType === 'rural') {
-    p.placedBuildings.forEach((bldg) => {
-      if (bldg.typeId === 'wheat_farm') {
-        const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
-        if (!catItem) return;
-        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
-        const scale = currentPlotWidth / catItem.baseWidth;
-        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
-        const drawY = bottomY - catItem.anchorNormY * scale;
-
-        renderFarmProgressOverlay({
-          ctx,
-          bldg,
-          catItem,
-          tileW,
-          tileH,
-          drawY,
-          farmState: p.buildingsState?.[bldg.id]?.farmCapitalism,
-          clockDate: p.clockDate,
-          mouseWorldPos: p.mouseWorldPos,
-        });
-      }
-
-      if (bldg.typeId === 'livestock_farm') {
-        const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
-        if (!catItem) return;
-        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
-        const scale = currentPlotWidth / (catItem.baseWidth || 1095);
-        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
-        const drawY = bottomY - catItem.anchorNormY * scale;
-
-        renderLivestockProgressOverlay({
-          ctx,
-          bldg,
-          catItem,
-          tileW,
-          tileH,
-          drawY,
-          livestockState: p.buildingsState?.[bldg.id]?.livestockState,
-          clockDate: p.clockDate,
-          mouseWorldPos: p.mouseWorldPos,
-        });
-      }
-
-      if (bldg.typeId.startsWith('orchard')) {
-        const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
-        if (!catItem) return;
-        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
-        const scale = currentPlotWidth / (catItem.baseWidth || 1011);
-        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
-        const drawY = bottomY - catItem.anchorNormY * scale;
-
-        renderOrchardProgressOverlay({
-          ctx,
-          bldg,
-          catItem,
-          tileW,
-          tileH,
-          drawY,
-          orchardState: p.buildingsState?.[bldg.id]?.orchardState,
-          clockDate: p.clockDate,
-          mouseWorldPos: p.mouseWorldPos,
-        });
-      }
-
-      if (bldg.typeId.startsWith('mine_')) {
-        const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
-        if (!catItem) return;
-        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
-        const scale = currentPlotWidth / (catItem.baseWidth || 1007);
-        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
-        const drawY = bottomY - (catItem.anchorNormY || 909) * scale;
-        const centerX = (bldg.x + bldg.sizeX / 2 - (bldg.y + bldg.sizeY / 2)) * (tileW / 2);
-
-        renderMineOverlay(ctx, bldg, centerX, drawY + 80, p.buildingsState?.[bldg.id], p.clockDate);
-      }
-
-      if (bldg.typeId === 'woodcutter') {
-        const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
-        if (!catItem) return;
-        const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
-        const scale = currentPlotWidth / (catItem.baseWidth || 1290);
-        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
-        const drawY = bottomY - (catItem.anchorNormY || 671) * scale;
-        const centerX = (bldg.x + bldg.sizeX / 2 - (bldg.y + bldg.sizeY / 2)) * (tileW / 2);
-
-        renderWoodcutterOverlay(ctx, bldg, centerX, drawY + 40, p.buildingsState?.[bldg.id]);
-      }
+    renderBuildingProgressOverlays({
+      ctx,
+      placedBuildings: p.placedBuildings,
+      tileW,
+      tileH,
+      buildingsState: p.buildingsState,
+      clockDate: p.clockDate,
+      mouseWorldPos: p.mouseWorldPos,
     });
   }
 

@@ -28,6 +28,34 @@ export function isWheatFarm(typeId: string): boolean {
   return typeId === 'wheat_farm';
 }
 
+/**
+ * Sprawdza czy dany identyfikator budynku to pole lnu (expansion).
+ */
+export function isFlaxField(typeId: string): boolean {
+  return typeId === 'flax_field';
+}
+
+/**
+ * Sprawdza czy dany budynek to plantacja lnu.
+ */
+export function isFlaxFarm(typeId: string): boolean {
+  return typeId === 'flax_farm';
+}
+
+/**
+ * Sprawdza czy dany identyfikator budynku to pole chmielu (expansion).
+ */
+export function isHopField(typeId: string): boolean {
+  return typeId === 'hop_field';
+}
+
+/**
+ * Sprawdza czy dany budynek to farma chmielu.
+ */
+export function isHopFarm(typeId: string): boolean {
+  return typeId === 'hop_farm';
+}
+
 export interface GridRect {
   x: number;
   y: number;
@@ -87,6 +115,46 @@ export function canPlaceWheatField(
 
   return placedBuildings.some((b) => {
     if (isWheatFarm(b.typeId) || isWheatField(b.typeId)) {
+      return doRectanglesShareEdge(newRect, b);
+    }
+    return false;
+  });
+}
+
+/**
+ * Reguła stawiania pola lnu:
+ * Pole lnu musi stykać się co najmniej jedną krawędzią z Plantacją Lnu lub z innym istniejącym polem lnu.
+ */
+export function canPlaceFlaxField(
+  coord: { x: number; y: number },
+  sizeX: number,
+  sizeY: number,
+  placedBuildings: PlacedBuilding[]
+): boolean {
+  const newRect: GridRect = { x: coord.x, y: coord.y, sizeX, sizeY };
+
+  return placedBuildings.some((b) => {
+    if (isFlaxFarm(b.typeId) || isFlaxField(b.typeId)) {
+      return doRectanglesShareEdge(newRect, b);
+    }
+    return false;
+  });
+}
+
+/**
+ * Reguła stawiania pola chmielu:
+ * Pole chmielu musi stykać się co najmniej jedną krawędzią z Farmą Chmielu lub z innym istniejącym polem chmielu.
+ */
+export function canPlaceHopField(
+  coord: { x: number; y: number },
+  sizeX: number,
+  sizeY: number,
+  placedBuildings: PlacedBuilding[]
+): boolean {
+  const newRect: GridRect = { x: coord.x, y: coord.y, sizeX, sizeY };
+
+  return placedBuildings.some((b) => {
+    if (isHopFarm(b.typeId) || isHopField(b.typeId)) {
       return doRectanglesShareEdge(newRect, b);
     }
     return false;
@@ -244,6 +312,30 @@ export function canDemolishBuildingWithPastureRules(
       isWheatField,
       'Farmy Zbożowej',
       'pola pszenicy'
+    );
+  }
+
+  // Walidacja ekosystemu Plantacji Lnu i Pól Lnu
+  if (isFlaxFarm(building.typeId) || isFlaxField(building.typeId)) {
+    return validateSatelliteDemolish(
+      building,
+      placedBuildings,
+      isFlaxFarm,
+      isFlaxField,
+      'Plantacji Lnu',
+      'pola lnu'
+    );
+  }
+
+  // Walidacja ekosystemu Farmy Chmielu i Pól Chmielu
+  if (isHopFarm(building.typeId) || isHopField(building.typeId)) {
+    return validateSatelliteDemolish(
+      building,
+      placedBuildings,
+      isHopFarm,
+      isHopField,
+      'Farmy Chmielu',
+      'pola chmielu'
     );
   }
 
