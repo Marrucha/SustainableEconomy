@@ -60,44 +60,44 @@ export function useIsometricAssets() {
       mill_rot90: '/sprites/assets_1880/mill_rot90.png',
 
       // 3b. Wiktoriański Tartak Parowy 1x2
-      sawmill_norm: '/sprites/assets_1880/sawmill_norm.png?v=solid2',
-      sawmill_rot90: '/sprites/assets_1880/sawmill_rot90.png?v=solid2',
+      sawmill_norm: '/sprites/assets_1880/sawmill_norm.png?v=solid3',
+      sawmill_rot90: '/sprites/assets_1880/sawmill_rot90.png?v=solid3',
 
       // 3c. Wiktoriańska Przędzalnia Parowa 1x2
-      spinning_mill_norm: '/sprites/assets_1880/spinning_mill_norm.png?v=solid2',
-      spinning_mill_rot90: '/sprites/assets_1880/spinning_mill_rot90.png?v=solid2',
+      spinning_mill_norm: '/sprites/assets_1880/spinning_mill_norm.png?v=solid3',
+      spinning_mill_rot90: '/sprites/assets_1880/spinning_mill_rot90.png?v=solid3',
 
       // 3d. Wiktoriańska Szwalnia i Manufaktura Odzieżowa 1x2
-      sewing_factory_norm: '/sprites/assets_1880/sewing_factory_norm.png?v=solid2',
-      sewing_factory_rot90: '/sprites/assets_1880/sewing_factory_rot90.png?v=solid2',
+      sewing_factory_norm: '/sprites/assets_1880/sewing_factory_norm.png?v=solid3',
+      sewing_factory_rot90: '/sprites/assets_1880/sewing_factory_rot90.png?v=solid3',
 
       // 3e. Wiktoriański Browar Parowy 2x1
-      brewery_norm: '/sprites/assets_1880/brewery_norm.png?v=solid2',
-      brewery_rot90: '/sprites/assets_1880/brewery_rot90.png?v=solid2',
+      brewery_norm: '/sprites/assets_1880/brewery_norm.png?v=solid3',
+      brewery_rot90: '/sprites/assets_1880/brewery_rot90.png?v=solid3',
 
       // 3f. Wiktoriańska Garbarnia Parowa 2x1
-      tannery_norm: '/sprites/assets_1880/tannery_norm.png?v=1',
-      tannery_rot90: '/sprites/assets_1880/tannery_rot90.png?v=1',
+      tannery_norm: '/sprites/assets_1880/tannery_norm.png?v=solid3',
+      tannery_rot90: '/sprites/assets_1880/tannery_rot90.png?v=solid3',
 
       // 3g. Wiktoriańska Manufaktura Szewska 1x1
-      shoemaker_norm: '/sprites/assets_1880/shoemaker_norm.png?v=1',
-      shoemaker_rot90: '/sprites/assets_1880/shoemaker_rot90.png?v=1',
+      shoemaker_norm: '/sprites/assets_1880/shoemaker_norm.png?v=solid3',
+      shoemaker_rot90: '/sprites/assets_1880/shoemaker_rot90.png?v=solid3',
 
       // 3h. Wiktoriańska Mleczarnia Miejska 2x1
-      dairy_norm: '/sprites/assets_1880/dairy_norm.png?v=1',
-      dairy_rot90: '/sprites/assets_1880/dairy_rot90.png?v=1',
+      dairy_norm: '/sprites/assets_1880/dairy_norm.png?v=solid3',
+      dairy_rot90: '/sprites/assets_1880/dairy_rot90.png?v=solid3',
 
       // 3i. Wiktoriańska Rzeźnia Miejska 2x1
-      slaughterhouse_norm: '/sprites/assets_1880/slaughterhouse_norm.png?v=1',
-      slaughterhouse_rot90: '/sprites/assets_1880/slaughterhouse_rot90.png?v=1',
+      slaughterhouse_norm: '/sprites/assets_1880/slaughterhouse_norm.png?v=solid3',
+      slaughterhouse_rot90: '/sprites/assets_1880/slaughterhouse_rot90.png?v=solid3',
 
       // 3j. Wiktoriańska Masarnia i Wędliniarnia 1x1
-      butcher_norm: '/sprites/assets_1880/butcher_norm.png?v=1',
-      butcher_rot90: '/sprites/assets_1880/butcher_rot90.png?v=1',
+      butcher_norm: '/sprites/assets_1880/butcher_norm.png?v=solid3',
+      butcher_rot90: '/sprites/assets_1880/butcher_rot90.png?v=solid3',
 
       // 3k. Wiktoriańska Fabryka Mebli 2x1
-      furniture_factory_norm: '/sprites/assets_1880/furniture_factory_norm.png?v=1',
-      furniture_factory_rot90: '/sprites/assets_1880/furniture_factory_rot90.png?v=1',
+      furniture_factory_norm: '/sprites/assets_1880/furniture_factory_norm.png?v=solid3',
+      furniture_factory_rot90: '/sprites/assets_1880/furniture_factory_rot90.png?v=solid3',
 
       // 4. Elektrociepłownia Węglowa 1x2
       coal_plant_norm: '/sprites/assets_1880/coal_plant_norm.png',

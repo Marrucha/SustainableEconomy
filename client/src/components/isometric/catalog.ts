@@ -240,7 +240,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     cost: 2800,
     spriteBaseName: 'sawmill',
     anchorNormX: 345,
-    anchorNormY: 932,
+    anchorNormY: 940,
     baseWidth: 1000,
   },
   {
@@ -253,7 +253,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     cost: 3200,
     spriteBaseName: 'spinning_mill',
     anchorNormX: 345,
-    anchorNormY: 932,
+    anchorNormY: 940,
     baseWidth: 1000,
   },
   {
@@ -266,7 +266,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     cost: 2600,
     spriteBaseName: 'sewing_factory',
     anchorNormX: 345,
-    anchorNormY: 932,
+    anchorNormY: 940,
     baseWidth: 1000,
   },
   {
@@ -279,7 +279,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     cost: 3800,
     spriteBaseName: 'brewery',
     anchorNormX: 679,
-    anchorNormY: 932,
+    anchorNormY: 940,
     baseWidth: 1000,
   },
   {
@@ -292,7 +292,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     cost: 3400,
     spriteBaseName: 'tannery',
     anchorNormX: 679,
-    anchorNormY: 932,
+    anchorNormY: 940,
     baseWidth: 1000,
   },
   {
@@ -305,7 +305,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     cost: 1600,
     spriteBaseName: 'shoemaker',
     anchorNormX: 512,
-    anchorNormY: 932,
+    anchorNormY: 940,
     baseWidth: 1000,
   },
   {
@@ -318,7 +318,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     cost: 3100,
     spriteBaseName: 'dairy',
     anchorNormX: 679,
-    anchorNormY: 932,
+    anchorNormY: 940,
     baseWidth: 1000,
   },
   {
@@ -331,7 +331,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     cost: 3600,
     spriteBaseName: 'slaughterhouse',
     anchorNormX: 679,
-    anchorNormY: 932,
+    anchorNormY: 940,
     baseWidth: 1000,
   },
   {
@@ -344,7 +344,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     cost: 1800,
     spriteBaseName: 'butcher',
     anchorNormX: 512,
-    anchorNormY: 932,
+    anchorNormY: 940,
     baseWidth: 1000,
   },
   {
@@ -357,7 +357,7 @@ export const CATALOG: BuildingCatalogItem[] = [
     cost: 3500,
     spriteBaseName: 'furniture_factory',
     anchorNormX: 679,
-    anchorNormY: 932,
+    anchorNormY: 940,
     baseWidth: 1000,
   },
 

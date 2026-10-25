@@ -263,8 +263,8 @@ export function renderIsometricScene(p: RenderParams) {
         const drawX = bottomX - anchorX * scale;
         const drawY = bottomY - anchorY * scale;
 
-        // Cień pod budynkiem (wyłączony dla obiektów rolniczych z pełnym podłożem)
-        if (catItem.category !== 'Budynki rolnicze') {
+        // Cień pod budynkiem (wyłączony dla obiektów z pełnym podłożem rolniczym i przemysłowym)
+        if (catItem.category !== 'Budynki rolnicze' && catItem.category !== 'Budynki przemysłowe') {
           ctx.save();
           ctx.beginPath();
           ctx.moveTo(topX, topY);
