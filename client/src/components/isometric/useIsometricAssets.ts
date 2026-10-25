@@ -64,16 +64,16 @@ export function useIsometricAssets() {
       sawmill_rot90: '/sprites/assets_1880/sawmill_rot90.png',
 
       // 3c. Wiktoriańska Przędzalnia Parowa 1x2
-      spinning_mill_norm: '/sprites/assets_1880/spinning_mill_norm.png',
-      spinning_mill_rot90: '/sprites/assets_1880/spinning_mill_rot90.png',
+      spinning_mill_norm: '/sprites/assets_1880/spinning_mill_norm.png?v=rectified',
+      spinning_mill_rot90: '/sprites/assets_1880/spinning_mill_rot90.png?v=rectified',
 
       // 3d. Wiktoriańska Szwalnia i Manufaktura Odzieżowa 1x2
-      sewing_factory_norm: '/sprites/assets_1880/sewing_factory_norm.png',
-      sewing_factory_rot90: '/sprites/assets_1880/sewing_factory_rot90.png',
+      sewing_factory_norm: '/sprites/assets_1880/sewing_factory_norm.png?v=rectified',
+      sewing_factory_rot90: '/sprites/assets_1880/sewing_factory_rot90.png?v=rectified',
 
       // 3e. Wiktoriański Browar Parowy 2x1
-      brewery_norm: '/sprites/assets_1880/brewery_norm.png',
-      brewery_rot90: '/sprites/assets_1880/brewery_rot90.png',
+      brewery_norm: '/sprites/assets_1880/brewery_norm.png?v=rectified',
+      brewery_rot90: '/sprites/assets_1880/brewery_rot90.png?v=rectified',
 
       // 4. Elektrociepłownia Węglowa 1x2
       coal_plant_norm: '/sprites/assets_1880/coal_plant_norm.png',
