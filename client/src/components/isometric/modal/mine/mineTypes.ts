@@ -6,7 +6,8 @@ export type MineDepositType =
   | 'clay'
   | 'quartz_sand'
   | 'rock_salt'
-  | 'gold_ore';
+  | 'gold_ore'
+  | 'sulfur';
 
 export interface MineDepositInfo {
   id: MineDepositType;
@@ -72,11 +73,11 @@ export const MINE_DEPOSITS: Record<MineDepositType, MineDepositInfo> = {
   },
   limestone: {
     id: 'limestone',
-    name: 'Wapień i Kruszywo Kamienne',
-    icon: '🧱',
+    name: 'Minerały',
+    icon: '🪨',
     unit: 't',
     category: 'Mineralne',
-    description: 'Kamień ciosany na fundamenty, kruszywo drogowe, zaprawa murarska oraz mleko wapienne do sadów.',
+    description: 'Minerały przemysłowe i budowlane do produkcji cementu, zapraw oraz zastosowań przemysłowych.',
     baseYieldPerCycle: 120,
     basePricePerTon: 10,
     requiredWorkers: 20,
@@ -145,6 +146,21 @@ export const MINE_DEPOSITS: Record<MineDepositType, MineDepositInfo> = {
     color: 'text-yellow-400',
     badgeBg: 'bg-yellow-900/90 text-yellow-300 border-yellow-500 shadow-sm',
   },
+  sulfur: {
+    id: 'sulfur',
+    name: 'Siarka',
+    icon: '🟨',
+    unit: 't',
+    category: 'Mineralne',
+    description: 'Siarka rodzima do produkcji zapałek (z drewnem) oraz kwasu solnego w fabrykach.',
+    baseYieldPerCycle: 75,
+    basePricePerTon: 24,
+    requiredWorkers: 22,
+    requiredEngineers: 2,
+    energyKwh: 50,
+    color: 'text-yellow-300',
+    badgeBg: 'bg-yellow-950/80 text-yellow-200 border-yellow-600/60',
+  },
 };
 
 export interface MineWorkflowStep {
@@ -199,8 +215,8 @@ export interface MineStaffState {
 }
 
 export const DEFAULT_MINE_STAFF: MineStaffState = {
-  minersCount: 8,
-  horsesCount: 4,
-  surfaceWorkersCount: 4,
-  tradersCount: 1,
+  minersCount: 0,
+  horsesCount: 0,
+  surfaceWorkersCount: 0,
+  tradersCount: 0,
 };

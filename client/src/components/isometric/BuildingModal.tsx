@@ -12,13 +12,25 @@ import { WoodcutterSection } from './modal/woodcutter/WoodcutterSection';
 import { ResidentialSection } from './modal/ResidentialSection';
 import { IndustrySection } from './modal/IndustrySection';
 import { TownHallSection } from './modal/TownHallSection';
+import { MarketplaceSection } from './modal/MarketplaceSection';
+import { computeCityHousingStatus } from './cityAutoGrowth';
 import type { UseGameClockReturn } from './clock/useGameClock';
+import type { WorldSupplierBuilding } from './modal/industrySupplyConfig';
+import { ProductInventoryCard } from './modal/ProductInventoryCard';
+import { INDUSTRY_PROFILES } from './modal/industryProfiles';
+import { computeFactoryStaffMetrics } from './modal/industryStaffMath';
+import { computeMonthlyProductionUnits } from './modal/industryContracts';
 
 interface BuildingModalProps {
   building: PlacedBuilding;
   buildingState: BuildingState;
   placedBuildings?: PlacedBuilding[];
+  allWorldBuildings?: WorldSupplierBuilding[];
+  buildingsState?: Record<string, BuildingState>;
   clock?: UseGameClockReturn;
+  cityPlayersCount?: number;
+  onAddNewCityPlayer?: () => void;
+  onSpendGold?: (amount: number) => void;
   onUpdateState: (updates: Partial<BuildingState>) => void;
   onClose: () => void;
   onDemolish: () => void;
@@ -28,7 +40,12 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
   building,
   buildingState,
   placedBuildings = [],
+  allWorldBuildings = [],
+  buildingsState = {},
   clock,
+  cityPlayersCount,
+  onAddNewCityPlayer,
+  onSpendGold,
   onUpdateState,
   onClose,
   onDemolish,
@@ -45,12 +62,13 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
   const isWoodcutter = building.typeId === 'woodcutter';
   const isResidential = building.typeId.startsWith('tenement');
   const isTownHall = building.typeId === 'town_hall';
+  const isMarketplace = building.typeId === 'marketplace';
   const isPark = building.typeId === 'oak';
-  const isBusiness = isFarm || isFlax || isHop || isOrchard || isLivestock || isMine || isWoodcutter || (!isResidential && !isTownHall && !isPark);
+  const isBusiness = isFarm || isFlax || isHop || isOrchard || isLivestock || isMine || isWoodcutter || (!isResidential && !isTownHall && !isMarketplace && !isPark);
 
   const validation = canDemolishBuildingWithPastureRules(building, placedBuildings);
 
-  const [businessTab, setBusinessTab] = useState<'production' | 'energy'>('production');
+  const [businessTab, setBusinessTab] = useState<'production' | 'products' | 'energy'>('production');
   const [residentialTab, setResidentialTab] = useState<'rent' | 'energy'>('rent');
 
   const activeReliefs = buildingState.appliedTaxReliefs || {};
@@ -116,6 +134,18 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
               </button>
 
               <button
+                onClick={() => setBusinessTab('products')}
+                className={`flex-1 py-2.5 px-4 rounded-xl text-sm md:text-base font-bold transition-all cursor-pointer flex items-center justify-center gap-2.5 ${
+                  businessTab === 'products'
+                    ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+                    : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+                }`}
+              >
+                <span className="text-lg">📦</span>
+                <span className="tracking-wide">Produkty</span>
+              </button>
+
+              <button
                 onClick={() => setBusinessTab('energy')}
                 className={`flex-1 py-2.5 px-4 rounded-xl text-sm md:text-base font-bold transition-all cursor-pointer flex items-center justify-center gap-2.5 ${
                   businessTab === 'energy'
@@ -165,10 +195,40 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
 
         {/* ZAWARTOŚĆ SPECYFICZNA DLA TYPU BUDYNKU */}
         <div className="py-4 space-y-5 text-sm overflow-y-auto flex-1 pr-1">
+          {isBusiness && businessTab === 'products' ? (
+            (() => {
+              const profile = INDUSTRY_PROFILES[building.typeId];
+              const activeTargetId = buildingState.productionTarget || profile?.options[0]?.id;
+              const activeOption =
+                profile?.options.find((o) => o.id === activeTargetId) || profile?.options[0];
+              const productName = activeOption ? activeOption.label : building.name;
+              const staffMetrics = computeFactoryStaffMetrics(
+                building.sizeX,
+                building.sizeY,
+                buildingState
+              );
+              const monthlyCap = computeMonthlyProductionUnits(
+                staffMetrics.workersCount,
+                staffMetrics.totalProductionPercent,
+                buildingState
+              );
+              return (
+                <ProductInventoryCard
+                  productName={productName}
+                  buildingName={building.name}
+                  buildingState={buildingState}
+                  monthlyCapacityUnits={monthlyCap}
+                  sellerActive={Boolean(buildingState.factorySellerHired || isFarm || isMine || isLivestock || isOrchard || isFlax || isHop || isWoodcutter)}
+                  onUpdateState={onUpdateState}
+                />
+              );
+            })()
+          ) : (
+            <>
           {isFarm && (
             <FarmSection
               buildingState={buildingState}
-              businessTab={businessTab}
+              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
@@ -178,7 +238,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           {isFlax && (
             <FlaxSection
               buildingState={buildingState}
-              businessTab={businessTab}
+              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
@@ -188,7 +248,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           {isHop && (
             <HopSection
               buildingState={buildingState}
-              businessTab={businessTab}
+              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
@@ -198,7 +258,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           {isOrchard && (
             <OrchardSection
               buildingState={buildingState}
-              businessTab={businessTab}
+              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
@@ -208,7 +268,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           {isLivestock && (
             <LivestockSection
               buildingState={buildingState}
-              businessTab={businessTab}
+              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
@@ -219,7 +279,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             <MineSection
               building={building}
               buildingState={buildingState}
-              businessTab={businessTab}
+              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
@@ -230,7 +290,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             <WoodcutterSection
               building={building}
               buildingState={buildingState}
-              businessTab={businessTab}
+              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
@@ -249,8 +309,12 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             <IndustrySection
               building={building}
               buildingState={buildingState}
-              businessTab={businessTab}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
               hasGreenRelief={hasGreenRelief}
+              clock={clock}
+              onSpendGold={onSpendGold}
               onUpdateState={onUpdateState}
             />
           )}
@@ -259,6 +323,23 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             <TownHallSection
               activeReliefs={activeReliefs}
               onToggleRelief={toggleRelief}
+              cityHousingStatus={computeCityHousingStatus(
+                allWorldBuildings.filter((b) => b.mapType !== 'rural'),
+                buildingsState
+              )}
+              cityPlayersCount={cityPlayersCount}
+              onAddNewCityPlayer={onAddNewCityPlayer}
+            />
+          )}
+
+          {isMarketplace && (
+            <MarketplaceSection
+              buildingState={buildingState}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              clock={clock}
+              onSpendGold={onSpendGold}
+              onUpdateState={onUpdateState}
             />
           )}
 
@@ -270,13 +351,15 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
               </p>
             </div>
           )}
+            </>
+          )}
         </div>
 
         {/* DOLNE PRZYCISKI AKCJI */}
         <div className="flex items-center justify-between pt-4 mt-3 border-t border-stone-800 flex-shrink-0">
-          {isTownHall || building.typeId === 'city_miniature' ? (
+          {isTownHall || isMarketplace || building.typeId === 'city_miniature' ? (
             <div className="flex items-center gap-2 text-stone-400 text-xs font-mono">
-              <span>🏛️ Stały Ośrodek Obszaru (Obiekt Nienaruszalny)</span>
+              <span>🏛️ Stały Budynek Miejski (Obiekt Nienaruszalny)</span>
             </div>
           ) : (
             <div className="flex items-center gap-2">

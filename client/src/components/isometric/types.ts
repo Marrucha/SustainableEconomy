@@ -32,6 +32,31 @@ export interface TileDef {
   type: TerrainType;
 }
 
+export type TransportMode1880 = 'horses' | 'rail' | 'ship';
+
+export interface MarketStallSupplySlot {
+  slotIndex: number; // 1..4
+  productId: string;
+  supplierBuildingId?: string;
+  transportCompanyId?: string;
+  transportMode?: TransportMode1880;
+}
+
+export interface MarketStallSeller {
+  sellerIndex: number; // 1..4
+  productId: string;   // wybierany wyłącznie z produktów zabezpieczonych przez zaopatrzeniowca
+  retailPrice?: number;
+}
+
+export interface MarketStallSlot {
+  slotIndex: number;
+  tenantName: string | null;
+  annualRent: number;
+  rentedUntilYear?: number;
+  supplySlots?: MarketStallSupplySlot[]; // 4 sloty zaopatrzeniowca na stoisku
+  sellers?: MarketStallSeller[]; // do 4 sprzedawców na jednym stoisku (każdy 1 produkt)
+}
+
 export type BusinessEnergySource = 'elektrownia' | 'drewno' | 'wegiel' | 'gaz' | 'wodor' | 'konie';
 export type BusinessEnergyScale = 'eco' | 'standard' | 'turbo';
 
@@ -79,9 +104,40 @@ export interface BuildingState {
   heatingEnergySource?: 'drewno' | 'piec_weglowy' | 'gaz_miejski' | 'cieplownia_miejska';
   maintenanceLevel?: 'podstawowy' | 'dobry' | 'luksusowy';
 
-  // Młyn Parowy
+  // Identyfikacja producenta na rynku
+  ownerName?: string;        // np. 'Gracz'
+  enterpriseName?: string;   // np. 'Farma Kowalskiego'
+
+  // Młyn Parowy i Przetwórnie Przemysłowe
   productionTarget?: 'maka_pszenna' | 'maka_zytnia' | 'kasza';
   industrialEnergySource?: 'lokalny_kociol' | 'siec_elektryczna';
+  merchantHired?: boolean;
+  merchantSupplierId?: string;
+  factoryWorkersCount?: number;
+  factoryManagersCount?: number;
+  factoryWarehousemenCount?: number;
+  factorySellerHired?: boolean;
+  merchantRoleMode?: 'dedicated' | 'worker';
+  warehousemanRoleMode?: 'dedicated' | 'worker';
+  sellerRoleMode?: 'dedicated' | 'worker';
+  // Kontrakty zakupowe Kupca i Sprzedaż/Produkty Fabryki
+  merchantContractType?: 'pay_as_you_go' | 'contract_3y' | 'contract_5y' | 'contract_10y';
+  merchantContractStartTotalMonths?: number; // year * 12 + month
+  merchantContractUnitsPerMonth?: number;
+  merchantTransportCompanyId?: string;
+  merchantTransportMode?: TransportMode1880;
+  productPrice?: number;
+  productStockUnits?: number;
+  productQuality?: number; // 1..100
+  productBrand?: number;   // 0..100
+  workerExperienceYears?: number;
+  workerSchoolCoursesCompleted?: number;
+  workerInSchoolMonthsLeft?: number;
+
+  // Targowisko Miejskie (8 stoisk, licytacja raz w roku, zaopatrzeniowiec 1:4 stoiska)
+  marketStalls?: MarketStallSlot[];
+  marketLastAuctionYear?: number;
+  marketSuppliersCount?: number; // liczba zaopatrzeniowców (1 obsługuje do 4 stoisk)
 
   // Elektrociepłownia
   powerOutputFuelRate?: number; // %

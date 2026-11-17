@@ -263,8 +263,8 @@ export function renderIsometricScene(p: RenderParams) {
         const drawX = bottomX - anchorX * scale;
         const drawY = bottomY - anchorY * scale;
 
-        // Cień pod budynkiem (wyłączony dla obiektów z pełnym podłożem rolniczym i przemysłowym)
-        if (catItem.category !== 'Budynki rolnicze' && catItem.category !== 'Budynki przemysłowe') {
+        // Cień pod budynkiem (wyłączony dla obiektów z pełnym podłożem rolniczym, przemysłowym i usługowym)
+        if (catItem.category !== 'Budynki rolnicze' && catItem.category !== 'Budynki przemysłowe' && catItem.category !== 'Budynki usługowe') {
           ctx.save();
           ctx.beginPath();
           ctx.moveTo(topX, topY);
@@ -278,6 +278,38 @@ export function renderIsometricScene(p: RenderParams) {
         }
 
         ctx.drawImage(img, drawX, drawY, w, h);
+      } else {
+        // Fallback dla płaskich zaślepek lub ładujących się grafik
+        const topX = (bldg.x - bldg.y) * (tileW / 2);
+        const topY = (bldg.x + bldg.y) * (tileH / 2);
+        const rightX = (bldg.x + bldg.sizeX - bldg.y) * (tileW / 2);
+        const rightY = (bldg.x + bldg.sizeX + bldg.y) * (tileH / 2);
+        const bottomX = (bldg.x + bldg.sizeX - (bldg.y + bldg.sizeY)) * (tileW / 2);
+        const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
+        const leftX = (bldg.x - (bldg.y + bldg.sizeY)) * (tileW / 2);
+        const leftY = (bldg.x + (bldg.y + bldg.sizeY)) * (tileH / 2);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(topX, topY);
+        ctx.lineTo(rightX, rightY);
+        ctx.lineTo(bottomX, bottomY);
+        ctx.lineTo(leftX, leftY);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(55, 65, 81, 0.92)';
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#f59e0b';
+        ctx.stroke();
+
+        const centerX = (leftX + rightX) / 2;
+        const centerY = (topY + bottomY) / 2;
+        ctx.fillStyle = '#fde68a';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(catItem.name.toUpperCase(), centerX, centerY);
+        ctx.restore();
       }
     } else {
       // Rysowanie drzew leśnych

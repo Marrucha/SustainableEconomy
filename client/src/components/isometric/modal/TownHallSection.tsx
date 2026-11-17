@@ -2,21 +2,67 @@ import React, { useState } from 'react';
 import { DecreesTab } from './townhall/DecreesTab';
 import { TaxesTab } from './townhall/TaxesTab';
 import { ReliefsTab } from './townhall/ReliefsTab';
+import type { CityHousingStatus } from '../cityAutoGrowth';
 
 interface TownHallSectionProps {
   activeReliefs: Record<string, boolean>;
   onToggleRelief: (reliefId: string) => void;
+  cityHousingStatus?: CityHousingStatus;
+  cityPlayersCount?: number;
+  onAddNewCityPlayer?: () => void;
 }
 
 export const TownHallSection: React.FC<TownHallSectionProps> = ({
   activeReliefs,
   onToggleRelief,
+  cityHousingStatus,
+  cityPlayersCount = 1,
+  onAddNewCityPlayer,
 }) => {
   const [townHallTab, setTownHallTab] = useState<'decrees' | 'taxes' | 'reliefs'>('decrees');
   const activeReliefsCount = Object.values(activeReliefs).filter(Boolean).length;
 
   return (
     <div className="space-y-4">
+      {cityHousingStatus && (
+        <div className="p-3.5 rounded-2xl bg-stone-900/75 border border-stone-700/80 space-y-2.5">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+              🏘️ Demografia i Rozwój Miasta (Auto-budowa + Rozszerzenie terenu o +3 pola)
+            </h4>
+            {onAddNewCityPlayer && (
+              <button
+                type="button"
+                onClick={onAddNewCityPlayer}
+                className="text-[11px] font-bold px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-200 hover:bg-amber-500/30 cursor-pointer"
+              >
+                👤 + Nowy Gracz (Nowa Willa Elity)
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-[11px]">
+            <div className="p-2 rounded-xl bg-stone-950/70 border border-stone-800">
+              <p className="text-stone-400">Bloki Robotnicze (20/blok)</p>
+              <p className="font-mono font-bold text-emerald-300 mt-0.5">
+                {cityHousingStatus.workersAndTradeCount} / {cityHousingStatus.workersCapacity} os. ({cityHousingStatus.workersBlocksCount} bl.)
+              </p>
+            </div>
+            <div className="p-2 rounded-xl bg-stone-950/70 border border-stone-800">
+              <p className="text-stone-400">Bloki Mieszczańskie (5/blok)</p>
+              <p className="font-mono font-bold text-sky-300 mt-0.5">
+                {cityHousingStatus.managersCount} / {cityHousingStatus.managersCapacity} zarz. ({cityHousingStatus.middleBlocksCount} bl.)
+              </p>
+            </div>
+            <div className="p-2 rounded-xl bg-stone-950/70 border border-stone-800">
+              <p className="text-stone-400">Wille Elity (Burmistrz + Gracze)</p>
+              <p className="font-mono font-bold text-amber-200 mt-0.5">
+                {cityHousingStatus.eliteVillasCount} willi ({cityPlayersCount} graczy)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 3 CZYTELNE PODSTRONY RATUSZA */}
       <div className="bg-stone-950/80 p-1.5 rounded-2xl border border-stone-800 shadow-inner flex gap-2">
         <button

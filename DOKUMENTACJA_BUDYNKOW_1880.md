@@ -1,60 +1,117 @@
-# Dokumentacja Budynków i Kosztów Budowy (Epoka 1 • Rok 1880)
+# Dokumentacja Projektu: Sustainable Economy (Era Wiktoriańska 1880)
 
-Niniejszy dokument przedstawia katalog budynków, fabryk, kamienic oraz infrastruktury rolniczo-wydobywczej dostępnych w **Epoce 1 (1880: Wiek Pary i Cegły)** w grze **Sustainable Economy**, wraz z ich wymiarami w siatce izometrycznej, podziałem na widok miejski i wiejski, kosztami budowy, zapotrzebowaniem na surowce, energię i siłę roboczą (Triada Produkcyjna: `[R/M/E]` + `kWh`).
+## 1. Mapy Świata i Układ Startowy
+Gra rozgrywa się na dwóch naprzemiennych widokach w **prawdziwym rzucie dimetrycznym 2:1** (`dy / dx = 0.5000`, `26.565°`):
+- **Mapa Wiejska (Produkcja surowców):** Bazowo `28 × 24` pola (`gridSizeX: 28`, `gridSizeY: 24`).
+- **Mapa Miejska (Przemysł, handel, edukacja, mieszkalnictwo):** Bazowo `14 × 12` pól (`gridSizeX: 14`, `gridSizeY: 12`) z automatycznym powiększaniem terenu.
 
----
-
-## 1. Zasady Wymiarowania i Podział na Mapy (Miasto 🏙️ vs Wieś 🌾)
-
-Gra posiada dwa niezależne, zsynchronizowane widoki świata gry:
-1. **Widok Miejski (City View)**:
-   - Siatka: $14 \times 12$ pól.
-   - Wymiary kafelka: $W = 128\text{px}$, $H = 64\text{px}$ (standard True Dimetric 2:1, kąt osi $26.565^\circ$, $\text{Slope} = 0.5000$).
-   - Przeznaczenie: zabudowa miejska, kamienice czynszowe, rzemiosło, elektrownia, ratusz, parki miejskie, nabrzeże portowe.
-2. **Widok Wiejski (Rural View)**:
-   - Siatka: $28 \times 24$ pól.
-   - Wymiary kafelka: $W = 64\text{px}$, $H = 32\text{px}$ (pola są $2\times$ mniejsze w pikselach).
-   - Przeznaczenie: rolnictwo, hodowla, sadownictwo, wydobycie surowców (węgiel, ruda, tartaki), wiejskie trakty gruntowe.
-   - **Zasada Skalowania Pól**: Ponieważ pola wiejskie są $2\times$ mniejsze, duże parcele gospodarcze zajmują na wsi $2\times$ więcej kratek wzdłuż każdej osi ($4\times$ więcej powierzchni siatki), dzięki czemu zachowują **identyczny rozmiar fizyczny na ekranie** i perfekcyjną spójność skali (np. wóz gospodarczy vs zwierzęta).
-
-### Zasady orientacji i obrotu (Klawisz R):
-- Budynki prostokątne posiadają dwie wersje rzutu:
-  - **Normalna (`_norm`)**: orientacja domyślna wzdłuż osi (np. $4 \times 3$, $3 \times 2$, $1 \times 2$).
-  - **Obrócona o $90^\circ$ (`_rot90`)**: lustrzane odbicie rzutu izometrycznego dopasowane do prostopadłej osi siatki (np. $3 \times 4$, $2 \times 3$, $2 \times 1$).
+### Bazowy Układ Startowy Miasta (`initialWorld.ts`)
+Każda nowa mapa miejska startuje z pojedynczymi, 1-polowymi drogami (bez dwupasmówek), infrastrukturą publiczną i bez młyna na starcie:
+- **Ratusz (`town_hall`, 3×3):** Budynek miejski stykający się z drogą.
+- **Targowisko Miejskie (`marketplace`, 3×3):** Zawsze przylega **prawym bokiem bezpośrednio do Ratusza** oraz styka się z drogą.
+- **Szkoła Branżowa (`trade_school`, 2×2)** i **Wiktoriański Uniwersytet (`university`, 3×3):** Budynki edukacyjne stykające się z drogą.
+- **Park Miejski (`oak`, 2×2):** Teren zielony przy drodze miejskiej.
+- **Elektrociepłownia Węglowa (`coal_plant`, 1×2):** Przylega do drogi miejskiej.
+- **Budynki mieszkalne (po 1 sztuce na start):**
+  - 1 × Willa Elity (`tenement_elite`, 2×2) – zamieszkiwana na start przez burmistrza.
+  - 1 × Kamienica Mieszczańska (`tenement_middle`, 1×2).
+  - 1 × Kamienica Robotnicza (`tenement_workers`, 1×2).
 
 ---
 
-## 2. Katalog Budynków Epoki 1 (1880)
+## 2. Katalog Budynków 1880
 
-| Kategoria | Budynek | Wymiar (Miasto) | Wymiar (Wieś) | Dozwolona mapa | Koszt (£) | Materiały budowlane | Załoga [R / M / E] | Energia | Funkcja / Produkcja |
-| :--- | :--- | :---: | :---: | :---: | :---: | :--- | :---: | :---: | :--- |
-| **Administracja** | **Wiktoriański Ratusz** *(Town Hall)* | **$3 \times 3$** | — | Tylko Miasto | £ 15,000 | 120t Cegła klinkierowa, 40t Drewno, 20t Żeliwo, 15t Miedź | 0 / 15 / 5 | 25 kWh | Centrum administracji, licencje, podatki |
-| **Metropolia** | **Wiktoriańskie Miasteczko (Miniatura)** | — | **$8 \times 8$** | Tylko Wieś | £ 5,000 | 80t Cegła, 40t Drewno, 15t Żelazo | 0 / 12 / 4 | 40 kWh | Ośrodek handlowy i rynek zbytu dla wsi |
-| **Rolnictwo** | **Wielka Farma Zbożowa** | **$3 \times 4$** / $4 \times 3$ | **$6 \times 8$** / $8 \times 6$ | Tylko Wieś | £ 2,800 | 35t Drewno, 10t Cegła, 2t Okucia żelazne | 12 / 1 / 0 | 0 kWh | 120t Pszenicy i Żyta / cykl |
-| **Rolnictwo** | **Pole Pszenicy** *(Wheat Field)* | **$3 \times 3$** | **$6 \times 6$** | Tylko Wieś | £ 900 | 5t Drewno (snopki/narzędzia), Ziarno siewne | 2 / 0 / 0 | 0 kWh | +45t Pszenicy / cykl (wymaga styku z Farmą) |
-| **Hodowla** | **Farma Bydła i Owiec** *(Livestock)* | **$3 \times 4$** / $4 \times 3$ | **$6 \times 8$** / $8 \times 6$ | Tylko Wieś | £ 2,400 | 40t Drewno, 15t Cegła, 10t Słoma i pasza | 8 / 1 / 0 | 0 kWh | 40t Mięsa, 25t Mleka, 15t Wełny, 20t Skór |
-| **Hodowla** | **Pastwisko Bydła** *(Cattle Pasture)* | **$2 \times 2$** | **$4 \times 4$** | Tylko Wieś | £ 1,200 | 20t Drewno, 5t Żelazo, 10t Pasza | 4 / 0 / 0 | 0 kWh | 30t Mleka, 25t Mięsa, 15t Skór / cykl |
-| **Hodowla** | **Pastwisko Owiec** *(Sheep Pasture)* | **$2 \times 2$** | **$4 \times 4$** | Tylko Wieś | £ 1,100 | 20t Drewno, 2t Żelazo, 8t Siano | 3 / 0 / 0 | 0 kWh | 25t Wełny, 15t Mięsa, 10t Mleka owczego / cykl |
-| **Sadownictwo** | **Sad Owocowy** *(Orchard)* | **$2 \times 2$** | **$4 \times 4$** | Tylko Wieś | £ 1,800 | 15t Drewno, 5t Żelazo, 60 Drzewek owocowych | 6 / 1 / 0 | 0 kWh | 50t Świeżych owoców / cykl |
-| **Górnictwo** | **Kopalnia Węgla i Rudy** *(Mine)* | **$2 \times 2$** | **$4 \times 4$** | Tylko Wieś | £ 5,000 | 80t Drewno kopalniakowe, 35t Stal, Maszyna wyciągowa | 30 / 3 / 0 | 60 kWh | 180t Węgla LUB 90t Rudy żelaza |
-| **Mieszkalnictwo** | **Kamienica Robotnicza** *(Klasa R)* | **$1 \times 2$** / $2 \times 1$ | — | Tylko Miasto | £ 1,200 | 45t Cegła przemysłowa, 15t Drewno, 3t Żeliwo | +60 [R] | 5 kWh | Siła robocza fizyczna dla fabryk i kopalń |
-| **Mieszkalnictwo** | **Kamienica Mieszczańska** *(Klasa M)* | **$1 \times 2$** / $2 \times 1$ | — | Tylko Miasto | £ 2,600 | 50t Cegła klinkierowa, 20t Drewno, 5t Szkło | +35 [M] | 10 kWh | Urzędnicy, majstrowie, inżynierowie |
-| **Mieszkalnictwo** | **Willa Arystokracji** *(Klasa E)* | **$2 \times 2$** | — | Tylko Miasto | £ 5,500 | 60t Piaskowiec, 25t Marmur, 10t Szkło, 6t Mosiądz | +12 [E] | 20 kWh | Kapitał, patenty, kadra zarządzająca |
-| **Przemysł** | **Wiktoriański Młyn Parowy** | **$1 \times 2$** / $2 \times 1$ | — | Tylko Miasto | £ 3,500 | 60t Cegła palona, 25t Drewno, 15t Żeliwo, Silnik parowy | 16 / 2 / 0 | 45 kWh | Przerób zboża $\rightarrow$ Mąka piekarnicza |
-| **Energetyka** | **Elektrociepłownia Węglowa** | **$1 \times 2$** / $2 \times 1$ | — | Tylko Miasto | £ 6,200 | 90t Cegła szamotowa, 40t Stal/Żeliwo, Rury ciśnieniowe | 20 / 4 / 1 | +350 kWh | Generowanie energii elektrycznej z węgla |
-| **Środowisko** | **Wiktoriański Park z Dębem** | **$2 \times 2$** | — | Tylko Miasto | £ 1,500 | 10t Kamień polny, 5t Kute żelazo, Sadzonki | 2 / 0 / 0 | 0 kWh | +18% Zadowolenie, redukcja smogu o 12% |
-| **Rzemiosło** | **Piekarnia Rzemieślnicza** | **$1 \times 1$** | — | Tylko Miasto | £ 850 | 18t Cegła szamotowa, 8t Drewno, Piec chlebowy | 4 / 1 / 0 | 8 kWh | Wypiek chleba powszedniego i sucharów |
-| **Rzemiosło** | **Kuźnia i Ślusarnia** | **$1 \times 1$** | — | Tylko Miasto | £ 950 | 20t Kamień/Cegła, 12t Żelazo kowalskie, Kowadło | 3 / 1 / 0 | 12 kWh | Gwoździe, okucia budowlane, narzędzia |
-| **Infrastruktura** | **Miejski Bruk Granitowy** | **$1 \times 1$** | — | Tylko Miasto | £ 50 | 2t Kostka granitowa | — | — | Komunikacja miejska, chodnik |
-| **Infrastruktura** | **Wiejski Trakt Gruntowy** | — | **$1 \times 1$** (małe) | Tylko Wieś | £ 15 | 1t Żwir, ubita ziemia | — | — | Komunikacja wiejska, transport płodów rolnych |
+### A. Budynki Miejskie, Edukacyjne, Handlowe i Transportowe
+| Nazwa budynku | `typeId` | Rozmiar | Koszt (£) | Rola w grze |
+| :--- | :--- | :---: | :---: | :--- |
+| **Ratusz Miejski** | `town_hall` | 3×3 | Publiczny | Zarządzanie miastem, podgląd populacji, mieszkań, graczy i automatycznej rozbudowy |
+| **Targowisko Miejskie** | `marketplace` | 3×3 | Publiczny | 8 stoisk targowych do wynajęcia w rocznej licytacji |
+| **Szkoła Branżowa** | `trade_school` | 2×2 | Publiczny | Roczne kursy podnoszące wydajność pracowników (+10% / kurs) |
+| **Wiktoriański Uniwersytet** | `university` | 3×3 | Publiczny | Kształcenie kadr zarządzających i badania |
+| **Park Miejski** | `oak` | 2×2 | Publiczny | Miejski park rekreacyjny |
+| **Firma Transportowa** | `transport_company` | 2×2 | 3 200 | Prywatny przewoźnik wymagany do dostaw surowców i towarów |
+| **Sklep Mięsny** | `meat_shop` | 1×1 | 1 100 | Detaliczna sprzedaż mięsa i wyrobów mięsnych |
+| **Sklep Spożywczy** | `grocery_shop` | 1×1 | 1 050 | Detaliczna sprzedaż artykułów spożywczych |
+| **Sklep Odzieżowy** | `clothing_shop` | 2×1 | 2 200 | Detaliczna sprzedaż odzieży i obuwia |
+| **Skład Budowlany** | `building_depot` | 2×1 | 2 400 | Sprzedaż materiałów budowlanych i wyposażenia |
+
+### B. Budynki Wiejskie (Rolnictwo, Plantacje i Kopalnie)
+| Nazwa budynku | `typeId` | Rozmiar | Główne surowce / produkty |
+| :--- | :--- | :---: | :--- |
+| **Wielka Farma Zbożowa** | `wheat_farm` | 3×4 | Zboże (pszenica, żyto, owies, jęczmień) |
+| **Sad Owocowy** | `orchard` | 2×2 | Owoce, cydr |
+| **Plantacja Lnu** | `flax_farm` | 2×2 | Włókno lnu, siemię lniane |
+| **Plantacja Chmielu** | `hop_farm` | 2×2 | Chmiel browarny |
+| **Plantacja Kauczuku** *(zaślepka)* | `rubber_plantation` | 2×2 | Kauczuk surowy (lateks) |
+| **Plantacja Buraków Cukrowych** *(zaślepka)* | `sugar_beet_farm` | 2×2 | Buraki cukrowe |
+| **Pole Tytoniu** *(zaślepka)* | `tobacco_field` | 2×2 | Liście tytoniu |
+| **Plantacja Bawełny** *(zaślepka)* | `cotton_plantation` | 2×2 | Bawełna surowa |
+| **Hodowla / Pastwiska** | `livestock_farm`, `pasture_cattle`, `pasture_sheep` | 2×2 / 3×3 | Mleko, wełna owcza, żywiec |
+| **Kopalnia Głębinowa** | `mine_shaft` | 2×2 | Węgiel, ruda żelaza/miedzi/złota, **Minerały**, glina, piasek kwarcowy, sól, **Siarka** |
+| **Wyręb Drewna** | `woodcutter` | 2×2 | Drewno / dłużyca |
+
+### C. Przemysł Miejski (Fabryki, Huty i Przetwórstwo)
+| Nazwa budynku | `typeId` | Rozmiar | Koszt (£) | Główne produkty i wymagane surowce |
+| :--- | :--- | :---: | :---: | :--- |
+| **Młyn Parowy** | `mill` | 1×2 | 2 200 | Mąka, płatki, otręby (ze zboża) |
+| **Piekarnia Wiktoriańska** | `bakery` | 1×1 | 1 500 | Chleb, bułki, ciasta (z mąki) |
+| **Browar Parowy** | `brewery` | 2×1 | 3 200 | Piwo, słód (z chmielu i zboża) |
+| **Fabryka Włókiennicza** | `spinning_mill` | 1×2 | 2 600 | **Materiał Lniany** (len), **Materiał Wełniany** (wełna) |
+| **Szwalnia** | `sewing_factory` | 2×1 | 2 800 | **Bielizna** (materiał lniany), **Koszule** (materiał lniany + guziki), **Fraki** (materiał wełniany + guziki), **Gorsety** (stal + materiał + guziki) |
+| **Garbarnia** | `tannery` | 2×1 | 2 500 | Skóra garbowana (ze skór surowych) |
+| **Zakład Szewski** | `shoemaker` | 1×1 | 1 400 | Buty skórzane (ze skóry) |
+| **Mleczarnia** | `dairy` | 2×1 | 2 700 | Masło, ser, śmietana (z mleka) |
+| **Rzeźnia** | `slaughterhouse` | 2×1 | 2 900 | Mięso surowe, skóry surowe, **Tłuszcz Zwierzęcy** |
+| **Masarnia** | `butcher` | 1×1 | 1 600 | Wędliny, kiełbasy |
+| **Fabryka Mebli** | `furniture_factory` | 2×1 | 3 500 | Meble drewniane (z tarcicy) |
+| **Huta** *(zaślepka)* | `huta` | 2×2 | 6 800 | **Stal**, **Żeliwo**, **Złoto**, **Miedź**, **Szkło** (każde wymaga węgla + odpowiedniej rudy) |
+| **Cementownia** *(zaślepka)* | `cement_plant` | 2×1 | 4 200 | Cement (z **minerałów** i **gliny**) |
+| **Cegielnia** *(zaślepka)* | `brickworks` | 2×1 | 3 400 | Cegła, dachówka (z gliny i węgla) |
+| **Cukrownia** *(zaślepka)* | `sugar_refinery` | 2×1 | 4 400 | Cukier kryształ, kostki cukru, melasa (z buraków cukrowych i węgla) |
+| **Jubiler** *(zaślepka)* | `jeweler` | 1×1 | 4 600 | Pierścionki (złoto + minerały), Obrączki (samo złoto), Naszyjniki (złoto + minerały) |
+| **Zegarmistrz** *(zaślepka)* | `watchmaker` | 1×1 | 3 800 | Zegarki (stal + szkło), Zegarki Luksusowe (złoto + stal + szkło) |
+| **Fabryka** *(zaślepka)* | `factory` | 2×1 | 5 200 | **Guma** (kauczuk), **Rowery** (stal + kauczuk), **Fajerki** (żeliwo), **Lampy Naftowe** (szkło + stal), **Żelazko na Duszę** (żeliwo + stal), **Magiel** (stal + drewno + żeliwo), **Gramofon** (stal + drewno), **Konserwy** (stal + mięso), **Zapałki** (siarka + drewno), **Kwas Siarkowy** (siarka), **Soda Kaustyczna** (kwas siarkowy + sól + glina), **Mydło** (soda kaustyczna + tłuszcz zwierzęcy), **Celuloid** (kwas siarkowy + bawełna), **Grzebienie / Lalki / Kule Bilardowe** (celuloid), **Ebonit** (siarka + kauczuk), **Guziki / Ustniki do Fajek** (ebonit), **Pióra Wieczne** (stal + ebonit), **Fajki** (glina + tytoń + ustniki), **Tabaka** (stal + tytoń) |
+
+### D. Mieszkalnictwo i Automatyczny Rozwój Miasta
+| Budynek mieszkalny | `typeId` | Rozmiar | Pojemność | Kto mieszka |
+| :--- | :--- | :---: | :---: | :--- |
+| **Kamienica Robotnicza** | `tenement_workers` | 1×2 | **20 rodzin** | Robotnicy, sprzedawcy, zaopatrzeniowcy, magazynierzy |
+| **Kamienica Mieszczańska** | `tenement_middle` | 1×2 | **5 rodzin** | Zarządcy |
+| **Willa Elity** | `tenement_elite` | 2×2 | **1 rodzina** | 1 willa na każdego gracza w mieście + startowo burmistrz |
+
+**Zasady automatycznej rozbudowy (`cityAutoGrowth.ts`, `useCityHousingGrowth.ts`, `useWorldMaps.ts`):**
+- Gdy liczba zatrudnionych robotników/sprzedawców/zaopatrzeniowców przekroczy pojemność bloków robotniczych (20 rodzin / blok), miasto **automatycznie buduje nową Kamienicę Robotniczą** przy drodze.
+- Gdy liczba zatrudnionych zarządców przekroczy pojemność kamienic mieszczańskich (5 rodzin / kamienica), miasto **automatycznie buduje nową Kamienicę Mieszczańską** przy drodze.
+- Gdy w mieście pojawi się nowy gracz, miasto **automatycznie buduje dla niego nową Willę Elity**.
+- **Powiększanie mapy przy < 3×3 miejsca:** Gdy na mapie miasta zostaje mniej wolnego miejsca przy drodze niż `3×3`, teren miasta automatycznie powiększa się w dół (`gridSizeY`) o nowy pas z pojedynczą drogą (bez tworzenia dwupasmówek), aby zawsze zmieścił się co najmniej budynek `3×3`.
 
 ---
 
-## 3. Logistyka, Strefy Wpływu i Karczowanie Lasu
-1. **Dostęp do dróg**:
-   - Każdy budynek miejski musi mieć bezpośredni kontakt z brukowaną ulicą (`road`).
-   - Każda farma wiejska, sad i kopalnia wymaga połączenia traktem polnym (`road_dirt`).
-2. **Automatyczne karczowanie terenu**:
-   - Postawienie dowolnego budynku lub drogi na kafelkach zalesionych (`forest_oak`, `forest_pine`, `forest_grove`) automatycznie oczyszcza obrys działki z drzew, zmieniając podłoże na trawę (`grass`).
-3. **Cienie i grafika**:
-   - Budynki rolnicze posiadają zintegrowane, autentyczne wiejskie podłoże (pastwisko, gleba, rżysko) otoczone drewnianym płotem żerdziowym bez sztucznego cienia rombowego na sąsiadujących drogach.
+## 3. Zatrudnienie, Dostępność Produktów i Targowisko
+
+### A. Domyślny stan i dostępność towarów
+- **Każdy nowo wybudowany budynek jest w 100% nieobsadzony.**
+- **Warunek dostępności produktu na rynku (`getProducerMarketAvailability`):** Aby produkt był widoczny u zaopatrzeniowca, fabryka, gospodarstwo lub kopalnia muszą mieć **zatrudnionego sprzedawcę** oraz **zapas towaru na magazynie** (`> 0`). Wybór produktu zawsze pokazuje nazwę firmy/farmy, gracza, lokalizację oraz stan magazynu.
+
+### B. Kolejka Produkcyjna Fabryk i Sklepów
+Budynki przemysłowe działają w układzie 4-etapowej linii (`IndustryPipelineCard.tsx`):
+1. **Zaopatrzeniowcy (Kupcy):** Zamawiają surowce od dostępnych producentów (wymagają wynajęcia **Firmy Transportowej**).
+2. **Magazynierzy:** Wymagany **1 magazynier na każdych 10 robotników**.
+3. **Robotnicy Produkcyjni (max 10 na 1 pole budynku):**
+   - Bazowa wydajność: **1000 jednostek / miesiąc / pracownika** (`+1% / rok stażu`, `+10% za 1-roczny kurs w Szkole Branżowej`).
+   - **Zarządca:** Wymagany przy łącznej załodze `> 5` osób (**1 zarządca na 10 pracowników**).
+   - **Kara za brak delegacji zadań (< 10 osób):** `liczba_pracowników × liczba_ról × 10%`.
+4. **Sprzedawcy:** Nie generują paska postępu ani sprzedaży, dopóki nie mają zakontraktowanej pojemności / nabywców.
+
+### C. Kontrakty Dostaw i Targowisko Miejskie
+- **Kontrakty (`industryContracts.ts`):** `PAY AS YOU GO`, `3 lata (-10%)`, `5 lat (-15%)`, `10 lat (-20%)` (kara za zerwanie: **20% pozostałej wartości kontraktu**).
+- **Targowisko (`MarketplaceSection.tsx`, `MarketStallDetailPanel.tsx`):** 8 stoisk w rocznej licytacji (do 4 jednocześnie); 1 zaopatrzeniowiec obsługuje do 4 stoisk i ma 4 sloty zamówień z realnych ofert graczy; do 4 sprzedawców na stoisko wybiera po 1 produkcie zabezpieczonym przez zaopatrzeniowca.
+
+---
+
+## 4. Logistyka Transportu w Roku 1880 (`transportLogistics.ts`)
+Każdy zaopatrzeniowiec / kupiec musi wynająć prywatną **Firmę Transportową** (`transport_company`):
+- **Wewnątrz tego samego miasta:** wyłącznie **Konie (wozy konne)**.
+- **Ze wsi do miasta:** **Konie** lub **Kolej**.
+- **Z innego miasta na tym samym kontynencie:** **Kolej**.
+- **Z innego miasta na innym kontynencie:** **Statek**.

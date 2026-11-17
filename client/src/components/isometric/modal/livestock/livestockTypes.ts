@@ -302,19 +302,9 @@ export function createDefaultLivestockCrew(): LivestockWorker[] {
 
 // Tworzenie stanu początkowego fermy zwierzęcej
 export function createDefaultLivestockState(): LivestockCapitalismState {
-  const crew = createDefaultLivestockCrew();
   return {
-    crew,
-    stageAssignments: {
-      insemination: 'vet_1',
-      gestation_9m: 'breeder_1',
-      birth: 'vet_1',
-      calf_growth_2y: 'breeder_1',
-      branch_decision: 'breeder_1',
-      branch_sale: 'trader_1',
-      branch_slaughter: 'breeder_1',
-      branch_milking: 'handler_1',
-    },
+    crew: [],
+    stageAssignments: {},
     currentStage: 'insemination',
     stageProgress: 25,
     selectedBranch: 'milking',

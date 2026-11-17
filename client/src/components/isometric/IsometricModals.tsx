@@ -5,6 +5,7 @@ import { ConfirmDemolishModal } from './modal/ConfirmDemolishModal';
 import { RebuildDemolishModal, type RebuildTarget } from './modal/RebuildDemolishModal';
 import type { PlacedBuilding, BuildingState, TerrainType, TileDef } from './types';
 import type { UseGameClockReturn } from './clock/useGameClock';
+import type { WorldSupplierBuilding } from './modal/industrySupplyConfig';
 
 interface IsometricModalsProps {
   inspectingBuilding: PlacedBuilding | null;
@@ -15,7 +16,11 @@ interface IsometricModalsProps {
   terrainTiles: Record<string, TileDef['type']>;
   gold: number;
   placedBuildings: PlacedBuilding[];
+  allWorldBuildings: WorldSupplierBuilding[];
   clock?: UseGameClockReturn;
+  cityPlayersCount?: number;
+  onAddNewCityPlayer?: () => void;
+  onSpendGold?: (amount: number) => void;
   onUpdateBuildingState: (id: string, newState: Partial<BuildingState>) => void;
   onDemolishBuilding: (id: string) => void;
   onCloseInspectingBuilding: () => void;
@@ -40,7 +45,11 @@ export const IsometricModals: React.FC<IsometricModalsProps> = ({
   terrainTiles,
   gold,
   placedBuildings,
+  allWorldBuildings,
   clock,
+  cityPlayersCount,
+  onAddNewCityPlayer,
+  onSpendGold,
   onUpdateBuildingState,
   onDemolishBuilding,
   onCloseInspectingBuilding,
@@ -63,7 +72,12 @@ export const IsometricModals: React.FC<IsometricModalsProps> = ({
           building={inspectingBuilding}
           buildingState={buildingsState[inspectingBuilding.id] || {}}
           placedBuildings={placedBuildings}
+          allWorldBuildings={allWorldBuildings}
+          buildingsState={buildingsState}
           clock={clock}
+          cityPlayersCount={cityPlayersCount}
+          onAddNewCityPlayer={onAddNewCityPlayer}
+          onSpendGold={onSpendGold}
           onUpdateState={(newState) => onUpdateBuildingState(inspectingBuilding.id, newState)}
           onClose={onCloseInspectingBuilding}
           onDemolish={() => onDemolishBuilding(inspectingBuilding.id)}

@@ -125,24 +125,9 @@ export function checkIsHopProductionReady(state: HopCapitalismState): {
 
 export function createDefaultHopState(): HopCapitalismState {
   return {
-    crew: [
-      {
-        id: 'hop_merchant_1',
-        name: 'Edward Thrale',
-        profession: 'merchant',
-        wageDaily: 2.8,
-        avatar: '🎩',
-      },
-      {
-        id: 'hop_farmer_1',
-        name: 'Giles Goodenough',
-        profession: 'farmer',
-        wageDaily: 2.4,
-        avatar: '👨‍🌾',
-      },
-    ],
+    crew: [],
     agronomist: {
-      hired: true,
+      hired: false,
       name: 'Mistrz Barnaby Hopwood',
       title: 'Chmielarz z Hrabstwa Kent',
       wageDaily: 5.2,
@@ -151,15 +136,7 @@ export function createDefaultHopState(): HopCapitalismState {
       lossReductionPercent: 42,
     },
     variety: 'golding',
-    stageAssignments: {
-      rhizome_intake: 'hop_merchant_1',
-      plowing_stringing: 'hop_farmer_1',
-      training: 'hop_farmer_1',
-      fertilizing: 'hop_farmer_1',
-      stripping: 'hop_farmer_1',
-      harvesting: 'hop_farmer_1',
-      drying_selling: 'hop_merchant_1',
-    },
+    stageAssignments: {},
     rhizomeSource: 'market',
     productDestination: 'sell_market',
     enableFertilizing: true,

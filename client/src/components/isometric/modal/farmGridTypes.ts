@@ -224,7 +224,7 @@ export function createDefaultCrew(): FarmCrewMember[] {
 
 export function createDefaultAgronomist(): FarmAgronomist {
   return {
-    hired: true,
+    hired: false,
     name: 'Dr. Alistair Vance',
     title: 'Agronom Królewskiego Towarzystwa Rolniczego',
     wageDaily: 5.5,
@@ -235,20 +235,11 @@ export function createDefaultAgronomist(): FarmAgronomist {
 }
 
 export function createDefaultFarmCapitalismState(): FarmCapitalismState {
-  const defaultCrew = createDefaultCrew();
   return {
-    crew: defaultCrew,
+    crew: [],
     agronomist: createDefaultAgronomist(),
     cropType: 'pszenica',
-    stageAssignments: {
-      seed_intake: 'crew_merchant_1',   // Thomas Finch jako Kupiec
-      plowing: 'crew_farmer_1',         // Edward Croft jako Oracz
-      sowing: 'crew_farmer_1',          // Edward Croft jako Siewca
-      fertilizing: 'crew_farmer_1',     // Edward Croft jako Nawoziciel
-      weeding: 'crew_farmer_1',         // Edward Croft jako Pielarz / Opryskiwacz
-      harvesting: 'crew_farmer_1',      // Edward Croft jako Żniwiarz
-      storing_selling: 'crew_merchant_1', // Thomas Finch jako Sprzedawca
-    },
+    stageAssignments: {},
     seedSource: 'market',
     wheatDestination: 'sell_market',
     enableFertilizing: true,

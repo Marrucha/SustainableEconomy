@@ -176,12 +176,9 @@ export interface OrchardCapitalismState {
 
 export function createDefaultOrchardState(initialFruit?: FruitType, isLocked: boolean = false): OrchardCapitalismState {
   return {
-    crew: [
-      { id: 'orch_1', name: 'George Miller', profession: 'orchardist', wageDaily: 1.8, avatar: '👨‍🌾' },
-      { id: 'orch_2', name: 'Arthur Bennett', profession: 'merchant', wageDaily: 2.2, avatar: '💰' },
-    ],
+    crew: [],
     pomologist: {
-      hired: true,
+      hired: false,
       name: 'Dr. Thomas Rivers',
       title: 'Królewski Pomolog i Szkółkarz (1880 r.)',
       wageDaily: 3.5,
@@ -190,15 +187,7 @@ export function createDefaultOrchardState(initialFruit?: FruitType, isLocked: bo
     },
     fruitType: initialFruit,
     isFruitLocked: isLocked,
-    stageAssignments: {
-      whitewash: 'orch_1',
-      pruning: 'orch_1',
-      blossoming: 'orch_1',
-      weeding: 'orch_1',
-      growing: 'orch_1',
-      harvesting: 'orch_1',
-      storing_selling: 'orch_2',
-    },
+    stageAssignments: {},
     fruitDestination: 'sell_market',
     enableTreeTrimmingBonus: true,
     fruitStockKg: {

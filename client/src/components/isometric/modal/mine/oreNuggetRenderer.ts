@@ -65,6 +65,13 @@ export const ORE_PALETTES: Record<MineDepositType, OreFacetColor> = {
     edgeHighlight: '#f0f9ff',
     glow: 'rgba(186, 230, 253, 0.7)',
   },
+  sulfur: {
+    topLight: '#fef08a',
+    midLight: '#eab308',
+    shadow: '#854d0e',
+    edgeHighlight: '#fef9c3',
+    glow: 'rgba(234, 179, 8, 0.7)',
+  },
 };
 
 /**

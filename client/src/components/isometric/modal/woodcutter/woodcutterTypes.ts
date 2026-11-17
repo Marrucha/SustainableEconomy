@@ -90,11 +90,11 @@ export interface WoodcutterCrewStaff {
 }
 
 export const DEFAULT_WOODCUTTER_CREW: WoodcutterCrewStaff = {
-  foresterHired: true,
-  lumberjackCount: 2,
-  teamsterHired: true,
-  horsesCount: 2,
-  guardHired: true,
+  foresterHired: false,
+  lumberjackCount: 0,
+  teamsterHired: false,
+  horsesCount: 0,
+  guardHired: false,
 };
 
 export function checkIsWoodcutterStageReady(

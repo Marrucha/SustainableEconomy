@@ -64,8 +64,8 @@ export function useIsometricAssets() {
       sawmill_rot90: '/sprites/assets_1880/sawmill_rot90.png?v=solid3',
 
       // 3c. Wiktoriańska Przędzalnia Parowa 1x2
-      spinning_mill_norm: '/sprites/assets_1880/spinning_mill_norm.png?v=solid3',
-      spinning_mill_rot90: '/sprites/assets_1880/spinning_mill_rot90.png?v=solid3',
+      spinning_mill_norm: '/sprites/assets_1880/spinning_mill_norm.png?v=v5',
+      spinning_mill_rot90: '/sprites/assets_1880/spinning_mill_rot90.png?v=v5',
 
       // 3d. Wiktoriańska Szwalnia i Manufaktura Odzieżowa 1x2
       sewing_factory_norm: '/sprites/assets_1880/sewing_factory_norm.png?v=solid3',
@@ -99,6 +99,32 @@ export function useIsometricAssets() {
       furniture_factory_norm: '/sprites/assets_1880/furniture_factory_norm.png?v=solid3',
       furniture_factory_rot90: '/sprites/assets_1880/furniture_factory_rot90.png?v=solid3',
 
+      // 3l. Huta 2x2 (zaślepka miejska)
+      huta_norm: '/sprites/assets_1880/huta_norm.png?v=1',
+      huta_rot90: '/sprites/assets_1880/huta_rot90.png?v=1',
+
+      // 3m. Cementownia 2x1 i Cegielnia 2x1 (zaślepki miejskie)
+      cement_plant_norm: '/sprites/assets_1880/cement_plant_norm.png?v=1',
+      cement_plant_rot90: '/sprites/assets_1880/cement_plant_rot90.png?v=1',
+      brickworks_norm: '/sprites/assets_1880/brickworks_norm.png?v=1',
+      brickworks_rot90: '/sprites/assets_1880/brickworks_rot90.png?v=1',
+      jeweler_norm: '/sprites/assets_1880/jeweler_norm.png?v=1',
+      jeweler_rot90: '/sprites/assets_1880/jeweler_rot90.png?v=1',
+      factory_norm: '/sprites/assets_1880/factory_norm.png?v=1',
+      factory_rot90: '/sprites/assets_1880/factory_rot90.png?v=1',
+      rubber_plantation_norm: '/sprites/assets_1880/rubber_plantation_norm.png?v=1',
+      rubber_plantation_rot90: '/sprites/assets_1880/rubber_plantation_rot90.png?v=1',
+      sugar_beet_farm_norm: '/sprites/assets_1880/sugar_beet_farm_norm.png?v=1',
+      sugar_beet_farm_rot90: '/sprites/assets_1880/sugar_beet_farm_rot90.png?v=1',
+      sugar_refinery_norm: '/sprites/assets_1880/sugar_refinery_norm.png?v=1',
+      sugar_refinery_rot90: '/sprites/assets_1880/sugar_refinery_rot90.png?v=1',
+      tobacco_field_norm: '/sprites/assets_1880/tobacco_field_norm.png?v=1',
+      tobacco_field_rot90: '/sprites/assets_1880/tobacco_field_rot90.png?v=1',
+      cotton_plantation_norm: '/sprites/assets_1880/cotton_plantation_norm.png?v=1',
+      cotton_plantation_rot90: '/sprites/assets_1880/cotton_plantation_rot90.png?v=1',
+      watchmaker_norm: '/sprites/assets_1880/watchmaker_norm.png?v=1',
+      watchmaker_rot90: '/sprites/assets_1880/watchmaker_rot90.png?v=1',
+
       // 4. Elektrociepłownia Węglowa 1x2
       coal_plant_norm: '/sprites/assets_1880/coal_plant_norm.png',
       coal_plant_rot90: '/sprites/assets_1880/coal_plant_rot90.png',
@@ -125,6 +151,26 @@ export function useIsometricAssets() {
       town_hall_norm: '/sprites/assets_1880/town_hall_norm.png',
       town_hall_rot90: '/sprites/assets_1880/town_hall_rot90.png',
 
+      // 9b. Handel i Składy Miejskie 1880
+      marketplace_norm: '/sprites/assets_1880/marketplace_norm.png?v=v2',
+      marketplace_rot90: '/sprites/assets_1880/marketplace_rot90.png?v=v2',
+      meat_shop_norm: '/sprites/assets_1880/meat_shop_norm.png?v=1',
+      meat_shop_rot90: '/sprites/assets_1880/meat_shop_rot90.png?v=1',
+      grocery_shop_norm: '/sprites/assets_1880/grocery_shop_norm.png?v=1',
+      grocery_shop_rot90: '/sprites/assets_1880/grocery_shop_rot90.png?v=1',
+      clothing_shop_norm: '/sprites/assets_1880/clothing_shop_norm.png?v=1',
+      clothing_shop_rot90: '/sprites/assets_1880/clothing_shop_rot90.png?v=1',
+      building_depot_norm: '/sprites/assets_1880/building_depot_norm.png?v=1',
+      building_depot_rot90: '/sprites/assets_1880/building_depot_rot90.png?v=1',
+
+      // 9c. Edukacja Miejska 1880
+      trade_school_norm: '/sprites/assets_1880/trade_school_norm.png?v=1',
+      trade_school_rot90: '/sprites/assets_1880/trade_school_rot90.png?v=1',
+      university_norm: '/sprites/assets_1880/university_norm.png?v=3',
+      university_rot90: '/sprites/assets_1880/university_rot90.png?v=3',
+      transport_company_norm: '/sprites/assets_1880/transport_company_norm.png?v=1',
+      transport_company_rot90: '/sprites/assets_1880/transport_company_rot90.png?v=1',
+
       // 10. Park z Dębem 2x2
       oak_norm: '/sprites/assets_1880/oak_norm.png',
       oak_rot90: '/sprites/assets_1880/oak_rot90.png',
@@ -150,13 +196,28 @@ export function useIsometricAssets() {
       tile_forest_grove: '/sprites/assets_1880/tile_forest_grove.png',
     };
 
+    const entries = Object.entries(assetUrls);
+    if (entries.every(([key]) => Boolean(assetsRef.current[key]))) {
+      return;
+    }
+
     const ts = Date.now() + 2000;
     let loadedCount = 0;
-    const totalCount = Object.keys(assetUrls).length;
+    const totalCount = entries.length;
 
-    Object.entries(assetUrls).forEach(([key, url]) => {
+    entries.forEach(([key, url]) => {
+      const existing = assetsRef.current[key];
+      if (existing && existing.complete && existing.naturalWidth > 0) {
+        loadedAssets[key] = existing;
+        loadedCount++;
+        if (loadedCount >= totalCount) {
+          setIsLoaded(true);
+        }
+        return;
+      }
       const img = new Image();
-      img.src = `${url}?v=${ts}`;
+      const sep = url.includes('?') ? '&' : '?';
+      img.src = `${url}${sep}t=${ts}`;
       img.onload = () => {
         loadedCount++;
         if (loadedCount >= totalCount) {
@@ -167,7 +228,7 @@ export function useIsometricAssets() {
     });
 
     assetsRef.current = loadedAssets;
-  }, []);
+  });
 
   return { assetsRef, isLoaded };
 }

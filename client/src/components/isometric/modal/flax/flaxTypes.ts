@@ -132,24 +132,9 @@ export function checkIsFlaxProductionReady(state: FlaxCapitalismState): {
 
 export function createDefaultFlaxState(): FlaxCapitalismState {
   return {
-    crew: [
-      {
-        id: 'flax_merchant_1',
-        name: 'Arthur Weaver',
-        profession: 'merchant',
-        wageDaily: 2.6,
-        avatar: '🎩',
-      },
-      {
-        id: 'flax_farmer_1',
-        name: 'Silas Vance',
-        profession: 'farmer',
-        wageDaily: 2.3,
-        avatar: '👨‍🌾',
-      },
-    ],
+    crew: [],
     agronomist: {
-      hired: true,
+      hired: false,
       name: 'Mistrz Alistair Bloom',
       title: 'Technolog Lniarstwa z Leeds',
       wageDaily: 5.0,
@@ -158,15 +143,7 @@ export function createDefaultFlaxState(): FlaxCapitalismState {
       lossReductionPercent: 45,
     },
     variety: 'wloknisty',
-    stageAssignments: {
-      seed_intake: 'flax_merchant_1',
-      plowing: 'flax_farmer_1',
-      sowing: 'flax_farmer_1',
-      fertilizing: 'flax_farmer_1',
-      weeding: 'flax_farmer_1',
-      harvesting: 'flax_farmer_1',
-      processing_selling: 'flax_merchant_1',
-    },
+    stageAssignments: {},
     seedSource: 'market',
     productDestination: 'sell_market',
     enableFertilizing: true,

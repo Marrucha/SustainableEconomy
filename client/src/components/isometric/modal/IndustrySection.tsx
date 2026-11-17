@@ -2,20 +2,32 @@ import React from 'react';
 import type { PlacedBuilding, BuildingState } from '../types';
 import { BusinessEnergySection } from './BusinessEnergySection';
 import { INDUSTRY_PROFILES } from './industryProfiles';
+import { IndustryPipelineCard } from './IndustryPipelineCard';
+import type { WorldSupplierBuilding } from './industrySupplyConfig';
+
+import type { UseGameClockReturn } from '../clock/useGameClock';
 
 interface IndustrySectionProps {
   building: PlacedBuilding;
   buildingState: BuildingState;
+  allWorldBuildings?: WorldSupplierBuilding[];
+  buildingsState?: Record<string, BuildingState>;
   businessTab: 'production' | 'energy';
   hasGreenRelief: boolean;
+  clock?: UseGameClockReturn;
+  onSpendGold?: (amount: number) => void;
   onUpdateState: (updates: Partial<BuildingState>) => void;
 }
 
 export const IndustrySection: React.FC<IndustrySectionProps> = ({
   building,
   buildingState,
+  allWorldBuildings = [],
+  buildingsState = {},
   businessTab,
   hasGreenRelief,
+  clock,
+  onSpendGold,
   onUpdateState,
 }) => {
   const profile = INDUSTRY_PROFILES[building.typeId];
@@ -30,6 +42,11 @@ export const IndustrySection: React.FC<IndustrySectionProps> = ({
     'dairy',
     'slaughterhouse',
     'furniture_factory',
+    'huta',
+    'cement_plant',
+    'brickworks',
+    'factory',
+    'sugar_refinery',
   ].includes(building.typeId);
 
   if (businessTab === 'energy') {
@@ -84,6 +101,17 @@ export const IndustrySection: React.FC<IndustrySectionProps> = ({
             {profile.description}
           </p>
         </div>
+
+        <IndustryPipelineCard
+          building={building}
+          buildingState={buildingState}
+          allWorldBuildings={allWorldBuildings}
+          buildingsState={buildingsState}
+          isSteamPowered={isSteamPowered}
+          clock={clock}
+          onSpendGold={onSpendGold}
+          onUpdateState={onUpdateState}
+        />
       </div>
     );
   }
@@ -104,14 +132,26 @@ export const IndustrySection: React.FC<IndustrySectionProps> = ({
 
   // Domyślny widok dla pozostałych zakładów (Piekarnia, Kuźnia, etc.)
   return (
-    <div className="p-4 bg-stone-800/40 rounded-xl border border-stone-800 flex items-center justify-between">
-      <div>
-        <span className="text-xs font-bold text-amber-200">Przedsiębiorstwo Komercyjne / Przemysłowe</span>
-        <p className="text-[11px] text-stone-400">Zakład wymaga stałego zasilania napędu do maszyn i urządzeń.</p>
+    <div className="space-y-4">
+      <div className="p-4 bg-stone-800/40 rounded-xl border border-stone-800 flex items-center justify-between">
+        <div>
+          <span className="text-xs font-bold text-amber-200">Przedsiębiorstwo Komercyjne / Przemysłowe</span>
+          <p className="text-[11px] text-stone-400">Zakład wymaga stałego zasilania napędu do maszyn i urządzeń.</p>
+        </div>
+        <span className="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          Biznes Aktywny
+        </span>
       </div>
-      <span className="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-        Biznes Aktywny
-      </span>
+
+      <IndustryPipelineCard
+        building={building}
+        buildingState={buildingState}
+        allWorldBuildings={allWorldBuildings}
+        buildingsState={buildingsState}
+        isSteamPowered={isSteamPowered}
+        clock={clock}
+        onUpdateState={onUpdateState}
+      />
     </div>
   );
 };

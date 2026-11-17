@@ -11,6 +11,7 @@ import { screenToTile } from './isoMath';
 import { useIsometricAssets } from './useIsometricAssets';
 import { useCityActions } from './useCityActions';
 import { useGameClock } from './clock/useGameClock';
+import { useCityHousingGrowth } from './useCityHousingGrowth';
 import { useMineMonthlyTick } from './useMineMonthlyTick';
 import { useWoodcutterMonthlyTick } from './useWoodcutterMonthlyTick';
 import { renderIsometricScene } from './isometricRenderer';
@@ -30,7 +31,7 @@ export const Isometric1880: React.FC = () => {
   const {
     currentMap, setCurrentMap, activeGeometry,
     terrainTiles, setTerrainTiles, roadOrientations, setRoadOrientations,
-    roadTypes, setRoadTypes, placedBuildings, setPlacedBuildings,
+    roadTypes, setRoadTypes, placedBuildings, setPlacedBuildings, cityBuildings, allWorldBuildings, autoPlaceCityBuildings, cityPlayersCount, addNewCityPlayer,
   } = useWorldMaps();
 
   // Budowanie i tryb wyburzania
@@ -61,6 +62,7 @@ export const Isometric1880: React.FC = () => {
 
   // Miesięczny cykl urobku Wyrębu Drewna (pozyskanie dłużycy)
   useWoodcutterMonthlyTick({ clockDate: gameClock.date, placedBuildings, buildingsState, setBuildingsState });
+  useCityHousingGrowth({ cityBuildings, buildingsState, autoPlaceCityBuildings });
 
   // Zunifikowane akcje modyfikacji miasta
   const {
@@ -462,7 +464,11 @@ export const Isometric1880: React.FC = () => {
         terrainTiles={terrainTiles}
         gold={gold}
         placedBuildings={placedBuildings}
+        allWorldBuildings={allWorldBuildings}
         clock={gameClock}
+        cityPlayersCount={cityPlayersCount}
+        onAddNewCityPlayer={addNewCityPlayer}
+        onSpendGold={(amount) => setGold((g) => Math.max(0, g - amount))}
         onUpdateBuildingState={(id, newState) => {
           setBuildingsState((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...newState } }));
         }}
