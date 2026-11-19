@@ -3,6 +3,7 @@ import type { FarmCrewMember, WorkerProfession } from '../farmGridTypes';
 import { PROFESSION_LABELS } from '../farmGridTypes';
 import type { FlaxCapitalismState } from './flaxTypes';
 import { FLAX_STAGE_LABELS } from './flaxTypes';
+import { generateRandomEnglishName } from '../englishNames';
 
 interface FlaxCrewTabProps {
   state: FlaxCapitalismState;
@@ -107,7 +108,10 @@ export const FlaxCrewTab: React.FC<FlaxCrewTabProps> = ({ state, onUpdateState }
             </p>
           </div>
           <button
-            onClick={() => setIsAddingNew(true)}
+            onClick={() => {
+              setNewWorkerName(generateRandomEnglishName(crew.map((w) => w.name)));
+              setIsAddingNew(true);
+            }}
             className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 leading-[2.5] self-start sm:self-auto"
           >
             <span>➕</span> Zatrudnij Nowego Pracownika

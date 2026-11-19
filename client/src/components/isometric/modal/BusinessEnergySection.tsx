@@ -1,12 +1,21 @@
 import React from 'react';
 import type { BuildingState, BusinessEnergySource, BusinessEnergyScale } from '../types';
+import type { WorldSupplierBuilding } from './industrySupplyConfig';
 import { ENERGY_SOURCES_INFO, SCALE_CONFIG } from './energyConfig';
+import { HorsePurchaseOfferPanel } from './HorsePurchaseOfferPanel';
+import { loadGameParameters } from '../admin/gameParameters';
 
 interface BusinessEnergySectionProps {
   businessTitle: string;
   energySource: BusinessEnergySource;
   energyScale: BusinessEnergyScale;
   hasGreenRelief: boolean;
+  allowedSources?: BusinessEnergySource[];
+  buildingState?: BuildingState;
+  allWorldBuildings?: WorldSupplierBuilding[];
+  buildingsState?: Record<string, BuildingState>;
+  onSpendGold?: (amount: number) => void;
+  onUpdateAnyBuildingState?: (buildingId: string, newState: Partial<BuildingState>) => void;
   onUpdateState: (updates: Partial<BuildingState>) => void;
 }
 
@@ -15,13 +24,70 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
   energySource,
   energyScale,
   hasGreenRelief,
+  allowedSources,
+  buildingState,
+  allWorldBuildings = [],
+  buildingsState = {},
+  onSpendGold,
+  onUpdateAnyBuildingState,
   onUpdateState,
 }) => {
-  const currentSource = ENERGY_SOURCES_INFO[energySource] || ENERGY_SOURCES_INFO.drewno;
+  const availableEntries = (
+    Object.entries(ENERGY_SOURCES_INFO) as [
+      BusinessEnergySource,
+      (typeof ENERGY_SOURCES_INFO)[BusinessEnergySource],
+    ][]
+  ).filter(([key]) => !allowedSources || allowedSources.includes(key));
+
+  const effectiveSourceKey: BusinessEnergySource =
+    allowedSources && !allowedSources.includes(energySource)
+      ? allowedSources[0]
+      : energySource || 'drewno';
+
+  const isFarmHorseOnly = allowedSources?.length === 1 && allowedSources[0] === 'konie';
+  const rawSource = ENERGY_SOURCES_INFO[effectiveSourceKey] || ENERGY_SOURCES_INFO.drewno;
+  const currentSource =
+    isFarmHorseOnly && effectiveSourceKey === 'konie'
+      ? {
+          ...rawSource,
+          name: 'Konie Pociągowe',
+          description:
+            'Tradycyjna siła pociągowa w rolnictwie 1880 r. Konie pociągowe obsługują orkę, bronowanie, siew oraz transport plonów wozami.',
+        }
+      : rawSource;
   const currentScale = SCALE_CONFIG[energyScale || 'standard'];
   const finalCost = (currentSource.baseCost * currentScale.multiplier).toFixed(2);
   const finalEfficiency = Math.round(currentSource.baseEfficiency * currentScale.effMultiplier);
   const chimneyTax = currentSource.hasChimneyTax && !hasGreenRelief ? 5.0 : 0.0;
+
+  if (isFarmHorseOnly) {
+    const ownedCount = buildingState?.ownedHorses?.length ?? 0;
+    const params = loadGameParameters();
+    const dailyFeedKg = Number((ownedCount * params.horseDailyFeedKg).toFixed(1));
+    const workAreaHa = Number((ownedCount * params.horseWorkCapacityHa).toFixed(2));
+
+    return (
+      <div className="space-y-3 animate-fade-in">
+        <HorsePurchaseOfferPanel
+          ownedHorses={buildingState?.ownedHorses || []}
+          allWorldBuildings={allWorldBuildings}
+          buildingsState={buildingsState}
+          onSpendGold={onSpendGold}
+          onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+          onUpdateState={onUpdateState}
+        />
+
+        <div className="p-3 bg-stone-900/90 rounded-2xl border border-stone-700/70 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+          <span className="text-stone-300">
+            🐎 Moc robocza: <strong className="text-emerald-300">{workAreaHa} ha</strong> ({params.horseWorkCapacityHa} ha/koń)
+          </span>
+          <span className="text-stone-300">
+            🌾 Zużycie paszy (zboże): <strong className="text-amber-300">{dailyFeedKg} kg/dzień</strong> ({params.horseDailyFeedKg} kg/koń)
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -37,19 +103,30 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
             </span>
           </div>
           <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">
-            Wybierz sposób zasilania urządzeń produkcyjnych: zakup prądu/pary z sieci miejskiej lub własny kocioł i palenisko.
+            {allowedSources?.length === 1 && allowedSources[0] === 'konie'
+              ? 'W 1880 roku w rolnictwie nie było jeszcze prądu ani gazu — jedynym źródłem napędu i siły pociągowej są konie robocze.'
+              : 'Wybierz sposób zasilania urządzeń produkcyjnych: zakup prądu/pary z sieci miejskiej lub własny kocioł i palenisko.'}
           </p>
         </div>
       </div>
 
       <div>
         <label className="block text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">
-          1. Wybierz źródło napędu i paliwa ({Object.keys(ENERGY_SOURCES_INFO).length} opcji)
+          1. Wybierz źródło napędu i paliwa ({availableEntries.length} {availableEntries.length === 1 ? 'opcja' : 'opcji'})
         </label>
         <div className="space-y-2">
-          {(Object.entries(ENERGY_SOURCES_INFO) as [BusinessEnergySource, typeof ENERGY_SOURCES_INFO[BusinessEnergySource]][]).map(
-            ([key, info]) => {
-              const isSelected = (energySource || 'drewno') === key;
+          {availableEntries.map(
+            ([key, rawInfo]) => {
+              const info =
+                isFarmHorseOnly && key === 'konie'
+                  ? {
+                      ...rawInfo,
+                      name: 'Konie Pociągowe',
+                      description:
+                        'Tradycyjna siła pociągowa w rolnictwie 1880 r. Konie pociągowe obsługują orkę, bronowanie, siew oraz transport plonów wozami.',
+                    }
+                  : rawInfo;
+              const isSelected = effectiveSourceKey === key;
               return (
                 <div
                   key={key}
@@ -99,6 +176,17 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
           )}
         </div>
       </div>
+
+      {effectiveSourceKey === 'konie' && (
+        <HorsePurchaseOfferPanel
+          ownedHorses={buildingState?.ownedHorses || []}
+          allWorldBuildings={allWorldBuildings}
+          buildingsState={buildingsState}
+          onSpendGold={onSpendGold}
+          onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+          onUpdateState={onUpdateState}
+        />
+      )}
 
       <div>
         <label className="block text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">

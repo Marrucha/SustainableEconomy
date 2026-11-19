@@ -9,6 +9,8 @@ export interface PlacedBuilding {
   id: string;
   typeId: string;
   name: string;
+  playerName?: string;
+  cityName?: string;
   x: number;
   y: number;
   sizeX: number;
@@ -81,6 +83,7 @@ export interface BuildingState {
 
   // Ferma Bydła i Owiec
   livestockState?: LivestockCapitalismState;
+  ownedHorses?: import('./modal/livestock/livestockTypes').HorseAnimal[];
   workersCount?: number;
   workerWage?: number; // £ / dzień
   managersCount?: number; // Liczba zarządców i agronomów (Klasa M)
@@ -117,6 +120,11 @@ export interface BuildingState {
   factoryManagersCount?: number;
   factoryWarehousemenCount?: number;
   factorySellerHired?: boolean;
+  factoryRoster?: Array<{
+    id: string;
+    name: string;
+    role: 'worker' | 'manager' | 'warehouseman' | 'merchant' | 'seller';
+  }>;
   merchantRoleMode?: 'dedicated' | 'worker';
   warehousemanRoleMode?: 'dedicated' | 'worker';
   sellerRoleMode?: 'dedicated' | 'worker';
@@ -138,6 +146,13 @@ export interface BuildingState {
   marketStalls?: MarketStallSlot[];
   marketLastAuctionYear?: number;
   marketSuppliersCount?: number; // liczba zaopatrzeniowców (1 obsługuje do 4 stoisk)
+  newspaperAds?: Array<{
+    id: string;
+    playerName: string;
+    packageLabel: string;
+    cost: number;
+    boostPercent: number;
+  }>;
 
   // Elektrociepłownia
   powerOutputFuelRate?: number; // %
@@ -178,5 +193,9 @@ export interface BuildingCatalogItem {
   anchorNormX: number;
   anchorNormY: number;
   baseWidth: number;
+  yardSpriteBaseName?: string;
+  yardAnchorNormX?: number;
+  yardAnchorNormY?: number;
+  yardBaseWidth?: number;
   roadSubType?: 'curb' | 'seamless' | 'dirt';
 }

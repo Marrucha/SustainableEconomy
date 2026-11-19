@@ -277,6 +277,18 @@ export function renderIsometricScene(p: RenderParams) {
           ctx.restore();
         }
 
+        if (catItem.yardSpriteBaseName && catItem.yardBaseWidth && catItem.yardAnchorNormX !== undefined && catItem.yardAnchorNormY !== undefined) {
+          const yardKey = `${catItem.yardSpriteBaseName}_${rot === 0 ? 'norm' : 'rot90'}`;
+          const yardImg = assets[yardKey];
+          if (yardImg && yardImg.complete && yardImg.naturalWidth > 0) {
+            const yScale = currentPlotWidth / catItem.yardBaseWidth;
+            const yW = yardImg.naturalWidth * yScale;
+            const yH = yardImg.naturalHeight * yScale;
+            const yAnchorX = rot === 90 && !catItem.isSquare ? yardImg.naturalWidth - catItem.yardAnchorNormX : catItem.yardAnchorNormX;
+            ctx.drawImage(yardImg, bottomX - yAnchorX * yScale, bottomY - catItem.yardAnchorNormY * yScale, yW, yH);
+          }
+        }
+
         ctx.drawImage(img, drawX, drawY, w, h);
       } else {
         // Fallback dla płaskich zaślepek lub ładujących się grafik

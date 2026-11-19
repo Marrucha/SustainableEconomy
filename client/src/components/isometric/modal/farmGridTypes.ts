@@ -32,12 +32,41 @@ export type FarmCycleStage =
   | 'harvesting'        // 7. Żniwa (Rolnik jako Żniwiarz)
   | 'storing_selling';  // 8. Zbyt / Silos (Kupiec jako Sprzedawca)
 
+export const GRAIN_SILO_BASE_CAPACITY_KG = 10000; // 10 ton bazowej pojemności spichlerza
+export const GRAIN_SILO_MAX_LEVEL = 4; // Maksymalnie 40 ton (4 poziomy po 10 ton)
+export const STRAW_STACK_BASE_CAPACITY_KG = 20000; // 20 ton bazowej pojemności stogu słomy
+
+export function getGrainSiloCapacityKg(siloLevel = 1): number {
+  const lvl = Math.min(GRAIN_SILO_MAX_LEVEL, Math.max(1, siloLevel));
+  return lvl * GRAIN_SILO_BASE_CAPACITY_KG;
+}
+
+export function getStrawStackCapacityKg(strawLevel = 1): number {
+  const lvl = Math.min(GRAIN_SILO_MAX_LEVEL, Math.max(1, strawLevel));
+  return lvl * STRAW_STACK_BASE_CAPACITY_KG;
+}
+
+export function getManureBinCapacityKg(manureLevel = 1): number {
+  const lvl = Math.min(GRAIN_SILO_MAX_LEVEL, Math.max(1, manureLevel));
+  return lvl * GRAIN_SILO_BASE_CAPACITY_KG;
+}
+
+export function getGrainSiloDailyCostPence(siloLevel = 1): number {
+  const lvl = Math.min(GRAIN_SILO_MAX_LEVEL, Math.max(1, siloLevel));
+  return 1 + (lvl - 1) * 0.5;
+}
+
+export function getGrainSiloUpgradeCostGbp(currentLevel = 1): number {
+  return 150 + Math.max(0, currentLevel - 1) * 100;
+}
+
 export interface FarmCrewMember {
   id: string;
   name: string;
   profession: WorkerProfession;
   wageDaily: number; // £ / dzień
   avatar: string;    // np. '👨‍🌾', '🧔', '🧑‍🌾'
+  skillBonusPercent?: number; // 0..10% premii do plonów za doświadczenie rolnika
 }
 
 export interface FarmAgronomist {
@@ -66,15 +95,15 @@ export const CROPS_CONFIG: Record<CropType, CropInfo> = {
     id: 'pszenica',
     name: 'Pszenica Złocista',
     icon: '🌾',
-    baseYield: 650,
+    baseYield: 3000,
     marketPricePerTon: 110,
-    desc: 'Najbardziej poszukiwane ziarno na białą mąkę chlebową w miastach 1880 r.',
+    desc: 'Najbardziej poszukiwane ziarno na białą mąkę chlebową w miastach 1880 r. (ok. 3 t/ha przy 300 kg siewu).',
   },
   zyto: {
     id: 'zyto',
     name: 'Żyto Ozime',
     icon: '🌿',
-    baseYield: 750,
+    baseYield: 3600,
     marketPricePerTon: 95,
     desc: 'Odporne na chłody i ubogie gleby, doskonałe na chleb razowy.',
   },
@@ -82,7 +111,7 @@ export const CROPS_CONFIG: Record<CropType, CropInfo> = {
     id: 'owies',
     name: 'Owies Koński',
     icon: '🌱',
-    baseYield: 800,
+    baseYield: 3800,
     marketPricePerTon: 85,
     desc: 'Kluczowe ziarno paszowe dla miejskich koni roboczych i dorożek.',
   },
@@ -90,27 +119,43 @@ export const CROPS_CONFIG: Record<CropType, CropInfo> = {
     id: 'jeczmien',
     name: 'Jęczmień Browarny',
     icon: '🌾',
-    baseYield: 600,
+    baseYield: 3500,
     marketPricePerTon: 130,
     desc: 'Cenne ziarno słodowe dla miejskich browarów i gorzelni.',
   },
 };
+
+export type FertilizingLevel = 0 | 50 | 100;
 
 export interface FarmCapitalismState {
   crew: FarmCrewMember[];
   agronomist: FarmAgronomist;
   cropType: CropType;
 
-  // Przypisanie pracowników do poszczególnych etapów w wężu
-  stageAssignments: Partial<Record<FarmCycleStage, string>>;
+  // Przypisanie pracowników do poszczególnych etapów w wężu (wielu pracowników na etap)
+  stageAssignments: Partial<Record<FarmCycleStage, string | string[]>>;
 
   // Opcje agrotechniczne 1880
   seedSource: 'market' | 'storage';
   wheatDestination: 'sell_market' | 'store_silo';
   enableFertilizing: boolean; // Opcjonalne nawożenie obornikiem
+  fertilizingLevel?: FertilizingLevel; // 0%, 50% (+20% plonu) lub 100% (+30% plonu)
   enableWeeding: boolean;      // Opcjonalne ręczne pielenie motyką
+  enableIrrigation?: boolean;  // Opcjonalne nawadnianie pól (+10% plonu)
 
   // Stany magazynowe w podziale na graficzne komory (przegródki)
+  siloLevel?: number;                    // Poziom rozbudowy spichlerza (1..4 => 10..40 ton)
+  strawLevel?: number;                   // Poziom rozbudowy stogu słomy (1..4 => 20..80 ton)
+  manureLevel?: number;                  // Poziom rozbudowy zasieku obornika (1..4 => 10..40 ton)
+  grainQualityPercent?: number;          // Jakość składowanego ziarna (0..100%, spadek 1% miesięcznie)
+  grainBrandLevel?: number;              // Marka ziarna (na start 0)
+  grainSalePricePerTon?: number;         // Cena wystawienia ziarna do sprzedaży (£/t)
+  manureQualityPercent?: number;         // Jakość obornika (0..100%)
+  manureBrandLevel?: number;             // Marka obornika (na start 0)
+  manurePricePer100Kg?: number;          // Cena obornika (£ / 100 kg)
+  strawQualityPercent?: number;          // Jakość słomy (0..100%)
+  strawBrandLevel?: number;              // Marka słomy (na start 0)
+  strawPricePerTon?: number;             // Cena słomy (£/t)
   grainStockKg: Record<CropType, number>; // Pszenica, Żyto, Owies, Jęczmień
   manureStockKg: number;                 // Nawóz: Obornik z fermy zwierzęcej (kg)
   seedsStockKg: number;                  // Zapas nasion na siew (kg)
@@ -124,6 +169,9 @@ export interface FarmCapitalismState {
   currentStage: FarmCycleStage;
   stageProgress: number; // 0..100%
   totalCyclesCompleted: number;
+  lastHarvestYear?: number;
+  manureShortageWarning?: string;
+  manureOrder?: FarmManureContract;
 
   // Finanse i statystyki ostatniego cyklu
   lastCycleRevenue: number;
@@ -131,7 +179,14 @@ export interface FarmCapitalismState {
   lastCycleYieldKg: number;
 }
 
-// Sprawdzenie, czy pracownik o danym zawodzie może realizować dany krok
+import type { ContractType } from './industryContracts';
+
+export interface FarmManureContract {
+  supplierId: string;
+  monthlyQuantityKg: number;
+  contractType: ContractType;
+  monthsRemaining: number;
+}
 export function canWorkerHandleStage(worker: FarmCrewMember, stage: FarmCycleStage): boolean {
   if (stage === 'growing') return true;
 
@@ -174,24 +229,47 @@ export function getWorkerStageRoleTitle(stage: FarmCycleStage): string {
 
 // Sprawdzenie gotowości produkcji (czerwona vs zielona linia)
 // UWAGA: Etapy opcjonalne (Nawożenie, Pielenie/Oprysk) NIGDY nie blokują produkcji!
-export function checkIsProductionReady(state: FarmCapitalismState): {
+export function getStageAssignedWorkerIds(
+  stageAssignments: Partial<Record<FarmCycleStage, string | string[]>> | undefined,
+  stage: FarmCycleStage
+): string[] {
+  const val = stageAssignments?.[stage];
+  if (!val) return [];
+  return Array.isArray(val) ? val : [val];
+}
+
+export function checkIsProductionReady(
+  state: FarmCapitalismState,
+  ownedHorsesCount?: number
+): {
   isReady: boolean;
   missingStages: { stage: FarmCycleStage; label: string; requiredRole: string }[];
 } {
   const missing: { stage: FarmCycleStage; label: string; requiredRole: string }[] = [];
 
+  if (typeof ownedHorsesCount === 'number' && ownedHorsesCount < 1) {
+    missing.push({
+      stage: 'plowing',
+      label: 'Energia (min. 1 koń pociągowy)',
+      requiredRole: 'Zakup konia w zakładce Energia',
+    });
+  }
+
   const check = (stage: FarmCycleStage, label: string, requiredRole: string) => {
-    const workerId = state.stageAssignments[stage];
-    const worker = workerId ? state.crew.find((w) => w.id === workerId) : null;
-    if (!worker || !canWorkerHandleStage(worker, stage)) {
+    const workerIds = getStageAssignedWorkerIds(state.stageAssignments, stage);
+    const hasValidWorker = workerIds.some((id) => {
+      const worker = state.crew.find((w) => w.id === id);
+      return Boolean(worker && canWorkerHandleStage(worker, stage));
+    });
+    if (!hasValidWorker) {
       missing.push({ stage, label, requiredRole });
     }
   };
 
   // 1. Obowiązkowe etapy bazowe cyklu produkcji zboża:
   check('seed_intake', '1. Nasiona', 'Kupiec / Sprzedawca');
-  check('plowing', '2. Orka', 'Rolnik');
-  check('sowing', '3. Zasiew', 'Rolnik');
+  check('plowing', '3. Orka', 'Rolnik');
+  check('sowing', '4. Zasiew', 'Rolnik');
   // 4. Nawożenie i 5. Pielenie/Oprysk są agrotechnicznymi opcjami bonusowymi — nie blokują cyklu!
   check('harvesting', '7. Żniwa', 'Rolnik');
   check('storing_selling', '8. Zbyt/Silos', 'Kupiec / Sprzedawca');
@@ -229,7 +307,7 @@ export function createDefaultAgronomist(): FarmAgronomist {
     title: 'Agronom Królewskiego Towarzystwa Rolniczego',
     wageDaily: 5.5,
     specialization: 'norfolk',
-    yieldBonusPercent: 25,
+    yieldBonusPercent: 20,
     lossReductionPercent: 50,
   };
 }
@@ -241,13 +319,15 @@ export function createDefaultFarmCapitalismState(): FarmCapitalismState {
     cropType: 'pszenica',
     stageAssignments: {},
     seedSource: 'market',
-    wheatDestination: 'sell_market',
+    wheatDestination: 'store_silo',
     enableFertilizing: true,
+    fertilizingLevel: 100,
     enableWeeding: true,
+    enableIrrigation: false,
     grainStockKg: {
       pszenica: 450,
-      zyto: 120,
-      owies: 80,
+      zyto: 0,
+      owies: 0,
       jeczmien: 0,
     },
     manureStockKg: 250,

@@ -10,3 +10,12 @@
   - `use*.ts` (custom hooki)
   - `*Renderer.ts` / `*Math.ts` (czyste funkcje i renderowanie Canvas)
   - Dedykowane subkomponenty UI w podkatalogach.
+
+## Standard Kontraktów Terminowych (Jedno Źródło Prawdy)
+
+- Wszystkie kontrakty terminowe na dostawy surowców/paszy/ściółki między budynkami MUSZĄ korzystać bezpośrednio z `CONTRACT_OPTIONS`, `getContractMeta` i `ContractType` z `client/src/components/isometric/modal/industryContracts.ts`:
+  - `pay_as_you_go` — Bez kontraktu (`0` msc, `0%` zniżki)
+  - `contract_3y` — **Kontrakt 3-letni** (`36` msc, `-10%` zniżki)
+  - `contract_5y` — **Kontrakt 5-letni** (`60` msc, `-15%` zniżki)
+  - `contract_10y` — **Kontrakt 10-letni** (`120` msc, `-20%` zniżki)
+- Zakaz tworzenia własnych, lokalnych długości kontraktów i progów rabatowych w kolejnych budynkach.

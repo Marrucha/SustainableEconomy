@@ -28,9 +28,9 @@ export function useGameClock(
   useEffect(() => {
     if (!isPlaying || speed === 0) return;
 
-    // Bazowy interwał: przy 1x = 350ms na 1 dzień w grze (rok trwa ok. 2 minut)
-    // Przy 2x = 175ms, przy 5x = 70ms, przy 10x = 35ms (bardzo szybki upływ roku)
-    const baseIntervalMs = 350;
+    // Bazowy interwał (spowolniony 4x): przy 1x = 1400ms na 1 dzień w grze (rok trwa ok. 8,4 minuty)
+    // Przy 2x = 700ms, przy 5x = 280ms, przy 10x = 140ms
+    const baseIntervalMs = 1400;
     const intervalMs = Math.max(30, Math.round(baseIntervalMs / speed));
 
     const timer = setInterval(() => {

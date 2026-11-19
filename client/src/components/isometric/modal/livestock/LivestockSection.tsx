@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { BuildingState } from '../../types';
+import type { BuildingState, PlacedBuilding } from '../../types';
 import type { LivestockCapitalismState } from './livestockTypes';
 import { createDefaultLivestockState } from './livestockTypes';
 import { BusinessEnergySection } from '../BusinessEnergySection';
@@ -7,26 +7,55 @@ import { LivestockPipeline } from './LivestockPipeline';
 import { LivestockHerdTab } from './LivestockHerdTab';
 import { LivestockCrewTab } from './LivestockCrewTab';
 import { LivestockStorageBins } from './LivestockStorageBins';
+import { useLivestockTicks } from './useLivestockTicks';
 import type { UseGameClockReturn } from '../../clock/useGameClock';
+import { resolveUniqueFarmName, type WorldSupplierBuilding } from '../industrySupplyConfig';
 
 interface LivestockSectionProps {
+  building?: PlacedBuilding;
   buildingState: BuildingState;
   businessTab: 'production' | 'energy';
   hasGreenRelief: boolean;
+  allWorldBuildings?: WorldSupplierBuilding[];
+  buildingsState?: Record<string, BuildingState>;
+  onSpendGold?: (amount: number) => void;
+  onUpdateAnyBuildingState?: (buildingId: string, newState: Partial<BuildingState>) => void;
+  onRenameBuilding?: (buildingId: string, newName: string) => void;
   clock?: UseGameClockReturn;
   onUpdateState: (updates: Partial<BuildingState>) => void;
 }
 
 export const LivestockSection: React.FC<LivestockSectionProps> = ({
+  building,
   buildingState,
   businessTab,
   hasGreenRelief,
+  allWorldBuildings = [],
+  buildingsState = {},
+  onSpendGold,
+  onUpdateAnyBuildingState,
+  onRenameBuilding,
   clock,
   onUpdateState,
 }) => {
   const [activeTab, setActiveTab] = useState<'pipeline' | 'herd' | 'crew' | 'storage'>('pipeline');
   const [speciesFeedback, setSpeciesFeedback] = useState<string | null>(null);
   const [pendingSpeciesChange, setPendingSpeciesChange] = useState<'cattle' | 'sheep' | 'horses' | null>(null);
+
+  const rawState = buildingState.livestockState;
+  const livestockState: LivestockCapitalismState =
+    rawState && Array.isArray(rawState.crew) && rawState.herd && rawState.storage
+      ? rawState
+      : createDefaultLivestockState();
+
+  useLivestockTicks({
+    clock,
+    livestockState,
+    buildingsState,
+    onSpendGold,
+    onUpdateAnyBuildingState,
+    onUpdateState,
+  });
 
   if (businessTab === 'energy') {
     return (
@@ -40,13 +69,21 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
     );
   }
 
-  const rawState = buildingState.livestockState;
-  const livestockState: LivestockCapitalismState =
-    rawState && Array.isArray(rawState.crew) && rawState.herd && rawState.storage
-      ? rawState
-      : createDefaultLivestockState();
-
   const handleUpdateLivestock = (patch: Partial<LivestockCapitalismState>) => {
+    if (patch.crew && building && onRenameBuilding) {
+      const hadFarmer = (livestockState.crew || []).some(
+        (w) => w.profession === 'breeder' || w.profession === 'handler'
+      );
+      const firstFarmer = patch.crew.find(
+        (w) => w.profession === 'breeder' || w.profession === 'handler'
+      );
+      if (!hadFarmer && firstFarmer) {
+        onRenameBuilding(
+          building.id,
+          resolveUniqueFarmName('Ferma', firstFarmer.name, allWorldBuildings, building.id)
+        );
+      }
+    }
     const nextState: LivestockCapitalismState = {
       ...livestockState,
       ...patch,
@@ -133,25 +170,20 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* WYBÓR PROFILU HODOWLANEGO: TYLKO 1 TYP ZWIERZĘCIA JEDNOCZEŚNIE */}
-      <div className="bg-stone-950/90 border border-stone-800 rounded-2xl p-3 shadow-inner flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <span className="text-[10px] uppercase font-mono font-bold text-amber-400 block tracking-wider">
-            Profil Hodowlany Fermy (Zasada 1 Gatunku Zwierząt)
-          </span>
-          <p className="text-[11px] text-stone-400 leading-[2.5]">
-            Ferma może mieć na stanie <strong>tylko 1 typ zwierzęcia jednocześnie</strong>: Bydło, Owce albo Konie.
-          </p>
-        </div>
+      {/* WYBÓR PROFILU HODOWLANEGO (KOMPAKTOWY PASEK JAK W FARMIE ZBOŻOWEJ) */}
+      <div className="bg-stone-950/90 border border-stone-800 rounded-2xl px-4 py-2.5 shadow-inner flex flex-wrap items-center justify-between gap-3">
+        <span className="text-[11px] uppercase font-mono font-bold text-amber-400 tracking-wider">
+          Profil Hodowlany (1 Gatunek):
+        </span>
 
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={() => {
               if (currentSpecies !== 'cattle') setPendingSpeciesChange('cattle');
             }}
-            className={`flex-1 sm:flex-none py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-[2.5] ${
+            className={`flex-1 sm:flex-none py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               currentSpecies === 'cattle'
-                ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+                ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
                 : 'bg-stone-900 border border-stone-800 text-stone-400 hover:text-stone-200'
             }`}
           >
@@ -163,9 +195,9 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
             onClick={() => {
               if (currentSpecies !== 'sheep') setPendingSpeciesChange('sheep');
             }}
-            className={`flex-1 sm:flex-none py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-[2.5] ${
+            className={`flex-1 sm:flex-none py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               currentSpecies === 'sheep'
-                ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+                ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
                 : 'bg-stone-900 border border-stone-800 text-stone-400 hover:text-stone-200'
             }`}
           >
@@ -177,9 +209,9 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
             onClick={() => {
               if (currentSpecies !== 'horses') setPendingSpeciesChange('horses');
             }}
-            className={`flex-1 sm:flex-none py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-[2.5] ${
+            className={`flex-1 sm:flex-none py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               currentSpecies === 'horses'
-                ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+                ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
                 : 'bg-stone-900 border border-stone-800 text-stone-400 hover:text-stone-200'
             }`}
           >
@@ -210,7 +242,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
             <span className="text-rose-400 font-bold uppercase underline">
               całkowite przepadnięcie (utratę)
             </span>{' '}
-            wszystkich dotychczasowych zapasów produktów (mleko, obornik, wełna, mięso, skóry) oraz wymianę stada!
+            wszystkich dotychczasowych zapasów produktów (mleko, obornik, wełna) oraz wymianę stada!
             Zaleca się wyprzedać wszystkie towary przed zmianą profilu.
           </p>
           <div className="flex justify-end gap-2.5 pt-1">
@@ -231,30 +263,30 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
       )}
 
       {/* 4 GŁÓWNE ZAKŁADKI FERMY ZWIERZĘCEJ */}
-      <div className="flex bg-stone-950/80 p-1.5 rounded-2xl border border-stone-800 text-xs gap-1.5 shadow-inner">
+      <div className="flex bg-stone-950/80 p-1 rounded-2xl border border-stone-800 text-xs gap-1.5 shadow-inner">
         <button
           onClick={() => setActiveTab('pipeline')}
-          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer leading-[2.5] ${
+          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTab === 'pipeline'
-              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
               : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
           }`}
         >
           <span className="text-base">🧬</span>
           <span>
             {currentSpecies === 'cattle'
-              ? 'Cykl Rozrodu (Krowy)'
+              ? 'Cykl Rozrodu (4 Etapy)'
               : currentSpecies === 'sheep'
-              ? 'Cykl Rozrodu (Owce)'
-              : 'Cykl Rozrodu (Konie)'}
+              ? 'Cykl Rozrodu (4 Etapy)'
+              : 'Cykl Rozrodu (4 Etapy)'}
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab('herd')}
-          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer leading-[2.5] ${
+          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTab === 'herd'
-              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
               : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
           }`}
         >
@@ -270,9 +302,9 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
 
         <button
           onClick={() => setActiveTab('crew')}
-          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer leading-[2.5] ${
+          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTab === 'crew'
-              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
               : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
           }`}
         >
@@ -282,14 +314,14 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
 
         <button
           onClick={() => setActiveTab('storage')}
-          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer leading-[2.5] ${
+          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTab === 'storage'
-              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
               : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
           }`}
         >
           <span className="text-base">🏛️</span>
-          <span>Magazyn (6 Miejsc)</span>
+          <span>Magazyn i Hałda</span>
         </button>
       </div>
 
@@ -326,6 +358,9 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
       {activeTab === 'storage' && (
         <LivestockStorageBins
           state={livestockState}
+          allWorldBuildings={allWorldBuildings}
+          buildingsState={buildingsState}
+          onSpendGold={onSpendGold}
           onUpdateState={handleUpdateLivestock}
         />
       )}

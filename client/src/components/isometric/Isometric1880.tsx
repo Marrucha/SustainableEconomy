@@ -1,8 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { IsometricModals } from './IsometricModals';
-import { IsometricHeader } from './IsometricHeader';
+import { AdminParametersModal } from './admin/AdminParametersModal';
+import { IsometricHeader, IsometricClockControls } from './IsometricHeader';
 import { MapSwitcher } from './MapSwitcher';
+import { WorldMapView } from './WorldMapView';
 import { BuildToolbar } from './BuildToolbar';
+import { EconomyHudMenu } from './EconomyHudMenu';
 import { BuildCursorBanner } from './BuildCursorBanner';
 import { CATALOG } from './catalog';
 import { useWorldMaps } from './useWorldMaps';
@@ -11,15 +14,15 @@ import { screenToTile } from './isoMath';
 import { useIsometricAssets } from './useIsometricAssets';
 import { useCityActions } from './useCityActions';
 import { useGameClock } from './clock/useGameClock';
-import { useCityHousingGrowth } from './useCityHousingGrowth';
-import { useMineMonthlyTick } from './useMineMonthlyTick';
-import { useWoodcutterMonthlyTick } from './useWoodcutterMonthlyTick';
+import { useWorldSimulationTicks } from './useWorldSimulationTicks';
 import { renderIsometricScene } from './isometricRenderer';
+import { loadPersistedState, savePersistedState } from './gamePersistence';
 import type { PlacedBuilding, BuildingState, BuildingCatalogItem, BuildingCategory } from './types';
 
 export const Isometric1880: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(0.85);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [pan, setPan] = useState({ x: -20, y: 40 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -41,14 +44,14 @@ export const Isometric1880: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<BuildingCategory | 'Wszystkie'>('Wszystkie');
   const [buildRotation, setBuildRotation] = useState<0 | 90>(0);
   const [hoverTile, setHoverTile] = useState<{ x: number; y: number } | null>(null);
-  const [gold, setGold] = useState<number>(35000);
-
-  // Modale akcji i inspekcji
+  const [gold, setGold] = useState<number>(() => loadPersistedState('gold', 350000));
   const [inspectingBuilding, setInspectingBuilding] = useState<PlacedBuilding | null>(null);
   const [inspectingTerrain, setInspectingTerrain] = useState<{ x: number; y: number } | null>(null);
   const [demolishTargetBuilding, setDemolishTargetBuilding] = useState<PlacedBuilding | null>(null);
   const [rebuildTarget, setRebuildTarget] = useState<RebuildTarget | null>(null);
-  const [buildingsState, setBuildingsState] = useState<Record<string, BuildingState>>({});
+  const [buildingsState, setBuildingsState] = useState<Record<string, BuildingState>>(() => loadPersistedState('buildingsState', {}));
+  useEffect(() => { savePersistedState('gold', gold); }, [gold]);
+  useEffect(() => { savePersistedState('buildingsState', buildingsState); }, [buildingsState]);
 
   // Globalny zegar gry 1880 (harmonogram wegetacyjny i cykl rolniczy)
   const gameClock = useGameClock(1880);
@@ -57,12 +60,8 @@ export const Isometric1880: React.FC = () => {
   const buildingsStateRef = useRef(buildingsState);
   buildingsStateRef.current = buildingsState;
 
-  // Miesięczny cykl wydobycia kopalń (zapełnianie hałdy na koniec miesiąca)
-  useMineMonthlyTick({ clockDate: gameClock.date, placedBuildings, buildingsState, setBuildingsState, setGold });
-
-  // Miesięczny cykl urobku Wyrębu Drewna (pozyskanie dłużycy)
-  useWoodcutterMonthlyTick({ clockDate: gameClock.date, placedBuildings, buildingsState, setBuildingsState });
-  useCityHousingGrowth({ cityBuildings, buildingsState, autoPlaceCityBuildings });
+  // Globalne cykle symulacji (kopalnie, wyrąb, farmy zbożowe, rozwój miasta)
+  useWorldSimulationTicks({ clockDate: gameClock.date, placedBuildings, cityBuildings, buildingsState, setBuildingsState, setGold, autoPlaceCityBuildings });
 
   // Zunifikowane akcje modyfikacji miasta
   const {
@@ -181,8 +180,6 @@ export const Isometric1880: React.FC = () => {
     rebuildTarget,
     currentMap,
     activeGeometry,
-    buildingsState,
-    gameClock.date,
   ]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -268,6 +265,12 @@ export const Isometric1880: React.FC = () => {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     mousePosRef.current = { clientX: e.clientX, clientY: e.clientY };
+
+    if (isDragging) {
+      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+      return;
+    }
+
     const tile = screenToTile(
       e.clientX,
       e.clientY,
@@ -279,11 +282,9 @@ export const Isometric1880: React.FC = () => {
       activeGeometry.gridSizeX,
       activeGeometry.gridSizeY
     );
-    setHoverTile(tile);
-
-    if (isDragging) {
-      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-    }
+    setHoverTile((prev) =>
+      prev?.x === tile?.x && prev?.y === tile?.y ? prev : tile
+    );
   };
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
@@ -379,18 +380,21 @@ export const Isometric1880: React.FC = () => {
       onContextMenu={(e) => e.preventDefault()}
       className="relative w-full h-full bg-stone-950 overflow-hidden select-none font-sans"
     >
-      <canvas
-        ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onDoubleClick={handleDoubleClick}
-        onWheel={handleWheel}
-        onContextMenu={(e) => e.preventDefault()}
-        className="w-full h-full cursor-crosshair block"
-      />
+      {currentMap === 'world' ? (
+        <WorldMapView onOpenLondon={() => setCurrentMap('city')} />
+      ) : (
+        <canvas
+          ref={canvasRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onDoubleClick={handleDoubleClick}
+          onWheel={handleWheel}
+          onContextMenu={(e) => e.preventDefault()}
+          className="w-full h-full cursor-crosshair block"
+        />
+      )}
 
-      {/* PRZEŁĄCZNIK WIDOKÓW MAPY: MIASTO 🏙️ VS WIEŚ 🌾 */}
       <MapSwitcher
         currentMap={currentMap}
         onChangeMap={(newMap) => {
@@ -401,11 +405,48 @@ export const Isometric1880: React.FC = () => {
           setRebuildTarget(null);
         }}
       />
-
-      {/* PASEK SKARBCU I ZEGAR GRY 1880 */}
-      <IsometricHeader gold={gold} clock={gameClock} />
-
-      {/* BANER TRYBU WYBURZANIA */}
+      <div className="absolute top-3 left-4 z-30">
+        <IsometricHeader gold={gold} clock={gameClock} />
+      </div>
+      {currentMap !== 'world' && (
+        <div className="absolute top-28 left-4 z-30 flex flex-col items-start">
+          <EconomyHudMenu
+            gold={gold}
+            isBuildMode={isBuildMode}
+            allWorldBuildings={allWorldBuildings}
+            buildingsState={buildingsState}
+            onToggleBuildMode={() => setIsBuildMode((p) => { if (p) setSelectedType(null); return !p; })}
+            buildTreeSlot={
+              <BuildToolbar
+                catalog={CATALOG}
+                activeCategory={activeCategory}
+                selectedType={selectedType}
+                gold={gold}
+                currentMap={currentMap}
+                isBuildMode={isBuildMode}
+                isDemolishMode={isDemolishMode}
+                onToggleBuildMode={() => {
+                  setIsBuildMode((prev) => {
+                    if (prev) setSelectedType(null);
+                    return !prev;
+                  });
+                }}
+                onToggleDemolishMode={() => {
+                  setIsDemolishMode((prev) => {
+                    if (!prev) setSelectedType(null);
+                    return !prev;
+                  });
+                }}
+                onSelectCategory={setActiveCategory}
+                onSelectType={setSelectedType}
+              />
+            }
+          />
+        </div>
+      )}
+      <div className="absolute top-3 right-4 z-30">
+        <IsometricClockControls clock={gameClock} onOpenAdmin={() => setIsAdminOpen(true)} />
+      </div>
       {isDemolishMode && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 bg-rose-950/95 border-2 border-rose-500 rounded-full px-5 py-2 shadow-2xl backdrop-blur-md flex items-center gap-3 text-xs text-rose-200 font-semibold animate-in fade-in duration-200">
           <span className="text-base animate-bounce">🔨</span>
@@ -429,31 +470,6 @@ export const Isometric1880: React.FC = () => {
         />
       )}
 
-      {/* DOLNY PASEK BUDOWANIA I KATEGORII Z IKONKĄ DŹWIGU I BURZENIA */}
-      <BuildToolbar
-        catalog={CATALOG}
-        activeCategory={activeCategory}
-        selectedType={selectedType}
-        gold={gold}
-        currentMap={currentMap}
-        isBuildMode={isBuildMode}
-        isDemolishMode={isDemolishMode}
-        onToggleBuildMode={() => {
-          setIsBuildMode((prev) => {
-            if (prev) setSelectedType(null);
-            return !prev;
-          });
-        }}
-        onToggleDemolishMode={() => {
-          setIsDemolishMode((prev) => {
-            if (!prev) setSelectedType(null);
-            return !prev;
-          });
-        }}
-        onSelectCategory={setActiveCategory}
-        onSelectType={setSelectedType}
-      />
-
       {/* MODALE GRY: INSPEKCJA BUDYNKU, TEREN, POTWIERDZENIE WYBURZENIA I PRZEBUDOWA */}
       <IsometricModals
         inspectingBuilding={inspectingBuilding}
@@ -471,6 +487,10 @@ export const Isometric1880: React.FC = () => {
         onSpendGold={(amount) => setGold((g) => Math.max(0, g - amount))}
         onUpdateBuildingState={(id, newState) => {
           setBuildingsState((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...newState } }));
+        }}
+        onRenameBuilding={(id, newName) => {
+          setPlacedBuildings((prev) => prev.map((b) => (b.id === id ? { ...b, name: newName } : b)));
+          setInspectingBuilding((prev) => (prev && prev.id === id ? { ...prev, name: newName } : prev));
         }}
         onDemolishBuilding={(id) => { demolishBuilding(id); setInspectingBuilding(null); setRebuildTarget(null); }}
         onCloseInspectingBuilding={() => setInspectingBuilding(null)}
@@ -493,6 +513,7 @@ export const Isometric1880: React.FC = () => {
         onClearForest={(x, y) => { clearForest(x, y); setRebuildTarget(null); }}
         onCloseRebuildTarget={() => setRebuildTarget(null)}
       />
+      <AdminParametersModal isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} />
     </div>
   );
 };

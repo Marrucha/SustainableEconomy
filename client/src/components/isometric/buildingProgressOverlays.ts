@@ -40,6 +40,7 @@ export function renderBuildingProgressOverlays(p: ProgressOverlaysParams) {
         tileH,
         drawY,
         farmState: buildingsState?.[bldg.id]?.farmCapitalism,
+        ownedHorsesCount: buildingsState?.[bldg.id]?.ownedHorses?.length ?? 0,
         clockDate,
         mouseWorldPos,
       });

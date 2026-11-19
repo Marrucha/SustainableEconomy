@@ -123,6 +123,15 @@ export function findSpotAdjacentToRoad(
   return null;
 }
 
+export type CityExpandSide = 'bottom' | 'right' | 'top';
+
+const EXPAND_SIDE_ORDER: CityExpandSide[] = ['bottom', 'right', 'top'];
+
+export function getNextExpandSide(side: CityExpandSide): CityExpandSide {
+  const idx = EXPAND_SIDE_ORDER.indexOf(side);
+  return EXPAND_SIDE_ORDER[(idx + 1) % EXPAND_SIDE_ORDER.length];
+}
+
 export function hasFree3x3BuildSpace(
   gridSizeX: number,
   gridSizeY: number,
@@ -134,16 +143,103 @@ export function hasFree3x3BuildSpace(
   );
 }
 
-export function expandCityTerrainStrip(
+export function expandCityTerrainSide(
   gridSizeX: number,
   gridSizeY: number,
-  terrainTiles: Record<string, TileDef['type']>
+  terrainTiles: Record<string, TileDef['type']>,
+  placedBuildings: PlacedBuilding[],
+  side: CityExpandSide,
+  roadOrientations: Record<string, 0 | 90> = {},
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'> = {}
 ): {
   gridSizeX: number;
   gridSizeY: number;
   terrainTiles: Record<string, TileDef['type']>;
-  roadRowY: number;
+  placedBuildings: PlacedBuilding[];
+  roadOrientations: Record<string, 0 | 90>;
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'>;
+  spawnHint: { x: number; y: number };
 } {
+  if (side === 'right') {
+    let prevColHasRoad = false;
+    for (let y = 0; y < gridSizeY; y++) {
+      if (terrainTiles[`${gridSizeX - 1},${y}`] === 'road') {
+        prevColHasRoad = true;
+        break;
+      }
+    }
+    const colsToAdd = prevColHasRoad ? 3 : 4;
+    const newGridSizeX = gridSizeX + colsToAdd;
+    const nextTerrain = { ...terrainTiles };
+
+    for (let x = gridSizeX; x < newGridSizeX; x++) {
+      for (let y = 0; y < gridSizeY; y++) {
+        nextTerrain[`${x},${y}`] = !prevColHasRoad && x === gridSizeX ? 'road' : 'grass';
+      }
+    }
+
+    return {
+      gridSizeX: newGridSizeX,
+      gridSizeY,
+      terrainTiles: nextTerrain,
+      placedBuildings,
+      roadOrientations,
+      roadTypes,
+      spawnHint: { x: prevColHasRoad ? gridSizeX : gridSizeX + 1, y: 0 },
+    };
+  }
+
+  if (side === 'top') {
+    let firstRowHasRoad = false;
+    for (let x = 3; x < gridSizeX; x++) {
+      if (terrainTiles[`${x},0`] === 'road') {
+        firstRowHasRoad = true;
+        break;
+      }
+    }
+    const rowsToAdd = firstRowHasRoad ? 3 : 4;
+    const newGridSizeY = gridSizeY + rowsToAdd;
+    const nextTerrain: Record<string, TileDef['type']> = {};
+    const nextOrientations: Record<string, 0 | 90> = {};
+    const nextRoadTypes: Record<string, 'curb' | 'seamless' | 'dirt'> = {};
+
+    // Przesunięcie istniejącego terenu i dróg o rowsToAdd w dół
+    for (const [key, val] of Object.entries(terrainTiles)) {
+      const [kx, ky] = key.split(',').map(Number);
+      nextTerrain[`${kx},${ky + rowsToAdd}`] = val;
+    }
+    for (const [key, val] of Object.entries(roadOrientations)) {
+      const [kx, ky] = key.split(',').map(Number);
+      nextOrientations[`${kx},${ky + rowsToAdd}`] = val;
+    }
+    for (const [key, val] of Object.entries(roadTypes)) {
+      const [kx, ky] = key.split(',').map(Number);
+      nextRoadTypes[`${kx},${ky + rowsToAdd}`] = val;
+    }
+
+    // Nowe wiersze na górze (0 .. rowsToAdd - 1)
+    for (let y = 0; y < rowsToAdd; y++) {
+      for (let x = 0; x < gridSizeX; x++) {
+        if (x === 0) nextTerrain[`${x},${y}`] = 'water';
+        else if (x === 1) nextTerrain[`${x},${y}`] = 'quay';
+        else if (x === 2 || (!firstRowHasRoad && y === rowsToAdd - 1)) nextTerrain[`${x},${y}`] = 'road';
+        else nextTerrain[`${x},${y}`] = 'grass';
+      }
+    }
+
+    const shiftedBuildings = placedBuildings.map((b) => ({ ...b, y: b.y + rowsToAdd }));
+    return {
+      gridSizeX,
+      gridSizeY: newGridSizeY,
+      terrainTiles: nextTerrain,
+      placedBuildings: shiftedBuildings,
+      roadOrientations: nextOrientations,
+      roadTypes: nextRoadTypes,
+      spawnHint: { x: 3, y: 0 },
+    };
+  }
+
+  // Domyślnie: 'bottom'
   let prevRowHasRoad = false;
   for (let x = 3; x < gridSizeX; x++) {
     if (terrainTiles[`${x},${gridSizeY - 1}`] === 'road') {
@@ -151,9 +247,6 @@ export function expandCityTerrainStrip(
       break;
     }
   }
-
-  // Jeśli poprzedni wiersz nie ma drogi, dodajemy 1 wiersz drogi + 3 wiersze trawy (łącznie +4),
-  // aby zawsze zmieścił się co najmniej budynek 3x3 bez tworzenia dwupasmówki.
   const rowsToAdd = prevRowHasRoad ? 3 : 4;
   const newGridSizeY = gridSizeY + rowsToAdd;
   const nextTerrain = { ...terrainTiles };
@@ -171,7 +264,10 @@ export function expandCityTerrainStrip(
     gridSizeX,
     gridSizeY: newGridSizeY,
     terrainTiles: nextTerrain,
-    roadRowY: prevRowHasRoad ? gridSizeY - 1 : gridSizeY,
+    placedBuildings,
+    roadOrientations,
+    roadTypes,
+    spawnHint: { x: 3, y: prevRowHasRoad ? gridSizeY : gridSizeY + 1 },
   };
 }
 
@@ -179,24 +275,50 @@ export function ensureCitySpaceFor3x3(
   gridSizeX: number,
   gridSizeY: number,
   terrainTiles: Record<string, TileDef['type']>,
-  placedBuildings: PlacedBuilding[]
+  placedBuildings: PlacedBuilding[],
+  nextExpandSide: CityExpandSide = 'bottom',
+  roadOrientations: Record<string, 0 | 90> = {},
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'> = {}
 ): {
   gridSizeX: number;
   gridSizeY: number;
   terrainTiles: Record<string, TileDef['type']>;
+  placedBuildings: PlacedBuilding[];
+  roadOrientations: Record<string, 0 | 90>;
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'>;
+  nextExpandSide: CityExpandSide;
 } {
-  let gx = gridSizeX;
-  let gy = gridSizeY;
-  let tiles = terrainTiles;
-
-  if (!hasFree3x3BuildSpace(gx, gy, tiles, placedBuildings)) {
-    const expanded = expandCityTerrainStrip(gx, gy, tiles);
-    gx = expanded.gridSizeX;
-    gy = expanded.gridSizeY;
-    tiles = expanded.terrainTiles;
+  if (hasFree3x3BuildSpace(gridSizeX, gridSizeY, terrainTiles, placedBuildings)) {
+    return {
+      gridSizeX,
+      gridSizeY,
+      terrainTiles,
+      placedBuildings,
+      roadOrientations,
+      roadTypes,
+      nextExpandSide,
+    };
   }
 
-  return { gridSizeX: gx, gridSizeY: gy, terrainTiles: tiles };
+  const expanded = expandCityTerrainSide(
+    gridSizeX,
+    gridSizeY,
+    terrainTiles,
+    placedBuildings,
+    nextExpandSide,
+    roadOrientations,
+    roadTypes
+  );
+
+  return {
+    gridSizeX: expanded.gridSizeX,
+    gridSizeY: expanded.gridSizeY,
+    terrainTiles: expanded.terrainTiles,
+    placedBuildings: expanded.placedBuildings,
+    roadOrientations: expanded.roadOrientations,
+    roadTypes: expanded.roadTypes,
+    nextExpandSide: getNextExpandSide(nextExpandSide),
+  };
 }
 
 export function placeCityBuildingWithAutoExpand(
@@ -204,12 +326,14 @@ export function placeCityBuildingWithAutoExpand(
   gridSizeY: number,
   terrainTiles: Record<string, TileDef['type']>,
   placedBuildings: PlacedBuilding[],
-  spec: { typeId: string; name: string; sizeX: number; sizeY: number; cost: number }
+  spec: { typeId: string; name: string; sizeX: number; sizeY: number; cost: number },
+  nextExpandSide: CityExpandSide = 'bottom'
 ): {
   gridSizeX: number;
   gridSizeY: number;
   terrainTiles: Record<string, TileDef['type']>;
   placedBuildings: PlacedBuilding[];
+  nextExpandSide: CityExpandSide;
 } {
   const existingSpot = findSpotAdjacentToRoad(
     spec.sizeX,
@@ -237,18 +361,23 @@ export function placeCityBuildingWithAutoExpand(
       gridSizeY,
       terrainTiles,
       placedBuildings: [...placedBuildings, newBldg],
+      nextExpandSide,
     };
   }
 
-  // Brak miejsca przy drodze -> automatyczne powiększenie terenu z drogą
-  const expanded = expandCityTerrainStrip(gridSizeX, gridSizeY, terrainTiles);
-  const placeY = expanded.roadRowY + 1;
+  const expanded = expandCityTerrainSide(
+    gridSizeX,
+    gridSizeY,
+    terrainTiles,
+    placedBuildings,
+    nextExpandSide
+  );
   const newBldg: PlacedBuilding = {
     id: `${spec.typeId}_auto_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     typeId: spec.typeId,
     name: spec.name,
-    x: 3,
-    y: placeY,
+    x: expanded.spawnHint.x,
+    y: expanded.spawnHint.y,
     sizeX: spec.sizeX,
     sizeY: spec.sizeY,
     rotation: 0,
@@ -259,6 +388,7 @@ export function placeCityBuildingWithAutoExpand(
     gridSizeX: expanded.gridSizeX,
     gridSizeY: expanded.gridSizeY,
     terrainTiles: expanded.terrainTiles,
-    placedBuildings: [...placedBuildings, newBldg],
+    placedBuildings: [...expanded.placedBuildings, newBldg],
+    nextExpandSide: getNextExpandSide(nextExpandSide),
   };
 }

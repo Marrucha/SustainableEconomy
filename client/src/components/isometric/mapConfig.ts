@@ -1,6 +1,6 @@
 import type { BuildingCatalogItem } from './types';
 
-export type MapType = 'city' | 'rural';
+export type MapType = 'city' | 'rural' | 'world';
 
 export interface MapGeometry {
   tileWidth: number;
@@ -48,6 +48,7 @@ export const RURAL_ALLOWED_BUILDINGS = new Set([
   'sugar_beet_farm',
   'tobacco_field',
   'cotton_plantation',
+  'horse_ranch',
   'road_dirt',
 ]);
 
@@ -74,6 +75,8 @@ export const CITY_ALLOWED_BUILDINGS = new Set([
   'factory',
   'sugar_refinery',
   'watchmaker',
+  'rolling_mill',
+  'newspaper_publisher',
   'tenement_workers',
   'tenement_middle',
   'tenement_elite',

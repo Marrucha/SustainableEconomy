@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { loadPersistedState, savePersistedState } from './gamePersistence';
 import type { TileDef, PlacedBuilding } from './types';
 import type { MapType, MapGeometry } from './mapConfig';
 import { CITY_GEOMETRY, RURAL_GEOMETRY } from './mapConfig';
@@ -8,7 +9,11 @@ import {
   createInitialRuralTerrain,
   INITIAL_RURAL_BUILDINGS,
 } from './initialWorld';
-import { ensureCitySpaceFor3x3, placeCityBuildingWithAutoExpand } from './cityAutoGrowth';
+import {
+  ensureCitySpaceFor3x3,
+  placeCityBuildingWithAutoExpand,
+  type CityExpandSide,
+} from './cityAutoGrowth';
 
 export interface WorldMapData {
   gridSizeX: number;
@@ -17,31 +22,56 @@ export interface WorldMapData {
   roadOrientations: Record<string, 0 | 90>;
   roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'>;
   placedBuildings: PlacedBuilding[];
+  nextExpandSide?: CityExpandSide;
 }
 
 export function useWorldMaps() {
   const [currentMap, setCurrentMap] = useState<MapType>('city');
-  const [cityPlayersCount, setCityPlayersCount] = useState<number>(1);
+  const [cityPlayersCount, setCityPlayersCount] = useState<number>(() =>
+    loadPersistedState('cityPlayersCount', 1)
+  );
 
-  // Stan mapy miejskiej (dynamiczny rozmiar siatki, powiększa się o +3 pola z drogą w razie braku miejsca)
-  const [cityData, setCityData] = useState<WorldMapData>({
-    gridSizeX: CITY_GEOMETRY.gridSizeX,
-    gridSizeY: CITY_GEOMETRY.gridSizeY,
-    terrainTiles: createInitialCityTerrain(),
-    roadOrientations: {},
-    roadTypes: {},
-    placedBuildings: INITIAL_CITY_BUILDINGS,
+  // Stan mapy miejskiej (dynamiczny rozmiar siatki, powiększa się z 3 stron przy braku miejsca 3x3)
+  const [cityData, setCityData] = useState<WorldMapData>(() =>
+    loadPersistedState('cityData', {
+      gridSizeX: CITY_GEOMETRY.gridSizeX,
+      gridSizeY: CITY_GEOMETRY.gridSizeY,
+      terrainTiles: createInitialCityTerrain(),
+      roadOrientations: {},
+      roadTypes: {},
+      placedBuildings: INITIAL_CITY_BUILDINGS,
+    })
+  );
+
+  // Stan mapy wiejskiej (z usunięciem przestarzałej mniejszej plantacji kauczuku 4x4 z dawnych zapisów)
+  const [ruralData, setRuralData] = useState<WorldMapData>(() => {
+    const loaded = loadPersistedState<WorldMapData>('ruralData', {
+      gridSizeX: RURAL_GEOMETRY.gridSizeX,
+      gridSizeY: RURAL_GEOMETRY.gridSizeY,
+      terrainTiles: createInitialRuralTerrain(),
+      roadOrientations: {},
+      roadTypes: {},
+      placedBuildings: INITIAL_RURAL_BUILDINGS,
+    });
+    return {
+      ...loaded,
+      placedBuildings: loaded.placedBuildings.filter(
+        (b) => !(b.typeId === 'rubber_plantation' && (b.sizeX < 6 || b.sizeY < 6))
+      ),
+    };
   });
 
-  // Stan mapy wiejskiej
-  const [ruralData, setRuralData] = useState<WorldMapData>({
-    gridSizeX: RURAL_GEOMETRY.gridSizeX,
-    gridSizeY: RURAL_GEOMETRY.gridSizeY,
-    terrainTiles: createInitialRuralTerrain(),
-    roadOrientations: {},
-    roadTypes: {},
-    placedBuildings: INITIAL_RURAL_BUILDINGS,
-  });
+  useEffect(() => {
+    savePersistedState('cityPlayersCount', cityPlayersCount);
+  }, [cityPlayersCount]);
+
+  useEffect(() => {
+    savePersistedState('cityData', cityData);
+  }, [cityData]);
+
+  useEffect(() => {
+    savePersistedState('ruralData', ruralData);
+  }, [ruralData]);
 
   const baseGeo = currentMap === 'rural' ? RURAL_GEOMETRY : CITY_GEOMETRY;
   const activeData: WorldMapData = currentMap === 'rural' ? ruralData : cityData;
@@ -62,13 +92,20 @@ export function useWorldMaps() {
           next.gridSizeX,
           next.gridSizeY,
           next.terrainTiles,
-          next.placedBuildings
+          next.placedBuildings,
+          next.nextExpandSide || 'bottom',
+          next.roadOrientations,
+          next.roadTypes
         );
         return {
           ...next,
           gridSizeX: ensured.gridSizeX,
           gridSizeY: ensured.gridSizeY,
           terrainTiles: ensured.terrainTiles,
+          placedBuildings: ensured.placedBuildings,
+          roadOrientations: ensured.roadOrientations,
+          roadTypes: ensured.roadTypes,
+          nextExpandSide: ensured.nextExpandSide,
         };
       });
     }
@@ -119,22 +156,35 @@ export function useWorldMaps() {
       let gy = prev.gridSizeY;
       let tiles = prev.terrainTiles;
       let buildings = prev.placedBuildings;
+      let nextSide: CityExpandSide = prev.nextExpandSide || 'bottom';
 
       for (const spec of specs) {
-        const res = placeCityBuildingWithAutoExpand(gx, gy, tiles, buildings, spec);
+        const res = placeCityBuildingWithAutoExpand(gx, gy, tiles, buildings, spec, nextSide);
         gx = res.gridSizeX;
         gy = res.gridSizeY;
         tiles = res.terrainTiles;
         buildings = res.placedBuildings;
+        nextSide = res.nextExpandSide;
       }
 
-      const ensured = ensureCitySpaceFor3x3(gx, gy, tiles, buildings);
+      const ensured = ensureCitySpaceFor3x3(
+        gx,
+        gy,
+        tiles,
+        buildings,
+        nextSide,
+        prev.roadOrientations,
+        prev.roadTypes
+      );
       return {
         ...prev,
         gridSizeX: ensured.gridSizeX,
         gridSizeY: ensured.gridSizeY,
         terrainTiles: ensured.terrainTiles,
-        placedBuildings: buildings,
+        placedBuildings: ensured.placedBuildings,
+        roadOrientations: ensured.roadOrientations,
+        roadTypes: ensured.roadTypes,
+        nextExpandSide: ensured.nextExpandSide,
       };
     });
   };

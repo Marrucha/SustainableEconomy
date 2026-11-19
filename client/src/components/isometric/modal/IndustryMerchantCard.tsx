@@ -343,11 +343,11 @@ export const IndustryMerchantCard: React.FC<IndustryMerchantCardProps> = ({
                         <div>
                           <p className="font-bold">
                             {supplier.mapType === 'rural' ? '🌾' : '🏭'}{' '}
+                            <span className="text-amber-200/90">
+                              {buildingsState[supplier.id]?.ownerName || supplier.playerName || 'JOHN BIG'}
+                            </span>{' '}
+                            • {supplier.cityName || 'Londyn'} •{' '}
                             {buildingsState[supplier.id]?.enterpriseName || supplier.name}
-                            <span className="font-normal text-amber-200/90">
-                              {' '}
-                              (Gracz: {buildingsState[supplier.id]?.ownerName || 'Gracz 1'})
-                            </span>
                           </p>
                           <p className="text-[10px] text-stone-400">
                             {supplier.mapType === 'rural' ? 'Wieś' : 'Miasto'} ({supplier.x}, {supplier.y}) •{' '}

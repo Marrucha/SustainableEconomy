@@ -2,6 +2,8 @@
 // LIVESTOCK FARM (HODOWLA BYDŁA I OWIEC) - ARCHITEKTURA I TYPY 1880 R.
 // ============================================================================
 
+import { loadGameParameters } from '../../admin/gameParameters';
+
 export type LivestockProfession =
   | 'vet'        // Weterynarz (Klasa M - niska szansa porażki 1-10%)
   | 'breeder'    // Hodowca (inseminacja 10-30% porażki, ciąża 9 msc, poród, wzrost 2 lata, ubój)
@@ -31,7 +33,7 @@ export const LIVESTOCK_PROFESSIONS_CONFIG: Record<
   breeder: {
     label: 'Doświadczony Hodowca Bydła',
     icon: '🤠',
-    desc: 'Opiekun stada: nadzoruje 9 msc ciąży, wzrost cielaka przez 2 lata, dokonuje uboju (inseminacja i poród z ryzykiem 10-30%).',
+    desc: 'Opiekun stada: nadzoruje ciążę oraz odchów młodych w zagrodzie (inseminacja i poród z ryzykiem 10-30%).',
     defaultWage: 2.6,
   },
   handler: {
@@ -43,7 +45,7 @@ export const LIVESTOCK_PROFESSIONS_CONFIG: Record<
   trader: {
     label: 'Kupiec / Handlarz Bydła',
     icon: '💰',
-    desc: 'Zajmuje się handlem żywcem oraz ekspedycją mięsa, mleka, skór, wełny i obornika na targ miejski.',
+    desc: 'Zajmuje się handlem żywymi zwierzętami oraz ekspedycją mleka, wełny i obornika na targ miejski.',
     defaultWage: 2.5,
   },
   agronomist: {
@@ -145,20 +147,42 @@ export const LIVESTOCK_PRODUCTS: Record<keyof LivestockStorageBinsData, Livestoc
   },
 };
 
+export interface HorseAnimal {
+  id: string;
+  name: string;
+  sex?: 'male' | 'female'; // 'male' = Ogier (♂), 'female' = Klacz (♀)
+  ageYears: number; // 0..14 (po ukończeniu 15 lat znika z gry)
+  group: 'breeding' | 'growth' | 'sale';
+  postGrowthTarget: 'sale' | 'breeding';
+}
+
 // Struktura Stada (Podział na grupy wiekowe i użytkowe)
 export interface LivestockHerdData {
-  milkingGroupCows: number;  // Grupa do dojenia (dorosłe krowy w cyklu mlecznym)
+  milkingGroupCows: number;  // Grupa do dojenia / produkcji mleka (bydło)
   growingGroupCalves: number;// Grupa do wzrostu (cielęta i jałówki dorastające 2 lata)
+  cattleForSale?: number;    // Bydło przeznaczone na sprzedaż
   sheepFlockCount: number;   // Stado owiec łączne
   adultSheepCount: number;   // Dorosłe maciorki dające wełnę 2x w roku
   growingLambsCount: number; // Rosnące jagnięta (okres odchowu 15 miesięcy)
+  sheepForSale?: number;     // Owce przeznaczone na sprzedaż
   // Konie robocze i kopalniane (Shire, Clydesdale, kuce dołowe Pit Ponies)
   horsesFlockCount?: number;  // Łączne stado koni
-  adultDraftHorses?: number;  // Dorosłe konie pociągowe / kopalniane
+  adultDraftHorses?: number;  // Dorosłe klacze / konie w rozrodzie
   growingFoalsCount?: number; // Dorastające źrebaki (odchów 36 miesięcy / 3 lata)
+  horsesForSale?: number;     // Konie przeznaczone na sprzedaż
+  horses?: HorseAnimal[];     // Indywidualna ewidencja koni (imię, wiek w latach, status)
 }
 
 export type LivestockSpecies = 'cattle' | 'sheep' | 'horses';
+
+import type { ContractType } from '../industryContracts';
+
+export interface LivestockSupplyContract {
+  supplierId: string;
+  monthlyQuantityKg: number;
+  contractType: ContractType;
+  monthsRemaining: number;
+}
 
 // Zapas ściółki i paszy niezbędny do hodowli zwierząt (ze słomy i zboża)
 export interface LivestockSuppliesData {
@@ -196,7 +220,26 @@ export interface LivestockCapitalismState {
   horseProgress?: number;
   horsePregnancyMonths?: number;  // 0..11 miesięcy
   foalAgeMonths?: number;         // 0..36 miesięcy (3 lata)
+  horseRecoveryMonthsRemaining?: number;  // Odczekanie po porodzie (klacz: 3 msc)
+  horseInseminationWaitMonths?: number;   // Odczekanie 1 msc po nieudanej próbie
+  cattleRecoveryMonthsRemaining?: number; // Odczekanie po porodzie (krowa: 3 msc)
+  sheepRecoveryMonthsRemaining?: number;  // Odczekanie po porodzie (owca: 2 msc)
   selectedHorseBranch?: LivestockChoiceBranch;
+  horseSalePrice?: number;        // Domyślna cena sprzedaży konia (£/szt.)
+  horsePricesByAge?: Record<number, number>; // Cennik koni wg wieku w latach (0..14)
+  cattleSalePrice?: number;       // Cena sprzedaży bydła (£/szt.)
+  sheepSalePrice?: number;        // Cena sprzedaży owcy (£/szt.)
+  manurePricePer100Kg?: number;   // Cena sprzedaży obornika (£ za 100 kg)
+  milkPricePer100L?: number;      // Cena sprzedaży mleka (£ za 100 L)
+  woolPricePer50Kg?: number;      // Cena sprzedaży wełny (£ za 50 kg)
+
+  // Zagroda i obornik w zagrodzie (rośnie codziennie, przy 100% przenoszony na hałdę)
+  penManureKg?: number;           // 0..200 kg w zagrodzie
+  penManureCapacityKg?: number;   // domyślnie 200 kg (= 100%)
+
+  // Zamówienia miesięczne i kontrakty terminowe u producentów
+  feedOrder?: LivestockSupplyContract;
+  strawOrder?: LivestockSupplyContract;
 
   // Stado i Magazyn
   herd: LivestockHerdData;
@@ -239,6 +282,14 @@ export function canWorkerHandleLivestockStage(
     return true; // Nadzór ogólny
   }
   return false;
+}
+
+// Skuteczność inseminacji / stanówki (% szansy powodzenia)
+export function getInseminationSuccessPercent(workerProfession?: LivestockProfession): number {
+  const params = loadGameParameters();
+  return workerProfession === 'vet'
+    ? params.inseminationSuccessVetPercent
+    : params.inseminationSuccessFarmerPercent;
 }
 
 // Obliczenie ryzyka niepowodzenia procedury

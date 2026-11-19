@@ -54,7 +54,10 @@ export const HopCycleSnake: React.FC<HopCycleSnakeProps> = ({
 
   // POSTĘP CYKLU: 360 dni w roku (12 msc * 30 dni)
   const currentDayInYear = (clockDate.month - 1) * 30 + clockDate.day;
-  const cycleProgressPercent = Math.min(100, Math.max(0, Math.round((currentDayInYear / 360) * 100)));
+  const cycleProgressPercent =
+    isReady && state.crew.length > 0
+      ? Math.min(100, Math.max(0, Math.round((currentDayInYear / 360) * 100)))
+      : 0;
 
   const selectedVar = HOP_VARIETIES[state.variety || 'golding'];
   const baseYield = selectedVar.baseConeYield;

@@ -1,52 +1,45 @@
-import React, { useState } from 'react';
-import type { BuildingState } from '../types';
-import type { FarmCapitalismState, FarmCycleStage } from './farmGridTypes';
-import { createDefaultFarmCapitalismState } from './farmGridTypes';
+import React, { useEffect, useRef, useState } from 'react';
+import type { BuildingState, PlacedBuilding } from '../types';
+import type { FarmCapitalismState } from './farmGridTypes';
+import { createDefaultFarmCapitalismState, getManureBinCapacityKg } from './farmGridTypes';
+import { getContractMeta } from './industryContracts';
 import { BusinessEnergySection } from './BusinessEnergySection';
 import { FarmCycleSnake } from './FarmCycleSnake';
 import { FarmCrewTab } from './FarmCrewTab';
 import { FarmStorageBins } from './FarmStorageBins';
 import type { UseGameClockReturn } from '../clock/useGameClock';
+import { resolveUniqueFarmName, type WorldSupplierBuilding } from './industrySupplyConfig';
 
 interface FarmSectionProps {
+  building?: PlacedBuilding;
   buildingState: BuildingState;
   businessTab: 'production' | 'energy';
   hasGreenRelief: boolean;
+  attachedFieldsCount?: number;
+  allWorldBuildings?: WorldSupplierBuilding[];
+  buildingsState?: Record<string, BuildingState>;
+  onSpendGold?: (amount: number) => void;
+  onUpdateAnyBuildingState?: (buildingId: string, newState: Partial<BuildingState>) => void;
+  onRenameBuilding?: (buildingId: string, newName: string) => void;
   clock?: UseGameClockReturn;
   onUpdateState: (updates: Partial<BuildingState>) => void;
 }
 
-const CYCLE_STAGES_FLOW: FarmCycleStage[] = [
-  'seed_intake',
-  'plowing',
-  'sowing',
-  'fertilizing',
-  'weeding',
-  'growing',
-  'harvesting',
-  'storing_selling',
-];
-
 export const FarmSection: React.FC<FarmSectionProps> = ({
+  building,
   buildingState,
   businessTab,
   hasGreenRelief,
+  attachedFieldsCount = 0,
+  allWorldBuildings = [],
+  buildingsState = {},
+  onSpendGold,
+  onUpdateAnyBuildingState,
+  onRenameBuilding,
   clock,
   onUpdateState,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'snake' | 'crew' | 'grain'>('snake');
-
-  if (businessTab === 'energy') {
-    return (
-      <BusinessEnergySection
-        businessTitle="Farma Zbożowa"
-        energySource={buildingState.businessEnergySource || 'drewno'}
-        energyScale={buildingState.businessEnergyScale || 'standard'}
-        hasGreenRelief={hasGreenRelief}
-        onUpdateState={onUpdateState}
-      />
-    );
-  }
 
   const rawCap = buildingState.farmCapitalism;
   const farmCap: FarmCapitalismState =
@@ -55,6 +48,18 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
       : createDefaultFarmCapitalismState();
 
   const handleUpdateFarmCap = (updates: Partial<FarmCapitalismState>) => {
+    if (updates.crew && building && onRenameBuilding) {
+      const hadFarmer = (farmCap.crew || []).some(
+        (w) => w.profession === 'farmer' || w.profession === 'all_rounder'
+      );
+      const firstFarmer = updates.crew.find(
+        (w) => w.profession === 'farmer' || w.profession === 'all_rounder'
+      );
+      if (!hadFarmer && firstFarmer) {
+        const uniqueName = resolveUniqueFarmName('Farma', firstFarmer.name, allWorldBuildings, building.id);
+        onRenameBuilding(building.id, uniqueName);
+      }
+    }
     const nextState: FarmCapitalismState = {
       ...farmCap,
       ...updates,
@@ -65,98 +70,115 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
     });
   };
 
-  const handleAdvanceCycle = () => {
-    const curIdx = CYCLE_STAGES_FLOW.indexOf(farmCap.currentStage);
-    let nextIdx = (curIdx + 1) % CYCLE_STAGES_FLOW.length;
-
-    // Pomiń nawożenie lub pielenie, jeśli wyłączone
-    if (CYCLE_STAGES_FLOW[nextIdx] === 'fertilizing' && !farmCap.enableFertilizing) {
-      nextIdx = (nextIdx + 1) % CYCLE_STAGES_FLOW.length;
+  // Miesięczne dostawy zakontraktowanego obornika z wybranej fermy zwierzęcej
+  const lastManureMonthRef = useRef<string>('');
+  useEffect(() => {
+    if (!clock || !farmCap.manureOrder) return;
+    const mKey = `${clock.date.year}-${clock.date.month}`;
+    if (!lastManureMonthRef.current) {
+      lastManureMonthRef.current = mKey;
+      return;
     }
-    if (CYCLE_STAGES_FLOW[nextIdx] === 'weeding' && !farmCap.enableWeeding) {
-      nextIdx = (nextIdx + 1) % CYCLE_STAGES_FLOW.length;
+    if (lastManureMonthRef.current === mKey) return;
+    lastManureMonthRef.current = mKey;
+
+    const order = farmCap.manureOrder;
+    const supplierState = buildingsState[order.supplierId]?.livestockState;
+    if (!supplierState) return;
+
+    const capKg = getManureBinCapacityKg(farmCap.manureLevel ?? 1);
+    const spaceLeft = Math.max(0, capKg - (farmCap.manureStockKg || 0));
+    const avail = supplierState.storage?.manureKg ?? 0;
+    const delivered = Math.min(order.monthlyQuantityKg, avail, spaceLeft);
+    const meta = getContractMeta(order.contractType);
+    const pricePer100 = farmCap.manurePricePer100Kg ?? 12;
+    const cost = delivered > 0 ? Number(((delivered / 100) * pricePer100 * (1 - meta.discountPercent / 100)).toFixed(2)) : 0;
+
+    if (delivered > 0) {
+      if (cost > 0) onSpendGold?.(cost);
+      onUpdateAnyBuildingState?.(order.supplierId, {
+        livestockState: {
+          ...supplierState,
+          storage: {
+            ...supplierState.storage,
+            manureKg: Math.max(0, avail - delivered),
+          },
+          lastCycleRevenue: Number(((supplierState.lastCycleRevenue || 0) + cost).toFixed(2)),
+        },
+      });
     }
 
-    const nextStage = CYCLE_STAGES_FLOW[nextIdx];
-    const isCompletedCycle = nextIdx === 0;
+    const nextOrder =
+      meta.durationMonths > 0
+        ? order.monthsRemaining - 1 > 0
+          ? { ...order, monthsRemaining: order.monthsRemaining - 1 }
+          : undefined
+        : order;
 
-    // Obliczenia plonu i bilansu
-    const baseYield = 650;
-    const bonusFert = farmCap.enableFertilizing ? 250 : 0;
-    const bonusWeed = farmCap.enableWeeding ? 180 : 0;
-    const agroMul = farmCap.agronomist.hired ? 1 + farmCap.agronomist.yieldBonusPercent / 100 : 1.0;
-    const totalYield = Math.round((baseYield + bonusFert + bonusWeed) * agroMul);
+    if (delivered > 0 || nextOrder !== order) {
+      handleUpdateFarmCap({
+        manureStockKg: (farmCap.manureStockKg || 0) + delivered,
+        manureOrder: nextOrder,
+        lastCycleCost: Number(((farmCap.lastCycleCost || 0) + cost).toFixed(2)),
+      });
+    }
+  }, [clock?.date.year, clock?.date.month]);
 
-    const seedCost = farmCap.seedSource === 'market' ? 22 : 0;
-    const fertCost = farmCap.enableFertilizing ? 14 : 0;
-    const sprayCost = farmCap.enableWeeding ? 9 : 0;
-    const laborCost = farmCap.crew.reduce((acc, w) => acc + w.wageDaily, 0);
-    const agroCost = farmCap.agronomist.hired ? farmCap.agronomist.wageDaily : 0;
-    const cost = seedCost + fertCost + sprayCost + laborCost + agroCost;
-    const rev = farmCap.wheatDestination === 'sell_market' ? Math.round((totalYield / 1000) * 110) : 0;
-
-    const activeCrop = farmCap.cropType || 'pszenica';
-    const updatedGrainStock = isCompletedCycle && farmCap.wheatDestination === 'store_silo'
-      ? {
-          ...(farmCap.grainStockKg || { pszenica: 450, zyto: 120, owies: 80, jeczmien: 0 }),
-          [activeCrop]: ((farmCap.grainStockKg?.[activeCrop]) ?? 0) + totalYield,
-        }
-      : farmCap.grainStockKg;
-
-    handleUpdateFarmCap({
-      currentStage: nextStage,
-      stageProgress: Math.min(100, Math.round(((nextIdx + 1) / CYCLE_STAGES_FLOW.length) * 100)),
-      totalCyclesCompleted: isCompletedCycle ? farmCap.totalCyclesCompleted + 1 : farmCap.totalCyclesCompleted,
-      grainStockKg: updatedGrainStock,
-      strawStockKg: isCompletedCycle ? (farmCap.strawStockKg || 0) + Math.round(totalYield * 0.7) : (farmCap.strawStockKg || 600),
-      wheatStockKg: isCompletedCycle
-        ? farmCap.wheatDestination === 'store_silo'
-          ? farmCap.wheatStockKg + totalYield
-          : farmCap.wheatStockKg
-        : farmCap.wheatStockKg,
-      lastCycleYieldKg: isCompletedCycle ? totalYield : farmCap.lastCycleYieldKg,
-      lastCycleRevenue: isCompletedCycle ? rev : farmCap.lastCycleRevenue,
-      lastCycleCost: isCompletedCycle ? cost : farmCap.lastCycleCost,
-    });
-  };
+  if (businessTab === 'energy') {
+    return (
+      <BusinessEnergySection
+        businessTitle="Farma Zbożowa"
+        energySource="konie"
+        energyScale={buildingState.businessEnergyScale || 'standard'}
+        hasGreenRelief={hasGreenRelief}
+        allowedSources={['konie']}
+        buildingState={buildingState}
+        allWorldBuildings={allWorldBuildings}
+        buildingsState={buildingsState}
+        onSpendGold={onSpendGold}
+        onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+        onUpdateState={onUpdateState}
+      />
+    );
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-1.5">
       {/* GŁÓWNY PRZEŁĄCZNIK ZAKŁADEK ROLNICTWA */}
-      <div className="flex bg-stone-950/80 p-1 rounded-2xl border border-stone-800 text-xs gap-1.5 shadow-inner">
+      <div className="flex bg-stone-950/80 p-0.5 rounded-xl border border-stone-800 text-xs gap-1 shadow-inner">
         <button
           onClick={() => setActiveSubTab('snake')}
-          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`flex-1 py-1 px-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
             activeSubTab === 'snake'
-              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-sm'
               : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
           }`}
         >
-          <span className="text-base">🐍</span>
+          <span className="text-sm">🐍</span>
           <span>Wąż Cyklu Produkcji (8 Etapów)</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab('crew')}
-          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`flex-1 py-1 px-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
             activeSubTab === 'crew'
-              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-sm'
               : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
           }`}
         >
-          <span className="text-base">👥</span>
+          <span className="text-sm">👥</span>
           <span>Załoga i Agronom (System 2w1)</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab('grain')}
-          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`flex-1 py-1 px-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
             activeSubTab === 'grain'
-              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-sm'
               : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
           }`}
         >
-          <span className="text-base">🌾</span>
+          <span className="text-sm">🌾</span>
           <span>Spichlerz i Magazyn (Przegródki)</span>
         </button>
       </div>
@@ -165,10 +187,10 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
       {activeSubTab === 'snake' && (
         <FarmCycleSnake
           state={farmCap}
+          attachedFieldsCount={attachedFieldsCount}
+          ownedHorsesCount={buildingState.ownedHorses?.length ?? 0}
           clock={clock}
           onUpdate={handleUpdateFarmCap}
-          onAdvanceCycle={handleAdvanceCycle}
-          onGoToCrewTab={() => setActiveSubTab('crew')}
         />
       )}
 
@@ -183,7 +205,13 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
       {/* 3. WIDOK: SPICHLERZ, GRAFICZNE PRZEGRÓDKI I ZAPASY (1880 r.) */}
       {activeSubTab === 'grain' && (
         <FarmStorageBins
+          currentBuildingId={building?.id}
           state={farmCap}
+          attachedFieldsCount={attachedFieldsCount}
+          allWorldBuildings={allWorldBuildings}
+          buildingsState={buildingsState}
+          onSpendGold={onSpendGold}
+          onUpdateAnyBuildingState={onUpdateAnyBuildingState}
           onUpdateState={handleUpdateFarmCap}
         />
       )}

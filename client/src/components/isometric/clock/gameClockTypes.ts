@@ -32,9 +32,9 @@ export const AGRICULTURAL_SCHEDULE: {
   seasonName: string;
 }[] = [
   { stage: 'seed_intake', months: [1, 2], seasonName: 'Zima • Zaopatrzenie w nasiona' },
-  { stage: 'plowing', months: [3], seasonName: 'Wczesna Wiosna • Orka i bruzdowanie' },
-  { stage: 'sowing', months: [4], seasonName: 'Wiosna • Zasiew ziarna' },
-  { stage: 'fertilizing', months: [5], seasonName: 'Późna Wiosna • Nawożenie 1880' },
+  { stage: 'fertilizing', months: [3], seasonName: 'Przedwiośnie • Nawożenie naturalne 1880' },
+  { stage: 'plowing', months: [4], seasonName: 'Wczesna Wiosna • Orka i wymieszanie nawozu' },
+  { stage: 'sowing', months: [5], seasonName: 'Wiosna • Zasiew ziarna' },
   { stage: 'weeding', months: [6], seasonName: 'Wczesne Lato • Pielenie i oprysk' },
   { stage: 'growing', months: [7], seasonName: 'Pełnia Lata • Wzrost i dojrzewanie' },
   { stage: 'harvesting', months: [8], seasonName: 'Późne Lato • Żniwa i omłot' },

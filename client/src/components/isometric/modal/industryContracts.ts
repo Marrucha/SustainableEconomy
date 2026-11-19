@@ -12,7 +12,7 @@ export interface ContractOptionMeta {
 }
 
 export const CONTRACT_OPTIONS: ContractOptionMeta[] = [
-  { id: 'pay_as_you_go', label: 'PAY AS YOU GO', durationMonths: 0, discountPercent: 0, badge: 'Cena rynkowa (0%)' },
+  { id: 'pay_as_you_go', label: 'PAYG', durationMonths: 0, discountPercent: 0, badge: 'Cena rynkowa (0%)' },
   { id: 'contract_3y', label: 'Kontrakt 3-letni', durationMonths: 36, discountPercent: 10, badge: '-10% zniżki' },
   { id: 'contract_5y', label: 'Kontrakt 5-letni', durationMonths: 60, discountPercent: 15, badge: '-15% zniżki' },
   { id: 'contract_10y', label: 'Kontrakt 10-letni', durationMonths: 120, discountPercent: 20, badge: '-20% zniżki' },
@@ -50,6 +50,22 @@ export function computeContractBreakPenalty(
   const discountedUnitPrice = supplierUnitPrice * (1 - meta.discountPercent / 100);
   const remainingValue = remainingMonths * unitsPerMonth * discountedUnitPrice;
   return Math.round(remainingValue * 0.2);
+}
+
+/**
+ * Kara (20% wartości pozostałej) za zerwanie lub zmniejszenie kontraktu terminowego (pasza, ściółka, obornik).
+ * Dla PAY AS YOU GO kara zawsze wynosi 0.
+ */
+export function computeSupplyContractPenalty(
+  monthlyQuantityKg: number,
+  pricePer100Kg: number,
+  contractType: ContractType,
+  monthsRemaining: number
+): number {
+  const meta = getContractMeta(contractType);
+  if (meta.durationMonths === 0 || monthsRemaining <= 0) return 0;
+  const discountedMonthly = (monthlyQuantityKg / 100) * pricePer100Kg * (1 - meta.discountPercent / 100);
+  return Math.max(1, Math.round(monthsRemaining * discountedMonthly * 0.2));
 }
 
 export function computeMonthlyProductionUnits(

@@ -53,6 +53,7 @@ export interface FarmOverlayParams {
   tileH: number;
   drawY: number;
   farmState?: FarmCapitalismState;
+  ownedHorsesCount?: number;
   clockDate?: GameDate;
   mouseWorldPos?: { x: number; y: number } | null;
 }
@@ -66,7 +67,8 @@ export function renderFarmProgressOverlay(p: FarmOverlayParams) {
   const { ctx, bldg, tileW, drawY, farmState, clockDate } = p;
 
   const farmCap = farmState || createDefaultFarmCapitalismState();
-  const readyCheck = checkIsProductionReady(farmCap);
+  const ownedHorses = p.ownedHorsesCount ?? 0;
+  const readyCheck = checkIsProductionReady(farmCap, p.ownedHorsesCount);
   const isReady = readyCheck.isReady;
 
   const date: GameDate = clockDate || { day: 15, month: 4, year: 1880 };
@@ -146,6 +148,25 @@ export function renderFarmProgressOverlay(p: FarmOverlayParams) {
   ctx.lineWidth = 1.4;
   ctx.stroke();
 
+  // 4b. Pop-up nad farmą o braku obornika (zamiast globalnego powiadomienia na ekranie)
+  if (farmState?.manureShortageWarning) {
+    const warnW = 148;
+    const warnH = 22;
+    const warnX = centerX - warnW / 2;
+    const warnY = pillY - warnH - 6;
+    drawRoundRect(ctx, warnX, warnY, warnW, warnH, 6);
+    ctx.fillStyle = 'rgba(120, 53, 15, 0.95)';
+    ctx.fill();
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 10px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillText('⚠️ Brak obornika (min. 50%)', centerX, warnY + warnH / 2);
+  }
+
   // ==========================================================================
   // LEWA SEKCJA: PASEK CYKLU ZBOŻOWEGO
   // ==========================================================================
@@ -169,7 +190,7 @@ export function renderFarmProgressOverlay(p: FarmOverlayParams) {
   } else {
     ctx.font = 'bold 10px system-ui, sans-serif';
     ctx.fillStyle = '#f87171';
-    ctx.fillText('⛔ Brak', leftX + barsW, pillY + 8);
+    ctx.fillText(ownedHorses < 1 ? '⛔ Brak koni' : '⛔ Brak', leftX + barsW, pillY + 8);
   }
 
   // Tor postępu

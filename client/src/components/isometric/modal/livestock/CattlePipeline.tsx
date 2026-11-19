@@ -4,8 +4,13 @@ import type {
   LivestockStage,
   LivestockChoiceBranch,
   LivestockWorker,
+  LivestockProfession,
 } from './livestockTypes';
-import { calculateFailureRisk } from './livestockTypes';
+import { calculateFailureRisk, getInseminationSuccessPercent, LIVESTOCK_PROFESSIONS_CONFIG } from './livestockTypes';
+import { generateRandomEnglishName } from '../englishNames';
+import { FarmPipelineArrow } from '../FarmPipelineArrow';
+import { LivestockStageCard } from './LivestockStageCard';
+import { LivestockSaleBranchCard } from './LivestockSaleBranchCard';
 
 interface CattlePipelineProps {
   state: LivestockCapitalismState;
@@ -42,6 +47,26 @@ export const CattlePipeline: React.FC<CattlePipelineProps> = ({
     });
   };
 
+  const handleHireAndAssign = (stage: LivestockStage, profession: LivestockProfession) => {
+    const cfg = LIVESTOCK_PROFESSIONS_CONFIG[profession];
+    const newId = `livestock_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const newWorker: LivestockWorker = {
+      id: newId,
+      name: generateRandomEnglishName(crew.map((w) => w.name)),
+      profession,
+      wageDaily: cfg.defaultWage,
+      avatar: cfg.icon,
+      title: cfg.label,
+    };
+    onUpdateState({
+      crew: [...crew, newWorker],
+      stageAssignments: {
+        ...assignments,
+        [stage]: newId,
+      },
+    });
+  };
+
   const handleSelectBranch = (branch: LivestockChoiceBranch) => {
     onUpdateState({ selectedBranch: branch });
     notify(`Wybrano ścieżkę: ${branch === 'sale' ? 'Sprzedaż żywca' : branch === 'slaughter' ? 'Ubój na mięso i skóry' : 'Stado Mleczne & Nawóz'}`);
@@ -51,21 +76,26 @@ export const CattlePipeline: React.FC<CattlePipelineProps> = ({
     const cur = state.currentStage;
 
     if (cur === 'insemination') {
+      const recoveryRem = state.cattleRecoveryMonthsRemaining ?? 0;
+      if (recoveryRem > 0) {
+        notify(`⏳ Krowa odpoczywa po porodzie (pozostało ${recoveryRem} msc z 3 msc regeneracji).`);
+        return;
+      }
       if ((state.herd.milkingGroupCows || 0) <= 0) {
         notify('⛔ Rozmnażanie stada jest niemożliwe! Rozród możliwy jest wyłącznie na populacji mlecznej (brak krów matek).');
         return;
       }
 
       const worker = getWorkerForStage('insemination');
-      const risk = calculateFailureRisk(worker?.profession);
-      const isFailure = Math.random() * 100 < risk.avg;
+      const successPercent = getInseminationSuccessPercent(worker?.profession);
+      const isFailure = Math.random() * 100 >= successPercent;
 
       if (isFailure) {
         onUpdateState({
           totalProceduresFailed: (state.totalProceduresFailed || 0) + 1,
           stageProgress: 10,
         });
-        notify(`⚠️ Inseminacja nie powiodła się (${risk.label}). Konieczne powtórzenie zabiegu!`);
+        notify(`⚠️ Inseminacja nie powiodła się (skuteczność: ${successPercent}%). Konieczne powtórzenie zabiegu!`);
         return;
       }
 
@@ -124,6 +154,7 @@ export const CattlePipeline: React.FC<CattlePipelineProps> = ({
       onUpdateState({
         currentStage: 'calf_growth_2y',
         calfAgeMonths: 1,
+        cattleRecoveryMonthsRemaining: 3,
         totalCalvesBorn: (state.totalCalvesBorn || 0) + 1,
         herd: {
           ...state.herd,
@@ -159,7 +190,12 @@ export const CattlePipeline: React.FC<CattlePipelineProps> = ({
       const branch = state.selectedBranch || 'milking';
 
       if (branch === 'sale') {
-        const saleRev = 45;
+        const salesWorker = crew.find((w) => w.profession === 'trader' || w.profession === 'breeder');
+        if (!salesWorker) {
+          notify('⚠️ Brak handlarza lub hodowcy do ustalenia ceny i sprzedaży bydła!');
+          return;
+        }
+        const saleRev = state.cattleSalePrice ?? 45;
         onUpdateState({
           currentStage: 'insemination',
           pregnancyMonthsPassed: 0,
@@ -171,7 +207,7 @@ export const CattlePipeline: React.FC<CattlePipelineProps> = ({
           },
           lastCycleRevenue: (state.lastCycleRevenue || 0) + saleRev,
         });
-        notify(`💰 Handlarz sprzedał dorosłe bydło na rynku miejskim za £${saleRev}! Cykl rozpoczyna się od nowa.`);
+        notify(`💰 ${salesWorker.name} sprzedał dorosłe bydło na rynku miejskim za £${saleRev}! Cykl rozpoczyna się od nowa.`);
         return;
       }
 
@@ -238,27 +274,25 @@ export const CattlePipeline: React.FC<CattlePipelineProps> = ({
   return (
     <div className="space-y-5">
       {/* NAGŁÓWEK CYKLU I INTERAKCJA */}
-      <div className="bg-gradient-to-r from-stone-900 via-amber-950/40 to-stone-900 border border-amber-800/40 rounded-2xl p-4 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-bold text-amber-200 tracking-wide flex items-center gap-2">
-              <span>🐄</span> Cykl Rozrodu i Produkcji Bydła (Krowy 1880 r.)
+      <div className="bg-stone-950/95 border border-stone-800 rounded-3xl p-4 space-y-4 shadow-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🐄</span>
+            <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+              Rurociąg Produkcji Bydła (4 Etapy)
             </h3>
-            <p className="text-xs text-amber-100/70 mt-1 leading-[2.5]">
-              Ciąża trwa <strong>9 miesięcy</strong> (dojenie przez pierwsze 6 msc), wzrost cielaka <strong>2 lata</strong>, nawóz tylko z dojenia.
-            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onGoToCrewTab}
-              className="py-2.5 px-4 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-200 border border-stone-700 text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5 leading-[2.5]"
+              className="py-1.5 px-3.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-200 border border-stone-700 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
             >
               <span>👥</span> Kadra Fermy
             </button>
             <button
               onClick={handleAdvanceStep}
-              className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-bold text-xs cursor-pointer shadow-lg transition-all flex items-center justify-center gap-2 leading-[2.5]"
+              className="py-1.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-bold text-xs cursor-pointer shadow-lg transition-all flex items-center gap-1.5"
             >
               <span>▶️</span> Rozwiń Cykl Bydła
             </button>
@@ -266,208 +300,130 @@ export const CattlePipeline: React.FC<CattlePipelineProps> = ({
         </div>
 
         {feedback && (
-          <div className="mt-3 bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs px-3.5 py-2.5 rounded-xl font-medium animate-fadeIn">
+          <div className="bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs px-3.5 py-2 rounded-xl font-medium">
             {feedback}
           </div>
         )}
-      </div>
 
-      {/* 4 ETAPY BAZOWE BYDŁA */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* KROK 1: INSEMINACJA */}
-        <div className={`p-4 rounded-2xl border flex flex-col justify-between transition-all ${state.currentStage === 'insemination' ? 'bg-amber-950/30 border-amber-500 ring-1 ring-amber-400/40' : 'bg-stone-900/70 border-stone-800'}`}>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-mono font-bold text-amber-400">Krok 1</span>
-              <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-amber-500/20 text-amber-300">
-                {insemRisk.avg}% Ryzyka
-              </span>
-            </div>
-            <h4 className="text-xs font-bold text-amber-100">Inseminacja / Krycie</h4>
-            <p className="text-[11px] text-stone-400 leading-[2.5] my-2">
-              Rozmnażanie stada jest możliwe wyłącznie na populacji mlecznej (<strong>{state.herd.milkingGroupCows} krów matek</strong>, max 50% pogłowia). Weterynarz (1-10%) lub Hodowca (10-30%).
-            </p>
+        {/* 4 ETAPY BAZOWE BYDŁA */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_32px_1fr_32px_1fr_32px_1fr] items-stretch gap-2">
+          <LivestockStageCard
+            stepNum={1}
+            icon="🧬"
+            title="Inseminacja"
+            tooltipDesc={`Rozmnażanie na populacji mlecznej (${state.herd.milkingGroupCows} krów matek, max 50% pogłowia). Weterynarz: 1-10% ryzyka, Hodowca: 10-30%.`}
+            requiredProfessionLabel="Weterynarz / Hodowca"
+            badgeText={`${insemRisk.avg}% Ryz.`}
+            isCurrent={state.currentStage === 'insemination'}
+            assignedWorker={insemWorker || null}
+            eligibleWorkers={crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder')}
+            selectPlaceholder="⚠️ [Wybierz kadrę]"
+            hireButtonLabel="➕ Zatrudnij hodowcę"
+            secondaryHireButtonLabel="🩺 Zatrudnij weterynarza"
+            onAssign={(id) => handleAssign('insemination', id)}
+            onHireAndAssign={() => handleHireAndAssign('insemination', 'breeder')}
+            onSecondaryHireAndAssign={() => handleHireAndAssign('insemination', 'vet')}
+          />
+
+          <div className="hidden md:flex items-center">
+            <FarmPipelineArrow direction="right" status={insemWorker ? 'ready' : 'blocked'} />
           </div>
 
-          <div className="pt-2 border-t border-stone-800/80 space-y-1.5">
-            <label className="text-[10px] text-stone-400 block font-mono">Kto wykonuje:</label>
-            <select
-              value={assignments.insemination || ''}
-              onChange={(e) => handleAssign('insemination', e.target.value)}
-              className="w-full bg-stone-950 border border-stone-700 text-xs text-stone-200 p-1.5 rounded-lg cursor-pointer leading-[2.5]"
-            >
-              <option value="">Wybierz kadrę...</option>
-              {crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder').map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.avatar} {w.name} ({w.profession === 'vet' ? 'Weterynarz 1-10%' : 'Hodowca 10-30%'})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+          <LivestockStageCard
+            stepNum={2}
+            icon="🐄"
+            title="Ciąża (9 msc)"
+            tooltipDesc="Hodowca dba o dietę przez 9 miesięcy. Mleko pozyskiwane jest przez pierwsze 6 miesięcy."
+            requiredProfessionLabel="Hodowca"
+            badgeText="9 Msc"
+            badgeVariant="sky"
+            statusLine={`Ciąża: ${state.pregnancyMonthsPassed}/9 msc • Laktacja: ${state.lactationMonthsPassed}/6 msc`}
+            isCurrent={state.currentStage === 'gestation_9m'}
+            assignedWorker={getWorkerForStage('gestation_9m') || null}
+            eligibleWorkers={crew.filter((w) => w.profession === 'breeder')}
+            selectPlaceholder="⚠️ [Wybierz hodowcę]"
+            hireButtonLabel="➕ Zatrudnij hodowcę"
+            onAssign={(id) => handleAssign('gestation_9m', id)}
+            onHireAndAssign={() => handleHireAndAssign('gestation_9m', 'breeder')}
+          />
 
-        {/* KROK 2: WZROST PŁODU 9 MIESIĘCY */}
-        <div className={`p-4 rounded-2xl border flex flex-col justify-between transition-all ${state.currentStage === 'gestation_9m' ? 'bg-amber-950/30 border-amber-500 ring-1 ring-amber-400/40' : 'bg-stone-900/70 border-stone-800'}`}>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-mono font-bold text-amber-400">Krok 2</span>
-              <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-sky-500/20 text-sky-300">
-                9 Miesięcy
-              </span>
-            </div>
-            <h4 className="text-xs font-bold text-amber-100">Wzrost Płodu (Ciąża)</h4>
-            <p className="text-[11px] text-stone-400 leading-[2.5] my-2">
-              Hodowca dba o dietę. <strong>Mleko pozyskiwane przez pierwsze 6 msc!</strong>
-            </p>
-            <div className="bg-stone-950/80 p-2 rounded-xl text-[10px] font-mono text-stone-300 mb-2">
-              Stan: {state.pregnancyMonthsPassed}/9 msc ciąży (laktacja: {state.lactationMonthsPassed}/6 msc)
-            </div>
+          <div className="hidden md:flex items-center">
+            <FarmPipelineArrow direction="right" status={getWorkerForStage('gestation_9m') ? 'ready' : 'blocked'} />
           </div>
 
-          <div className="pt-2 border-t border-stone-800/80 space-y-1.5">
-            <label className="text-[10px] text-stone-400 block font-mono">Opiekun (Hodowca):</label>
-            <select
-              value={assignments.gestation_9m || ''}
-              onChange={(e) => handleAssign('gestation_9m', e.target.value)}
-              className="w-full bg-stone-950 border border-stone-700 text-xs text-stone-200 p-1.5 rounded-lg cursor-pointer leading-[2.5]"
-            >
-              <option value="">Wybierz hodowcę...</option>
-              {crew.filter((w) => w.profession === 'breeder').map((w) => (
-                <option key={w.id} value={w.id}>{w.avatar} {w.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+          <LivestockStageCard
+            stepNum={3}
+            icon="🍼"
+            title="Poród"
+            tooltipDesc="Odbiór porodu przez Weterynarza (1-10% ryzyka) lub Hodowcę (10-30% ryzyka)."
+            requiredProfessionLabel="Weterynarz / Hodowca"
+            badgeText={`${birthRisk.avg}% Ryz.`}
+            isCurrent={state.currentStage === 'birth'}
+            assignedWorker={birthWorker || null}
+            eligibleWorkers={crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder')}
+            selectPlaceholder="⚠️ [Wybierz kadrę]"
+            hireButtonLabel="➕ Zatrudnij hodowcę"
+            secondaryHireButtonLabel="🩺 Zatrudnij weterynarza"
+            onAssign={(id) => handleAssign('birth', id)}
+            onHireAndAssign={() => handleHireAndAssign('birth', 'breeder')}
+            onSecondaryHireAndAssign={() => handleHireAndAssign('birth', 'vet')}
+          />
 
-        {/* KROK 3: PORÓD */}
-        <div className={`p-4 rounded-2xl border flex flex-col justify-between transition-all ${state.currentStage === 'birth' ? 'bg-amber-950/30 border-amber-500 ring-1 ring-amber-400/40' : 'bg-stone-900/70 border-stone-800'}`}>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-mono font-bold text-amber-400">Krok 3</span>
-              <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-amber-500/20 text-amber-300">
-                {birthRisk.avg}% Ryzyka
-              </span>
-            </div>
-            <h4 className="text-xs font-bold text-amber-100">Poród / Ocielenie</h4>
-            <p className="text-[11px] text-stone-400 leading-[2.5] my-2">
-              Odbiór przez Weterynarza (1-10% porażki) lub Hodowcę (10-30% porażki).
-            </p>
+          <div className="hidden md:flex items-center">
+            <FarmPipelineArrow direction="right" status={birthWorker ? 'ready' : 'blocked'} />
           </div>
 
-          <div className="pt-2 border-t border-stone-800/80 space-y-1.5">
-            <label className="text-[10px] text-stone-400 block font-mono">Kto odbiera poród:</label>
-            <select
-              value={assignments.birth || ''}
-              onChange={(e) => handleAssign('birth', e.target.value)}
-              className="w-full bg-stone-950 border border-stone-700 text-xs text-stone-200 p-1.5 rounded-lg cursor-pointer leading-[2.5]"
-            >
-              <option value="">Wybierz kadrę...</option>
-              {crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder').map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.avatar} {w.name} ({w.profession === 'vet' ? 'Weterynarz' : 'Hodowca'})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* KROK 4: WZROST CIELAKA 2 LATA */}
-        <div className={`p-4 rounded-2xl border flex flex-col justify-between transition-all ${state.currentStage === 'calf_growth_2y' ? 'bg-amber-950/30 border-amber-500 ring-1 ring-amber-400/40' : 'bg-stone-900/70 border-stone-800'}`}>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-mono font-bold text-amber-400">Krok 4</span>
-              <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-emerald-500/20 text-emerald-300">
-                2 Lata
-              </span>
-            </div>
-            <h4 className="text-xs font-bold text-amber-100">Wzrost Cielaka (Opas)</h4>
-            <p className="text-[11px] text-stone-400 leading-[2.5] my-2">
-              Hodowca prowadzi cielę przez 2 lata aż do pełnej dojrzałości.
-            </p>
-            <div className="bg-stone-950/80 p-2 rounded-xl text-[10px] font-mono text-stone-300 mb-2">
-              Wiek: {state.calfAgeMonths}/24 miesięcy ({(state.calfAgeMonths / 12).toFixed(1)} roku)
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-stone-800/80 space-y-1.5">
-            <label className="text-[10px] text-stone-400 block font-mono">Prowadzący hodowca:</label>
-            <select
-              value={assignments.calf_growth_2y || ''}
-              onChange={(e) => handleAssign('calf_growth_2y', e.target.value)}
-              className="w-full bg-stone-950 border border-stone-700 text-xs text-stone-200 p-1.5 rounded-lg cursor-pointer leading-[2.5]"
-            >
-              <option value="">Wybierz hodowcę...</option>
-              {crew.filter((w) => w.profession === 'breeder').map((w) => (
-                <option key={w.id} value={w.id}>{w.avatar} {w.name}</option>
-              ))}
-            </select>
-          </div>
+          <LivestockStageCard
+            stepNum={4}
+            icon="🐂"
+            title="Opas (2 lata)"
+            tooltipDesc="Hodowca prowadzi cielę przez 24 miesiące aż do osiągnięcia pełnej dojrzałości."
+            requiredProfessionLabel="Hodowca"
+            badgeText="2 Lata"
+            badgeVariant="emerald"
+            statusLine={`Wiek: ${state.calfAgeMonths}/24 msc (${(state.calfAgeMonths / 12).toFixed(1)} r.)`}
+            isCurrent={state.currentStage === 'calf_growth_2y'}
+            assignedWorker={getWorkerForStage('calf_growth_2y') || null}
+            eligibleWorkers={crew.filter((w) => w.profession === 'breeder')}
+            selectPlaceholder="⚠️ [Wybierz hodowcę]"
+            hireButtonLabel="➕ Zatrudnij hodowcę"
+            onAssign={(id) => handleAssign('calf_growth_2y', id)}
+            onHireAndAssign={() => handleHireAndAssign('calf_growth_2y', 'breeder')}
+          />
         </div>
       </div>
 
       {/* ROZGAŁĘZIENIE NA 3 ŚCIEŻKI */}
-      <div className="bg-stone-950/90 border border-stone-800 rounded-2xl p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-stone-800 pb-2">
-          <div>
-            <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
-              <span>🔀</span> Rozgałęzienie po 2 Latach Wzrostu Cielaka (3 Ścieżki)
-            </h4>
-            <p className="text-[11px] text-stone-400 leading-[2.5]">
-              Wybierz przeznaczenie dorosłego bydła: sprzedaż żywca, ubój czy stado mleczne.
-            </p>
-          </div>
+      <div className="bg-stone-950/90 border border-stone-800 rounded-2xl p-3.5 space-y-2.5">
+        <div className="flex items-center justify-between border-b border-stone-800 pb-2">
+          <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🔀</span> Przeznaczenie dorosłego bydła (po 2 latach)
+          </h4>
           <span className="text-[10px] font-mono text-stone-400">
-            Aktywny wybór: <strong className="text-amber-300">{state.selectedBranch}</strong>
+            Wybrano: <strong className="text-amber-300">{state.selectedBranch}</strong>
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <button
-            onClick={() => handleSelectBranch('sale')}
-            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${state.selectedBranch === 'sale' ? 'bg-amber-500/20 border-amber-400 text-amber-100 shadow-md ring-1 ring-amber-400/30' : 'bg-stone-900/60 border-stone-800 hover:bg-stone-800/50 text-stone-300'}`}
-          >
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">💰</span>
-                <span className="font-bold text-xs text-amber-200">1. Sprzedaż Żywca</span>
-              </div>
-              <p className="text-[11px] text-stone-400 leading-[2.5]">
-                Kupiec/Handlarz sprzedaje dorosłe bydło na targu miejskim (£45 za sztukę).
-              </p>
-            </div>
-            <span className="text-[10px] font-mono text-amber-400 font-bold mt-2">Przychód gotówkowy: £45 / szt.</span>
-          </button>
-
-          <button
-            onClick={() => handleSelectBranch('slaughter')}
-            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${state.selectedBranch === 'slaughter' ? 'bg-amber-500/20 border-amber-400 text-amber-100 shadow-md ring-1 ring-amber-400/30' : 'bg-stone-900/60 border-stone-800 hover:bg-stone-800/50 text-stone-300'}`}
-          >
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">🥩</span>
-                <span className="font-bold text-xs text-amber-200">2. Ubój (Rzeźnia)</span>
-              </div>
-              <p className="text-[11px] text-stone-400 leading-[2.5]">
-                Hodowca dokonuje uboju: pozyskuje 180 kg wołowiny oraz 2 skóry bydlęce (ubój nie generuje obornika).
-              </p>
-            </div>
-            <span className="text-[10px] font-mono text-emerald-400 font-bold mt-2">Surowce: Mięso + Skóra</span>
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          <LivestockSaleBranchCard
+            title="1. Sprzedaż żywca"
+            isSelected={state.selectedBranch === 'sale' || state.selectedBranch === 'slaughter'}
+            salePrice={state.cattleSalePrice ?? 45}
+            crew={crew}
+            onSelect={() => handleSelectBranch('sale')}
+            onChangePrice={(val) => onUpdateState({ cattleSalePrice: val })}
+            onHireTrader={(w) => onUpdateState({ crew: [...crew, w] })}
+          />
 
           <button
             onClick={() => handleSelectBranch('milking')}
-            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${state.selectedBranch === 'milking' ? 'bg-amber-500/20 border-amber-400 text-amber-100 shadow-md ring-1 ring-amber-400/30' : 'bg-stone-900/60 border-stone-800 hover:bg-stone-800/50 text-stone-300'}`}
+            className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${state.selectedBranch === 'milking' ? 'bg-amber-500/20 border-amber-400 text-amber-100 ring-1 ring-amber-400/30' : 'bg-stone-900/60 border-stone-800 hover:bg-stone-800/50 text-stone-300'}`}
           >
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">🥛</span>
-                <span className="font-bold text-xs text-amber-200">3. Stado Mleczne & Nawóz</span>
-              </div>
-              <p className="text-[11px] text-stone-400 leading-[2.5]">
-                Dojenie (Obsługa), produkcja nawozu w oborze (Obsługa) oraz ponowna inseminacja (Weterynarz/Hodowca).
-              </p>
+            <div className="flex items-center gap-2">
+              <span className="text-base">🥛</span>
+              <span className="font-bold text-xs text-amber-200">2. Stado Mleczne & Rozród</span>
             </div>
-            <span className="text-[10px] font-mono text-sky-400 font-bold mt-2">Ciągła produkcja mleka & nawozu</span>
+            <span className="text-[10px] font-mono text-sky-400 font-bold">Mleko + Obornik</span>
           </button>
         </div>
       </div>

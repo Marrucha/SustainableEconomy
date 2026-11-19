@@ -2,6 +2,7 @@ import React from 'react';
 import type { LivestockCapitalismState } from './livestockTypes';
 import { CattlePipeline } from './CattlePipeline';
 import { SheepPipeline } from './SheepPipeline';
+import { HorsePipeline } from './HorsePipeline';
 import { LivestockProgressBarsHeader } from './LivestockProgressBarsHeader';
 import type { UseGameClockReturn } from '../../clock/useGameClock';
 
@@ -32,8 +33,14 @@ export const LivestockPipeline: React.FC<LivestockPipelineProps> = ({
           onUpdateState={onUpdateState}
           onGoToCrewTab={onGoToCrewTab}
         />
-      ) : (
+      ) : activeSpecies === 'sheep' ? (
         <SheepPipeline
+          state={state}
+          onUpdateState={onUpdateState}
+          onGoToCrewTab={onGoToCrewTab}
+        />
+      ) : (
+        <HorsePipeline
           state={state}
           onUpdateState={onUpdateState}
           onGoToCrewTab={onGoToCrewTab}

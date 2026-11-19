@@ -172,6 +172,18 @@ export function renderGhostPreview(p: GhostPreviewParams) {
       const drawX = bottomX - anchorX * scale;
       const drawY = bottomY - anchorY * scale;
 
+      if (selectedType.yardSpriteBaseName && selectedType.yardBaseWidth && selectedType.yardAnchorNormX !== undefined && selectedType.yardAnchorNormY !== undefined) {
+        const yardKey = `${selectedType.yardSpriteBaseName}_${curRotation === 0 ? 'norm' : 'rot90'}`;
+        const yardImg = assets[yardKey];
+        if (yardImg && yardImg.complete && yardImg.naturalWidth > 0) {
+          const yScale = currentPlotWidth / selectedType.yardBaseWidth;
+          const yW = yardImg.naturalWidth * yScale;
+          const yH = yardImg.naturalHeight * yScale;
+          const yAnchorX = curRotation === 90 && !selectedType.isSquare ? yardImg.naturalWidth - selectedType.yardAnchorNormX : selectedType.yardAnchorNormX;
+          ctx.drawImage(yardImg, bottomX - yAnchorX * yScale, bottomY - selectedType.yardAnchorNormY * yScale, yW, yH);
+        }
+      }
+
       ctx.drawImage(img, drawX, drawY, w, h);
     }
   }

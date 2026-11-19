@@ -6,6 +6,8 @@ import { INDUSTRY_SUPPLY_RULES, type WorldSupplierBuilding } from './industrySup
 import { IndustryMerchantCard } from './IndustryMerchantCard';
 import { computeFactoryStaffMetrics } from './industryStaffMath';
 import { FarmPipelineArrow } from './FarmPipelineArrow';
+import { syncRosterCount } from './englishNames';
+import { FactoryStaffPicker } from './FactoryStaffPicker';
 import {
   computeMonthlyProductionUnits,
   computeContractedDemandForSupplier,
@@ -116,21 +118,35 @@ export const IndustryPipelineCard: React.FC<IndustryPipelineCardProps> = ({
 
   if (!rule) return null;
 
+  const roster = buildingState.factoryRoster || [];
+
   const handleSetWorkers = (nextCount: number) => {
     const clampedWorkers = Math.max(0, Math.min(m.maxWorkers, nextCount));
     const nextMaxWarehousemen = clampedWorkers > 0 ? Math.ceil(clampedWorkers / 10) : 0;
+    const nextWarehousemen = Math.min(m.warehousemenCount, nextMaxWarehousemen);
+    let nextRoster = syncRosterCount(roster, 'worker', clampedWorkers);
+    nextRoster = syncRosterCount(nextRoster, 'warehouseman', nextWarehousemen);
     onUpdateState({
       factoryWorkersCount: clampedWorkers,
-      factoryWarehousemenCount: Math.min(m.warehousemenCount, nextMaxWarehousemen),
+      factoryWarehousemenCount: nextWarehousemen,
+      factoryRoster: nextRoster as BuildingState['factoryRoster'],
     });
   };
 
   const handleSetWarehousemen = (nextCount: number) => {
-    onUpdateState({ factoryWarehousemenCount: Math.max(0, Math.min(m.maxWarehousemen, nextCount)) });
+    const clamped = Math.max(0, Math.min(m.maxWarehousemen, nextCount));
+    onUpdateState({
+      factoryWarehousemenCount: clamped,
+      factoryRoster: syncRosterCount(roster, 'warehouseman', clamped) as BuildingState['factoryRoster'],
+    });
   };
 
   const handleSetManagers = (nextCount: number) => {
-    onUpdateState({ factoryManagersCount: Math.max(0, Math.min(m.maxManagers, nextCount)) });
+    const clamped = Math.max(0, Math.min(m.maxManagers, nextCount));
+    onUpdateState({
+      factoryManagersCount: clamped,
+      factoryRoster: syncRosterCount(roster, 'manager', clamped) as BuildingState['factoryRoster'],
+    });
   };
 
   const expYears = buildingState.workerExperienceYears ?? 0;
@@ -234,6 +250,14 @@ export const IndustryPipelineCard: React.FC<IndustryPipelineCardProps> = ({
               </button>
             </div>
           </div>
+
+          <FactoryStaffPicker
+            role="worker"
+            roleLabel="👷 Załoga produkcyjna"
+            maxCount={m.maxWorkers}
+            roster={roster}
+            onHireNew={() => handleSetWorkers(m.workersCount + 1)}
+          />
 
           {/* Szkoła branżowa + Zarządca */}
           <div className="grid grid-cols-2 gap-1.5 text-[10px]">

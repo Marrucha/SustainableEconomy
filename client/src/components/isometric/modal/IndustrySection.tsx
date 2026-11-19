@@ -3,6 +3,7 @@ import type { PlacedBuilding, BuildingState } from '../types';
 import { BusinessEnergySection } from './BusinessEnergySection';
 import { INDUSTRY_PROFILES } from './industryProfiles';
 import { IndustryPipelineCard } from './IndustryPipelineCard';
+import { NewspaperAdPanel } from './NewspaperAdPanel';
 import type { WorldSupplierBuilding } from './industrySupplyConfig';
 
 import type { UseGameClockReturn } from '../clock/useGameClock';
@@ -17,6 +18,7 @@ interface IndustrySectionProps {
   clock?: UseGameClockReturn;
   onSpendGold?: (amount: number) => void;
   onUpdateState: (updates: Partial<BuildingState>) => void;
+  onUpdateAnyBuildingState?: (buildingId: string, newState: Partial<BuildingState>) => void;
 }
 
 export const IndustrySection: React.FC<IndustrySectionProps> = ({
@@ -29,6 +31,7 @@ export const IndustrySection: React.FC<IndustrySectionProps> = ({
   clock,
   onSpendGold,
   onUpdateState,
+  onUpdateAnyBuildingState,
 }) => {
   const profile = INDUSTRY_PROFILES[building.typeId];
   const isCoalPlant = building.typeId === 'coal_plant';
@@ -47,6 +50,7 @@ export const IndustrySection: React.FC<IndustrySectionProps> = ({
     'brickworks',
     'factory',
     'sugar_refinery',
+    'rolling_mill',
   ].includes(building.typeId);
 
   if (businessTab === 'energy') {
@@ -56,6 +60,11 @@ export const IndustrySection: React.FC<IndustrySectionProps> = ({
         energySource={buildingState.businessEnergySource || (isSteamPowered ? 'wegiel' : 'elektrownia')}
         energyScale={buildingState.businessEnergyScale || 'standard'}
         hasGreenRelief={hasGreenRelief}
+        buildingState={buildingState}
+        allWorldBuildings={allWorldBuildings}
+        buildingsState={buildingsState}
+        onSpendGold={onSpendGold}
+        onUpdateAnyBuildingState={onUpdateAnyBuildingState}
         onUpdateState={onUpdateState}
       />
     );
@@ -112,6 +121,14 @@ export const IndustrySection: React.FC<IndustrySectionProps> = ({
           onSpendGold={onSpendGold}
           onUpdateState={onUpdateState}
         />
+
+        {building.typeId === 'newspaper_publisher' && (
+          <NewspaperAdPanel
+            buildingState={buildingState}
+            onSpendGold={onSpendGold}
+            onUpdateState={onUpdateState}
+          />
+        )}
       </div>
     );
   }

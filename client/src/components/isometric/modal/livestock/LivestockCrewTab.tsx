@@ -5,6 +5,7 @@ import type {
   LivestockProfession,
 } from './livestockTypes';
 import { LIVESTOCK_PROFESSIONS_CONFIG } from './livestockTypes';
+import { generateRandomEnglishName } from '../englishNames';
 
 interface LivestockCrewTabProps {
   state: LivestockCapitalismState;
@@ -70,7 +71,10 @@ export const LivestockCrewTab: React.FC<LivestockCrewTabProps> = ({
             </p>
           </div>
           <button
-            onClick={() => setIsAddingNew(true)}
+            onClick={() => {
+              setNewWorkerName(generateRandomEnglishName(crew.map((w) => w.name)));
+              setIsAddingNew(true);
+            }}
             className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 leading-[2.5] self-start sm:self-auto"
           >
             <span>➕</span> Zatrudnij Nowego Pracownika
@@ -110,9 +114,9 @@ export const LivestockCrewTab: React.FC<LivestockCrewTabProps> = ({
                 >
                   <option value="vet">🩺 Weterynarz (Chirurg weterynarii – 1-10% porażki)</option>
                   <option value="agronomist">🎩 Agronom Zwierzęcy (Klasa M – żywienie i pastwiska)</option>
-                  <option value="breeder">🤠 Hodowca Bydła (Ciąża 9 msc, wzrost 2 lata, ubój)</option>
-                  <option value="handler">🥛 Obsługa Fermy (Dojenie krów i produkcja nawozu)</option>
-                  <option value="trader">💰 Kupiec / Handlarz (Sprzedaż żywca, mleka, skór i mięsa)</option>
+                  <option value="breeder">🤠 Hodowca Zwierząt (Ciąża, odchów młodych, opieka nad stadem)</option>
+                  <option value="handler">🥛 Obsługa Fermy (Dojenie krów i zbiórka obornika)</option>
+                  <option value="trader">💰 Kupiec / Handlarz (Sprzedaż żywych zwierząt, mleka, wełny i obornika)</option>
                 </select>
               </div>
             </div>

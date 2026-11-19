@@ -342,3 +342,65 @@ export function canDemolishBuildingWithPastureRules(
   // Wszelkie inne budynki nie podlegają tym regułom
   return { allowed: true };
 }
+
+/**
+ * Zlicza liczbę pól uprawnych (wheat_field) połączonych krawędziowo z daną farmą zbożową.
+ */
+export function countAttachedWheatFields(
+  farmBuilding: PlacedBuilding,
+  placedBuildings: PlacedBuilding[]
+): number {
+  if (!isWheatFarm(farmBuilding.typeId)) return 0;
+  const fields = placedBuildings.filter((b) => isWheatField(b.typeId));
+  if (fields.length === 0) return 0;
+
+  const visitedIds = new Set<string>();
+  const queue: PlacedBuilding[] = [];
+
+  for (const field of fields) {
+    if (doRectanglesShareEdge(farmBuilding, field)) {
+      visitedIds.add(field.id);
+      queue.push(field);
+    }
+  }
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const nextField of fields) {
+      if (!visitedIds.has(nextField.id) && doRectanglesShareEdge(current, nextField)) {
+        visitedIds.add(nextField.id);
+        queue.push(nextField);
+      }
+    }
+  }
+
+  return visitedIds.size;
+}
+
+/**
+ * Znajduje nadrzędną farmę zbożową (wheat_farm) połączoną krawędziowo z danym polem uprawnym.
+ */
+export function findConnectedWheatFarm(
+  fieldBuilding: PlacedBuilding,
+  placedBuildings: PlacedBuilding[]
+): PlacedBuilding | null {
+  if (!isWheatField(fieldBuilding.typeId)) return null;
+  const farms = placedBuildings.filter((b) => isWheatFarm(b.typeId));
+  const fields = placedBuildings.filter((b) => isWheatField(b.typeId));
+  const visitedIds = new Set<string>([fieldBuilding.id]);
+  const queue: PlacedBuilding[] = [fieldBuilding];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const directFarm = farms.find((f) => doRectanglesShareEdge(current, f));
+    if (directFarm) return directFarm;
+
+    for (const nextField of fields) {
+      if (!visitedIds.has(nextField.id) && doRectanglesShareEdge(current, nextField)) {
+        visitedIds.add(nextField.id);
+        queue.push(nextField);
+      }
+    }
+  }
+  return null;
+}

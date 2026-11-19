@@ -1,0 +1,207 @@
+import { useEffect, useRef } from 'react';
+import type { BuildingState } from '../../types';
+import type { UseGameClockReturn } from '../../clock/useGameClock';
+import { getContractMeta } from '../industryContracts';
+import type { LivestockCapitalismState } from './livestockTypes';
+
+interface UseLivestockTicksParams {
+  clock?: UseGameClockReturn;
+  livestockState: LivestockCapitalismState;
+  buildingsState: Record<string, BuildingState>;
+  onSpendGold?: (amount: number) => void;
+  onUpdateAnyBuildingState?: (buildingId: string, newState: Partial<BuildingState>) => void;
+  onUpdateState: (updates: Partial<BuildingState>) => void;
+}
+
+export function useLivestockTicks({
+  clock,
+  livestockState,
+  buildingsState,
+  onSpendGold,
+  onUpdateAnyBuildingState,
+  onUpdateState,
+}: UseLivestockTicksParams) {
+  // 1. Codzienny przyrost obornika i zużycie paszy
+  const lastClockKeyRef = useRef<string>('');
+  useEffect(() => {
+    if (!clock) return;
+    const key = `${clock.date.year}-${clock.date.month}-${clock.date.day}`;
+    if (!lastClockKeyRef.current) {
+      lastClockKeyRef.current = key;
+      return;
+    }
+    if (lastClockKeyRef.current === key) return;
+    lastClockKeyRef.current = key;
+
+    const h = livestockState.herd;
+    const sp = livestockState.activeSpecies || 'cattle';
+    const animalCount =
+      sp === 'cattle'
+        ? (h.milkingGroupCows || 0) + (h.growingGroupCalves || 0) + (h.cattleForSale ?? 4)
+        : sp === 'sheep'
+        ? (h.adultSheepCount || 0) + (h.growingLambsCount || 0) + (h.sheepForSale ?? 4)
+        : (h.adultDraftHorses ?? 10) + (h.growingFoalsCount ?? 4) + (h.horsesForSale ?? 2);
+
+    const cap = livestockState.penManureCapacityKg ?? 200;
+    const cur = livestockState.penManureKg ?? 0;
+    const dailyFeedNeedKg =
+      sp === 'horses' ? animalCount * 10 : sp === 'cattle' ? animalCount * 8 : animalCount * 2;
+    const curSupplies = livestockState.supplies || { strawBeddingKg: 400, feedGrainKg: 350 };
+    const nextFeedGrainKg = Math.max(0, (curSupplies.feedGrainKg || 0) - dailyFeedNeedKg);
+
+    if (animalCount > 0) {
+      const dailyGain = Math.max(2, Math.round(animalCount * 1.5));
+      const rawNext = cur + dailyGain;
+      if (rawNext >= cap) {
+        onUpdateState({
+          livestockState: {
+            ...livestockState,
+            penManureKg: rawNext - cap,
+            penManureCapacityKg: cap,
+            supplies: { ...curSupplies, feedGrainKg: nextFeedGrainKg },
+            storage: {
+              ...livestockState.storage,
+              manureKg: (livestockState.storage.manureKg || 0) + cap,
+            },
+          },
+        });
+      } else {
+        onUpdateState({
+          livestockState: {
+            ...livestockState,
+            penManureKg: rawNext,
+            penManureCapacityKg: cap,
+            supplies: { ...curSupplies, feedGrainKg: nextFeedGrainKg },
+          },
+        });
+      }
+    }
+  }, [clock?.date.year, clock?.date.month, clock?.date.day]);
+
+  // 2. Miesięczne dostawy paszy/ściółki oraz odliczanie regeneracji po porodzie
+  const lastDeliveryMonthRef = useRef<string>('');
+  useEffect(() => {
+    if (!clock) return;
+    const mKey = `${clock.date.year}-${clock.date.month}`;
+    if (!lastDeliveryMonthRef.current) {
+      lastDeliveryMonthRef.current = mKey;
+      return;
+    }
+    if (lastDeliveryMonthRef.current === mKey) return;
+    lastDeliveryMonthRef.current = mKey;
+
+    const supplies = livestockState.supplies || { strawBeddingKg: 400, feedGrainKg: 350 };
+    let nextFeed = supplies.feedGrainKg;
+    let nextStraw = supplies.strawBeddingKg;
+    let nextFeedOrder = livestockState.feedOrder;
+    let nextStrawOrder = livestockState.strawOrder;
+    let totalCost = 0;
+
+    const fulfill = (order: typeof nextFeedOrder, kind: 'feed' | 'straw') => {
+      if (!order) return order;
+      const producerCap = buildingsState[order.supplierId]?.farmCapitalism;
+      if (!producerCap) return order;
+      const cropKey = producerCap.cropType || 'pszenica';
+      const avail =
+        kind === 'feed'
+          ? (producerCap.grainStockKg?.[cropKey] ?? producerCap.wheatStockKg ?? 0)
+          : (producerCap.strawStockKg ?? 0);
+      const delivered = Math.min(order.monthlyQuantityKg, avail);
+      const meta = getContractMeta(order.contractType);
+      if (delivered > 0) {
+        if (kind === 'feed') nextFeed += delivered;
+        else nextStraw += delivered;
+        const basePer100 = kind === 'feed' ? 10 : 6;
+        totalCost += Number(((delivered / 100) * basePer100 * (1 - meta.discountPercent / 100)).toFixed(2));
+        onUpdateAnyBuildingState?.(order.supplierId, {
+          farmCapitalism: {
+            ...producerCap,
+            ...(kind === 'feed'
+              ? {
+                  grainStockKg: {
+                    ...producerCap.grainStockKg,
+                    [cropKey]: Math.max(0, (producerCap.grainStockKg?.[cropKey] ?? 0) - delivered),
+                  },
+                  wheatStockKg: Math.max(0, (producerCap.wheatStockKg ?? 0) - delivered),
+                }
+              : { strawStockKg: Math.max(0, avail - delivered) }),
+          },
+        });
+      }
+      if (meta.durationMonths > 0) {
+        const rem = order.monthsRemaining - 1;
+        return rem > 0 ? { ...order, monthsRemaining: rem } : undefined;
+      }
+      return order;
+    };
+
+    nextFeedOrder = fulfill(nextFeedOrder, 'feed');
+    nextStrawOrder = fulfill(nextStrawOrder, 'straw');
+
+    const nextHorseRecovery = Math.max(0, (livestockState.horseRecoveryMonthsRemaining ?? 0) - 1);
+    const nextHorseWait = Math.max(0, (livestockState.horseInseminationWaitMonths ?? 0) - 1);
+    const nextCattleRecovery = Math.max(0, (livestockState.cattleRecoveryMonthsRemaining ?? 0) - 1);
+    const nextSheepRecovery = Math.max(0, (livestockState.sheepRecoveryMonthsRemaining ?? 0) - 1);
+    const recoveryChanged =
+      nextHorseRecovery !== (livestockState.horseRecoveryMonthsRemaining ?? 0) ||
+      nextHorseWait !== (livestockState.horseInseminationWaitMonths ?? 0) ||
+      nextCattleRecovery !== (livestockState.cattleRecoveryMonthsRemaining ?? 0) ||
+      nextSheepRecovery !== (livestockState.sheepRecoveryMonthsRemaining ?? 0);
+
+    if (totalCost > 0 || nextFeedOrder !== livestockState.feedOrder || nextStrawOrder !== livestockState.strawOrder || recoveryChanged) {
+      if (totalCost > 0) onSpendGold?.(totalCost);
+      onUpdateState({
+        livestockState: {
+          ...livestockState,
+          supplies: { feedGrainKg: nextFeed, strawBeddingKg: nextStraw },
+          feedOrder: nextFeedOrder,
+          strawOrder: nextStrawOrder,
+          lastCycleCost: Number(((livestockState.lastCycleCost || 0) + totalCost).toFixed(2)),
+          horseRecoveryMonthsRemaining: nextHorseRecovery,
+          horseInseminationWaitMonths: nextHorseWait,
+          cattleRecoveryMonthsRemaining: nextCattleRecovery,
+          sheepRecoveryMonthsRemaining: nextSheepRecovery,
+        },
+      });
+    }
+  }, [clock?.date.year, clock?.date.month]);
+
+  // 3. Roczne starzenie się koni
+  const lastHorseYearRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!clock) return;
+    if (lastHorseYearRef.current === null) {
+      lastHorseYearRef.current = clock.date.year;
+      return;
+    }
+    if (lastHorseYearRef.current === clock.date.year) return;
+    lastHorseYearRef.current = clock.date.year;
+
+    const curHorses = livestockState.herd.horses;
+    if (!curHorses || curHorses.length === 0) return;
+
+    const aged = curHorses
+      .map((h) => {
+        const nextAge = h.ageYears + 1;
+        if (h.group === 'growth' && nextAge >= 3) {
+          return { ...h, ageYears: nextAge, group: h.postGrowthTarget };
+        }
+        return { ...h, ageYears: nextAge };
+      })
+      .filter((h) => h.ageYears < 15);
+
+    onUpdateState({
+      livestockState: {
+        ...livestockState,
+        herd: {
+          ...livestockState.herd,
+          horses: aged,
+          adultDraftHorses: aged.filter((h) => h.group === 'breeding').length,
+          growingFoalsCount: aged.filter((h) => h.group === 'growth').length,
+          horsesForSale: aged.filter((h) => h.group === 'sale').length,
+          horsesFlockCount: aged.length,
+        },
+      },
+    });
+  }, [clock?.date.year]);
+}

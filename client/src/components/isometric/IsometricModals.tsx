@@ -22,6 +22,7 @@ interface IsometricModalsProps {
   onAddNewCityPlayer?: () => void;
   onSpendGold?: (amount: number) => void;
   onUpdateBuildingState: (id: string, newState: Partial<BuildingState>) => void;
+  onRenameBuilding?: (id: string, newName: string) => void;
   onDemolishBuilding: (id: string) => void;
   onCloseInspectingBuilding: () => void;
   onSetTerrain: (x: number, y: number, newType: TerrainType, goldDelta: number) => void;
@@ -51,6 +52,7 @@ export const IsometricModals: React.FC<IsometricModalsProps> = ({
   onAddNewCityPlayer,
   onSpendGold,
   onUpdateBuildingState,
+  onRenameBuilding,
   onDemolishBuilding,
   onCloseInspectingBuilding,
   onSetTerrain,
@@ -78,7 +80,9 @@ export const IsometricModals: React.FC<IsometricModalsProps> = ({
           cityPlayersCount={cityPlayersCount}
           onAddNewCityPlayer={onAddNewCityPlayer}
           onSpendGold={onSpendGold}
+          onUpdateAnyBuildingState={onUpdateBuildingState}
           onUpdateState={(newState) => onUpdateBuildingState(inspectingBuilding.id, newState)}
+          onRenameBuilding={onRenameBuilding}
           onClose={onCloseInspectingBuilding}
           onDemolish={() => onDemolishBuilding(inspectingBuilding.id)}
         />
