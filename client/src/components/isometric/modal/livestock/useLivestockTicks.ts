@@ -157,24 +157,47 @@ export function useLivestockTicks({
       const recMonths = Math.max(1, params.horseRecoveryMonths || 3);
       const retryMonths = Math.max(1, params.horseInseminationRetryWaitMonths || 1);
       const maxPreg = Math.max(1, params.horseGestationMonths || 11);
+      const maturityMonths = Math.max(12, (params.horseMaturityYears || 3) * 12);
       const insemId = livestockState.stageAssignments?.insemination;
       const insemWorker = (livestockState.crew || []).find((w) => w.id === insemId);
-      const successPercent = getInseminationSuccessPercent(insemWorker?.profession);
+      const baseSuccessPercent = getInseminationSuccessPercent(insemWorker?.profession);
 
       const breedingList = horsesList.filter((h) => h.group === 'breeding');
-      const hasMale = breedingList.some((h, i) => (h.sex ?? (i % 4 === 0 ? 'male' : 'female')) === 'male');
+      const malesCount = breedingList.filter(
+        (h, i) => (h.sex ?? (i % 4 === 0 ? 'male' : 'female')) === 'male'
+      ).length;
+      const hasMale = malesCount > 0;
+      const effectiveSuccessPercent = hasMale
+        ? Math.min(100, baseSuccessPercent + Math.max(0, malesCount - 1) * 10)
+        : 0;
 
       const newFoals: HorseAnimal[] = [];
       let failedInsemCount = 0;
       let breedingIdx = 0;
 
       const updatedHorses: HorseAnimal[] = horsesList.map((h) => {
+        if (h.group === 'growth') {
+          const nextAgeMonths = (h.ageMonths ?? (h.ageYears || 0) * 12) + 1;
+          const nextAgeYears = Math.floor(nextAgeMonths / 12);
+          if (nextAgeMonths >= maturityMonths) {
+            return {
+              ...h,
+              ageMonths: nextAgeMonths,
+              ageYears: nextAgeYears,
+              group: h.postGrowthTarget,
+              ...(h.postGrowthTarget === 'breeding'
+                ? { breedingStatus: 'waiting' as const, breedingWaitMonths: 0, pregnancyMonths: 0 }
+                : {}),
+            };
+          }
+          return { ...h, ageMonths: nextAgeMonths, ageYears: nextAgeYears };
+        }
         if (h.group !== 'breeding') return h;
         const idx = breedingIdx++;
         const sex = h.sex ?? (idx % 4 === 0 ? 'male' : 'female');
         if (sex !== 'female') return h;
 
-        const status = h.breedingStatus ?? (nextHorseRecovery > 0 ? 'waiting' : 'waiting');
+        const status = h.breedingStatus ?? 'waiting';
         if (status === 'pregnant') {
           const nextPreg = (h.pregnancyMonths ?? 1) + 1;
           if (nextPreg > maxPreg) {
@@ -183,6 +206,7 @@ export function useLivestockTicks({
               name: `Źrebię ${horsesList.length + newFoals.length + 1}`,
               sex: Math.random() < 0.5 ? 'male' : 'female',
               ageYears: 0,
+              ageMonths: 0,
               group: 'growth',
               postGrowthTarget: 'sale',
             });
@@ -213,8 +237,8 @@ export function useLivestockTicks({
           return { ...h, breedingStatus: 'waiting', breedingWaitMonths: 0 };
         }
 
-        // Niezależny rzut skuteczności inseminacji dla tej konkretnej klaczy (30% rolnik / 50% weterynarz)
-        if (Math.random() * 100 < successPercent) {
+        // Niezależny rzut skuteczności inseminacji dla tej konkretnej klaczy (30%/50% +10% za każdego kolejnego ogiera)
+        if (Math.random() * 100 < effectiveSuccessPercent) {
           return {
             ...h,
             breedingStatus: 'pregnant',

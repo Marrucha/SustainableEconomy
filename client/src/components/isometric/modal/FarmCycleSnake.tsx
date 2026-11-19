@@ -122,7 +122,7 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
     if (scheduledStage === 'fertilizing' && (!state.enableFertilizing || !hasFertWorker || !hasEnoughManure)) {
       scheduledStage = 'plowing';
     }
-    if (scheduledStage === 'weeding' && ((!state.enableWeeding && !state.enableIrrigation) || !hasWeedWorker)) {
+    if (scheduledStage === 'weeding' && (!state.enableWeeding || !hasWeedWorker)) {
       scheduledStage = 'growing';
     }
 
@@ -167,7 +167,7 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
     // KROKI OPCJONALNE: są wyłączone/pominięte TYLKO wtedy, gdy gracz odznaczy checkbox!
     const isOptionalAndDisabled =
       (stage.id === 'fertilizing' && !state.enableFertilizing) ||
-      (stage.id === 'weeding' && !state.enableWeeding && !state.enableIrrigation);
+      (stage.id === 'weeding' && !state.enableWeeding);
 
     // Tylko etapy bazowe mogą być uznane za brakujące (blokujące)
     const isMissing = !stage.isOptional && stage.id !== 'growing' && !hasWorker;
@@ -192,6 +192,9 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
       manureRequiredKg,
       agronomist: state.agronomist,
       cropType: state.cropType || 'pszenica',
+      currentFarmStage: state.currentStage,
+      growingWeather: state.growingWeather,
+      harvestWeather: state.harvestWeather,
       grainSalePricePerTon: state.grainSalePricePerTon ?? selectedCrop.marketPricePerTon,
       onChangeGrainSalePrice: (pricePerTon: number) => onUpdate({ grainSalePricePerTon: pricePerTon }),
       onChangeCropType: (newCrop: CropType) => {

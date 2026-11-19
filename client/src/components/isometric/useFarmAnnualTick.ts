@@ -9,6 +9,7 @@ import {
   getStrawStackCapacityKg,
   type CropType,
   type FarmCapitalismState,
+  type FarmWeatherType,
 } from './modal/farmGridTypes';
 import { computeFarmYieldSummary } from './modal/farmYieldMath';
 import { countAttachedWheatFields } from './pastureTopology';
@@ -60,6 +61,22 @@ export function useFarmAnnualTick({
 
         const ownedHorsesCount = bState?.ownedHorses?.length ?? 0;
         const patch: Partial<FarmCapitalismState> = {};
+
+        const rollGrowthWeather = (): FarmWeatherType => {
+          const opts: FarmWeatherType[] = ['rainy', 'cloudy', 'sunny', 'stormy'];
+          return opts[Math.floor(Math.random() * opts.length)];
+        };
+        const rollHarvestWeather = (): FarmWeatherType => {
+          const opts: FarmWeatherType[] = ['sunny', 'partly_cloudy', 'cloudy', 'rainy'];
+          return opts[Math.floor(Math.random() * opts.length)];
+        };
+
+        if (!farmCap.growingWeather || isHarvestSettlementDay) {
+          patch.growingWeather = rollGrowthWeather();
+        }
+        if (!farmCap.harvestWeather || isHarvestSettlementDay) {
+          patch.harvestWeather = rollHarvestWeather();
+        }
 
         // Dzienne zużycie paszy zbożowej przez konie robocze na farmie (ze zboża w spichlerzu)
         if (ownedHorsesCount > 0) {

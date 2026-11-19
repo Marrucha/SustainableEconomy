@@ -60,6 +60,7 @@ const SECTIONS: { title: string; subtitle: string; fields: FieldSpec[] }[] = [
       { key: 'grainSiloBaseCapacityKg', label: 'Bazowa pojemność spichlerza (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
       { key: 'strawStackBaseCapacityKg', label: 'Bazowa pojemność stogu słomy (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
       { key: 'manureBinBaseCapacityKg', label: 'Bazowa pojemność płyty obornikowej (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
+      { key: 'manurePerHa100Kg', label: 'Dawka obornika na 1 ha (100% nawożenia)', unit: 'kg/ha', min: 500, max: 50000, step: 500 },
     ],
   },
 ];

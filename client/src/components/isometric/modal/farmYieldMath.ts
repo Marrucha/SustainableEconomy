@@ -4,8 +4,25 @@ import {
   getStageAssignedWorkerIds,
   type FarmCapitalismState,
   type FarmCycleStage,
+  type FarmWeatherType,
 } from './farmGridTypes';
 import { loadGameParameters } from '../admin/gameParameters';
+
+export function getGrowthWeatherPercent(weather?: FarmWeatherType, hasIrrigation = false): number {
+  if (!weather) return 100;
+  if (weather === 'rainy') return 100;
+  if (weather === 'cloudy' || weather === 'partly_cloudy') return 90;
+  if (weather === 'sunny') return hasIrrigation ? 100 : 80;
+  return 80; // stormy
+}
+
+export function getHarvestWeatherPercent(weather?: FarmWeatherType): number {
+  if (!weather) return 100;
+  if (weather === 'sunny') return 100;
+  if (weather === 'partly_cloudy') return 90;
+  if (weather === 'cloudy') return 80;
+  return 70; // rainy / stormy
+}
 
 export interface FarmYieldSummary {
   totalHectares: number;
@@ -16,6 +33,9 @@ export interface FarmYieldSummary {
   requiredHorsesCount: number;
   acreageEfficiencyPct: number;
   harvestQualityPercent: number;
+  growthWeatherPct: number;
+  harvestWeatherPct: number;
+  combinedWeatherPct: number;
   seedRequiredKg: number;
   manureRequiredKg: number;
   manureUsedKg: number;
@@ -48,10 +68,11 @@ export function computeFarmYieldSummary(
   ownedHorsesCount?: number
 ): FarmYieldSummary {
   const extraFields = Math.max(0, attachedFieldsCount);
+  const totalHectares = Number((1 + extraFields * 0.5).toFixed(2));
   const selectedCrop = CROPS_CONFIG[state.cropType || 'pszenica'];
 
-  const seedRequiredKg = 300 + extraFields * 150;
-  const baseYieldKg = (selectedCrop?.baseYield ?? 3000) + extraFields * 2000;
+  const seedRequiredKg = Math.round(300 * totalHectares);
+  const baseYieldKg = Math.round((selectedCrop?.baseYield ?? 3000) * totalHectares);
 
   const crew = state.crew || [];
   const assignments = state.stageAssignments || {};
@@ -83,10 +104,11 @@ export function computeFarmYieldSummary(
   }
 
   // Premia za nawożenie naturalne (obornik 1880): wymaga zapasu obornika w magazynie!
-  // 50% -> 100 kg/ha (+20% plonu), 100% -> 200 kg/ha (+30% plonu)
+  // 50% -> 5 000 kg/ha (+20% plonu), 100% -> 10 000 kg/ha (+30% plonu)
   const effectiveFertLevel = !state.enableFertilizing ? 0 : (state.fertilizingLevel ?? 100);
-  const manurePerHa50 = 100 * (1 + extraFields);
-  const manurePerHa100 = 200 * (1 + extraFields);
+  const perHa100 = loadGameParameters().manurePerHa100Kg || 10000;
+  const manurePerHa100 = Math.round(perHa100 * totalHectares);
+  const manurePerHa50 = Math.round(perHa100 * 0.5 * totalHectares);
   const manureRequiredKg =
     effectiveFertLevel === 100 ? manurePerHa100 : effectiveFertLevel === 50 ? manurePerHa50 : 0;
   const availableManure = state.manureStockKg ?? state.fertilizerStockKg ?? 0;
@@ -102,9 +124,12 @@ export function computeFarmYieldSummary(
     manureUsedKg = manurePerHa50;
   }
   const weedingBonusPct = state.enableWeeding && hasWeedWorker ? 5 : 0;
-  const irrigationActive = Boolean(state.enableIrrigation && hasWeedWorker);
+  const irrigationActive = Boolean(state.enableIrrigation);
   const irrigationBonusPct = irrigationActive ? 10 : 0;
-  // Nawadnianie chroni przed utratą 30% plonu podczas suszy
+  const growthWeatherPct = getGrowthWeatherPercent(state.growingWeather, irrigationActive);
+  const harvestWeatherPct = getHarvestWeatherPercent(state.harvestWeather);
+  const combinedWeatherFactor = (growthWeatherPct / 100) * (harvestWeatherPct / 100);
+  const combinedWeatherPct = Math.round(combinedWeatherFactor * 100);
   const droughtPenaltyPct = isDrought && !irrigationActive ? 30 : 0;
 
   const totalBonusPct =
@@ -117,7 +142,6 @@ export function computeFarmYieldSummary(
   const netMultiplier = Math.max(0.1, 1 + (totalBonusPct - droughtPenaltyPct) / 100);
 
   // Formalnie 1 rolnik polowy obsługuje do 2 ha, a 1 koń pociągowy obrabia domyślnie 0.5 ha (na 1 ha potrzeba 2 koni)
-  const totalHectares = 1 + extraFields;
   const fieldFarmersCount = crew.filter(
     (w) => w.profession === 'farmer' || w.profession === 'all_rounder'
   ).length;
@@ -139,7 +163,7 @@ export function computeFarmYieldSummary(
   const harvestQualityPercent =
     coverageRatio >= 1 ? 100 : Math.round(Math.max(40, 100 * (0.4 + 0.6 * coverageRatio)));
 
-  const totalYieldKg = Math.round(baseYieldKg * netMultiplier * acreageYieldFactor);
+  const totalYieldKg = Math.round(baseYieldKg * netMultiplier * acreageYieldFactor * combinedWeatherFactor);
 
   return {
     totalHectares,
@@ -150,6 +174,9 @@ export function computeFarmYieldSummary(
     requiredHorsesCount,
     acreageEfficiencyPct,
     harvestQualityPercent,
+    growthWeatherPct,
+    harvestWeatherPct,
+    combinedWeatherPct,
     seedRequiredKg,
     manureRequiredKg,
     manureUsedKg,

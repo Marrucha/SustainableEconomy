@@ -20,11 +20,12 @@ export interface GameParametersConfig {
   cattleMaxAgeYears: number;
   sheepMaxAgeYears: number;
 
-  // Domyślne pojemności magazynowe
+  // Domyślne pojemności magazynowe i nawożenie
   manurePenCapacityKg: number;
   grainSiloBaseCapacityKg: number;
   strawStackBaseCapacityKg: number;
   manureBinBaseCapacityKg: number;
+  manurePerHa100Kg: number;
 }
 
 export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
@@ -51,6 +52,7 @@ export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
   grainSiloBaseCapacityKg: 10000,
   strawStackBaseCapacityKg: 20000,
   manureBinBaseCapacityKg: 10000,
+  manurePerHa100Kg: 10000,
 };
 
 const STORAGE_KEY = 'sustainable_economy_admin_params_v1';

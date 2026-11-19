@@ -90,8 +90,9 @@ export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
           const isSaleColor =
             h.group === 'sale' || (h.group === 'growth' && h.postGrowthTarget === 'sale');
           const isFoal = h.group === 'growth';
+          const foalMonths = h.ageMonths ?? (h.ageYears || 0) * 12;
           const ringPct = isFoal
-            ? Math.min(100, Math.max(8, Math.round((h.ageYears / 3) * 100)))
+            ? Math.min(100, Math.max(4, Math.round((foalMonths / 36) * 100)))
             : Math.min(100, Math.max(6, Math.round((h.ageYears / 15) * 100)));
           const ringColor = isFoal ? '#22c55e' : '#ef4444';
 
@@ -272,7 +273,12 @@ export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          updateOne(h.id, { group: 'breeding' });
+                          updateOne(h.id, {
+                            group: 'breeding',
+                            breedingStatus: 'waiting',
+                            breedingWaitMonths: 0,
+                            pregnancyMonths: 0,
+                          });
                           setHoveredId(null);
                         }}
                         className="w-full py-1 px-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/50 text-emerald-200 text-[10px] font-bold cursor-pointer"

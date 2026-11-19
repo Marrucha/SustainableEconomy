@@ -152,6 +152,7 @@ export interface HorseAnimal {
   name: string;
   sex?: 'male' | 'female'; // 'male' = Ogier (♂), 'female' = Klacz (♀)
   ageYears: number; // 0..14 (po ukończeniu 15 lat znika z gry)
+  ageMonths?: number; // Indywidualny wiek źrebaka w miesiącach (0..36)
   group: 'breeding' | 'growth' | 'sale';
   postGrowthTarget: 'sale' | 'breeding';
   breedingStatus?: 'waiting' | 'failed_wait' | 'pregnant';

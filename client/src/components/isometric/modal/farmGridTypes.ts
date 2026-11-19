@@ -81,6 +81,8 @@ export interface FarmAgronomist {
 
 export type CropType = 'pszenica' | 'zyto' | 'owies' | 'jeczmien';
 
+export type FarmWeatherType = 'sunny' | 'partly_cloudy' | 'cloudy' | 'rainy' | 'stormy';
+
 export interface CropInfo {
   id: CropType;
   name: string;
@@ -141,6 +143,8 @@ export interface FarmCapitalismState {
   enableFertilizing: boolean; // Opcjonalne nawożenie obornikiem
   fertilizingLevel?: FertilizingLevel; // 0%, 50% (+20% plonu) lub 100% (+30% plonu)
   enableWeeding: boolean;      // Opcjonalne ręczne pielenie motyką
+  growingWeather?: FarmWeatherType;
+  harvestWeather?: FarmWeatherType;
   enableIrrigation?: boolean;  // Opcjonalne nawadnianie pól (+10% plonu)
 
   // Stany magazynowe w podziale na graficzne komory (przegródki)

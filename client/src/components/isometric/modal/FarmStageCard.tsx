@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import type { FarmAgronomist, FarmCrewMember, FarmCycleStage, CropType, FertilizingLevel } from './farmGridTypes';
+import type { FarmAgronomist, FarmCrewMember, FarmCycleStage, CropType, FertilizingLevel, FarmWeatherType } from './farmGridTypes';
 import { getWorkerStageRoleTitle, CROPS_CONFIG } from './farmGridTypes';
+import { getGrowthWeatherPercent, getHarvestWeatherPercent } from './farmYieldMath';
 
 export interface StageMeta {
   id: FarmCycleStage;
@@ -31,6 +32,9 @@ interface FarmStageCardProps {
   enableIrrigation?: boolean;
   agronomist: FarmAgronomist;
   cropType?: CropType;
+  currentFarmStage?: FarmCycleStage;
+  growingWeather?: FarmWeatherType;
+  harvestWeather?: FarmWeatherType;
   grainSalePricePerTon?: number;
   onChangeGrainSalePrice?: (pricePerTon: number) => void;
   onChangeCropType?: (newCrop: CropType) => void;
@@ -64,6 +68,9 @@ export const FarmStageCard: React.FC<FarmStageCardProps> = ({
   enableIrrigation = false,
   agronomist,
   cropType = 'pszenica',
+  currentFarmStage,
+  growingWeather,
+  harvestWeather,
   grainSalePricePerTon,
   onChangeGrainSalePrice,
   onChangeCropType,
@@ -304,22 +311,58 @@ export const FarmStageCard: React.FC<FarmStageCardProps> = ({
               className="accent-emerald-600 w-3.5 h-3.5 cursor-pointer shrink-0"
             />
           </label>
-          <label className="flex items-center justify-between gap-1 cursor-pointer">
-            <span
-              title="Nawadnianie (£8 • +10%, chroni przed suszą)"
-              className={enableIrrigation ? 'text-sky-900 font-bold whitespace-nowrap truncate' : 'text-stone-700 whitespace-nowrap truncate'}
-            >
-              💧 Nawadnianie (£8 • +10%, bez suszy)
-            </span>
-            <input
-              type="checkbox"
-              checked={enableIrrigation}
-              onChange={(e) => onToggleIrrigation && onToggleIrrigation(e.target.checked)}
-              className="accent-sky-600 w-3.5 h-3.5 cursor-pointer shrink-0"
-            />
-          </label>
         </div>
       )}
+
+      {stage.id === 'growing' && (() => {
+        const showWeather =
+          currentFarmStage === 'growing' ||
+          currentFarmStage === 'harvesting' ||
+          currentFarmStage === 'storing_selling';
+        const w = growingWeather;
+        const wPct = getGrowthWeatherPercent(w, enableIrrigation);
+        const wIcon = w === 'rainy' ? '🌧️' : w === 'cloudy' || w === 'partly_cloudy' ? '☁️' : w === 'stormy' ? '⛈️' : '☀️';
+        const wLabel = w === 'rainy' ? 'Deszcz' : w === 'cloudy' || w === 'partly_cloudy' ? 'Chmury' : w === 'stormy' ? 'Burza' : 'Susza/Słońce';
+        return (
+          <div className="my-0.5 space-y-1 text-[10px] leading-tight">
+            <label className="flex items-center justify-between gap-1 cursor-pointer">
+              <span
+                title="Nawadnianie (£8 • +10%, chroni przed suszą — ale nie przed burzą)"
+                className={enableIrrigation ? 'text-sky-900 font-bold whitespace-nowrap truncate' : 'text-stone-700 whitespace-nowrap truncate'}
+              >
+                💧 Nawadnianie (£8 • +10%, bez suszy)
+              </span>
+              <input
+                type="checkbox"
+                checked={enableIrrigation}
+                onChange={(e) => onToggleIrrigation && onToggleIrrigation(e.target.checked)}
+                className="accent-sky-600 w-3.5 h-3.5 cursor-pointer shrink-0"
+              />
+            </label>
+            {showWeather && w && (
+              <div className="flex items-center justify-between px-1.5 py-0.5 rounded bg-stone-300/80 border border-stone-400 text-stone-900 font-mono font-bold">
+                <span>{wIcon} {wLabel}</span>
+                <span className={wPct === 100 ? 'text-emerald-700' : 'text-amber-800'}>{wPct}%</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {stage.id === 'harvesting' && (() => {
+        const showWeather = currentFarmStage === 'harvesting' || currentFarmStage === 'storing_selling';
+        const w = harvestWeather;
+        if (!showWeather || !w) return null;
+        const wPct = getHarvestWeatherPercent(w);
+        const wIcon = w === 'sunny' ? '☀️' : w === 'partly_cloudy' ? '⛅' : w === 'cloudy' ? '☁️' : '🌧️';
+        const wLabel = w === 'sunny' ? 'Słońce' : w === 'partly_cloudy' ? 'Słońce/Chmury' : w === 'cloudy' ? 'Chmury' : 'Deszcz';
+        return (
+          <div className="my-0.5 flex items-center justify-between px-1.5 py-0.5 rounded bg-stone-300/80 border border-stone-400 text-stone-900 text-[10px] font-mono font-bold">
+            <span>{wIcon} {wLabel}</span>
+            <span className={wPct === 100 ? 'text-emerald-700' : 'text-amber-800'}>{wPct}%</span>
+          </div>
+        );
+      })()}
 
       {stage.id === 'storing_selling' && (() => {
         const defaultPrice = CROPS_CONFIG[cropType]?.marketPricePerTon ?? 110;

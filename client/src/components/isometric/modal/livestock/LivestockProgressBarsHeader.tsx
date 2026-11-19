@@ -98,7 +98,8 @@ export const LivestockProgressBarsHeader: React.FC<LivestockProgressBarsHeaderPr
         </div>
       </div>
 
-      {/* DWA PASKI POSTĘPU: CIĄŻA (ZIELONY) ORAZ WZROST (ŻÓŁTY) */}
+      {/* DWA PASKI POSTĘPU: CIĄŻA (ZIELONY) ORAZ WZROST (ŻÓŁTY) — ukryte dla koni (indywidualne na stadzie) */}
+      {!isHorses && (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
         {/* 1. PASEK CIĄŻY / ROZRÓD - ZIELONY */}
         <div className="bg-stone-950/90 border border-stone-800/80 rounded-xl p-3">
@@ -138,10 +139,11 @@ export const LivestockProgressBarsHeader: React.FC<LivestockProgressBarsHeaderPr
             />
           </div>
           <span className="text-[10px] text-stone-500 font-mono mt-1 block">
-            {isSheep ? 'Wzrost jagnięcia do maciorki trwa 15 miesięcy' : isHorses ? 'Odchów źrebaka trwa 36 miesięcy (3 lata)' : 'Odchów cielaka trwa 24 miesiące (2 lata)'}
+            {isSheep ? 'Wzrost jagnięcia do maciorki trwa 15 miesięcy' : 'Odchów cielaka trwa 24 miesiące (2 lata)'}
           </span>
         </div>
       </div>
+      )}
     </div>
   );
 };
