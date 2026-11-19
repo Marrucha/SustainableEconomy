@@ -154,6 +154,9 @@ export interface HorseAnimal {
   ageYears: number; // 0..14 (po ukończeniu 15 lat znika z gry)
   group: 'breeding' | 'growth' | 'sale';
   postGrowthTarget: 'sale' | 'breeding';
+  breedingStatus?: 'waiting' | 'failed_wait' | 'pregnant';
+  breedingWaitMonths?: number;
+  pregnancyMonths?: number;
 }
 
 // Struktura Stada (Podział na grupy wiekowe i użytkowe)

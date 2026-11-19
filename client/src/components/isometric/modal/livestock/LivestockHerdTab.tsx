@@ -60,7 +60,7 @@ export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
   const dailyManureRate = Math.max(2, Math.round(totalAnimals * 1.5));
   const perAnimalCap = loadGameParameters().manurePenCapacityKg || 1000;
   const penCap = Math.max(perAnimalCap, totalAnimals * perAnimalCap);
-  const penManureKg = Math.min(penCap, state.penManureKg ?? 0);
+  const penManureKg = Math.round(Math.min(penCap, state.penManureKg ?? 0));
   const penManurePct = Math.min(100, Math.round((penManureKg / penCap) * 100));
   const isPenFull = penManurePct >= 100;
 
@@ -133,6 +133,7 @@ export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
           horses={horsesList}
           onUpdateHorses={handleUpdateHorses}
           horseStage={state.horseStage}
+          horsePregnancyMonths={state.horsePregnancyMonths}
           horseRecoveryMonthsRemaining={state.horseRecoveryMonthsRemaining}
           horseInseminationWaitMonths={state.horseInseminationWaitMonths}
           clockDay={clockDay}

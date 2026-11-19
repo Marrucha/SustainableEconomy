@@ -46,6 +46,7 @@ interface HorseRosterSectionProps {
   horses: HorseAnimal[];
   onUpdateHorses: (nextHorses: HorseAnimal[]) => void;
   horseStage?: string;
+  horsePregnancyMonths?: number;
   horseRecoveryMonthsRemaining?: number;
   horseInseminationWaitMonths?: number;
   clockDay?: number;
@@ -55,6 +56,7 @@ export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
   horses,
   onUpdateHorses,
   horseStage,
+  horsePregnancyMonths = 0,
   horseRecoveryMonthsRemaining = 0,
   horseInseminationWaitMonths = 0,
   clockDay = 1,
@@ -129,37 +131,65 @@ export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
                 </span>
               )}
               {h.group === 'breeding' && getHorseSex(h, idx) === 'female' && (() => {
-                const isPregnant = horseStage === 'gestation_9m' || horseStage === 'birth';
-                if (isPregnant) {
+                const params = loadGameParameters();
+                const status =
+                  h.breedingStatus ??
+                  (horseStage === 'gestation_9m' || horseStage === 'birth'
+                    ? 'pregnant'
+                    : horseInseminationWaitMonths > 0
+                    ? 'failed_wait'
+                    : 'waiting');
+                const pregMonths = h.pregnancyMonths ?? horsePregnancyMonths;
+                const waitRem =
+                  h.breedingWaitMonths !== undefined
+                    ? h.breedingWaitMonths
+                    : status === 'failed_wait'
+                    ? horseInseminationWaitMonths
+                    : horseRecoveryMonthsRemaining;
+
+                if (status === 'pregnant') {
+                  const totalPregMonths = Math.max(1, params.horseGestationMonths || 11);
+                  const elapsedDays = Math.max(0, pregMonths - 1) * 30 + (clockDay - 1);
+                  const pregPct = Math.min(
+                    100,
+                    Math.max(4, Math.round((elapsedDays / (totalPregMonths * 30)) * 100))
+                  );
                   return (
                     <span
-                      title="Zapłodniona (w ciąży)"
-                      className="pointer-events-none absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-stone-950 border border-stone-900 flex items-center justify-center text-[10px] font-black shadow"
-                    >
-                      ✓
-                    </span>
+                      title={`Zapłodniona — ciąża (${pregMonths}/${totalPregMonths} msc • ${pregPct}%)`}
+                      className="pointer-events-none absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-stone-900 shadow"
+                      style={{
+                        background: `conic-gradient(#3b82f6 ${pregPct}%, #ffffff ${pregPct}% 100%)`,
+                      }}
+                    />
                   );
                 }
-                if (horseInseminationWaitMonths > 0) {
+                if (status === 'failed_wait') {
+                  const totalWaitMonths = Math.max(1, params.horseInseminationRetryWaitMonths || 1);
+                  const waitElapsed = Math.max(0, totalWaitMonths - waitRem) * 30 + (clockDay - 1);
+                  const waitPct = Math.min(
+                    100,
+                    Math.max(4, Math.round((waitElapsed / (totalWaitMonths * 30)) * 100))
+                  );
                   return (
                     <span
-                      title={`Ostatnie zapłodnienie bez sukcesu (odczekaj ${horseInseminationWaitMonths} msc)`}
-                      className="pointer-events-none absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white border border-stone-900 flex items-center justify-center text-[10px] font-black shadow"
-                    >
-                      ✕
-                    </span>
+                      title={`Nieudana inseminacja — oczekiwanie (${clockDay}/30 dzień • ${waitPct}%)`}
+                      className="pointer-events-none absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-stone-900 shadow"
+                      style={{
+                        background: `conic-gradient(#ef4444 ${waitPct}%, #ffffff ${waitPct}% 100%)`,
+                      }}
+                    />
                   );
                 }
-                const totalRecMonths = Math.max(1, loadGameParameters().horseRecoveryMonths || 3);
-                const remMonths = horseRecoveryMonthsRemaining > 0 ? horseRecoveryMonthsRemaining : 1;
+                const totalRecMonths = Math.max(1, params.horseRecoveryMonths || 3);
                 const fillPct =
-                  horseRecoveryMonthsRemaining > 0
+                  waitRem > 0
                     ? Math.min(
                         100,
                         Math.max(
                           4,
                           Math.round(
-                            (((totalRecMonths - remMonths) * 30 + (clockDay - 1)) /
+                            ((Math.max(0, totalRecMonths - waitRem) * 30 + (clockDay - 1)) /
                               (totalRecMonths * 30)) *
                               100
                           )
@@ -170,9 +200,9 @@ export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
                 return (
                   <span
                     title={
-                      horseRecoveryMonthsRemaining > 0
-                        ? `Okres oczekiwania po porodzie (${horseRecoveryMonthsRemaining} msc • ${fillPct}%)`
-                        : `Oczekiwanie na inseminację (${clockDay}/30 dzień • ${fillPct}%)`
+                      waitRem > 0
+                        ? `Okres oczekiwania po porodzie (${waitRem} msc • ${fillPct}%)`
+                        : 'Gotowa do inseminacji'
                     }
                     className="pointer-events-none absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-stone-900 shadow"
                     style={{
@@ -280,9 +310,9 @@ export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
           </div>
           <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[10px] text-stone-400">
             <span className="flex items-center gap-1"><span className="text-sky-400 font-bold">♂</span> ogier</span>
-            <span className="flex items-center gap-1"><span className="text-emerald-400 font-bold">✓</span> zapłodniona</span>
-            <span className="flex items-center gap-1"><span className="text-rose-400 font-bold">✕</span> nieudana</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-white border border-stone-700" /> oczekiwanie</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 border border-stone-700" /> ciąża (11 msc)</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 border border-stone-700" /> nieudana (1 msc)</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 border border-stone-700" /> regeneracja (3 msc)</span>
           </div>
           {breedingMales === 0 ? (
             <div className="text-rose-300">⚠️ Brak ogiera (wymagany min. 1 samiec do rozrodu!)</div>

@@ -3,7 +3,11 @@ import type { BuildingState } from '../../types';
 import type { UseGameClockReturn } from '../../clock/useGameClock';
 import { getContractMeta } from '../industryContracts';
 import { loadGameParameters } from '../../admin/gameParameters';
-import { getInseminationSuccessPercent, type LivestockCapitalismState } from './livestockTypes';
+import {
+  getInseminationSuccessPercent,
+  type HorseAnimal,
+  type LivestockCapitalismState,
+} from './livestockTypes';
 
 interface UseLivestockTicksParams {
   clock?: UseGameClockReturn;
@@ -53,7 +57,7 @@ export function useLivestockTicks({
 
     if (animalCount > 0) {
       const dailyGain = Math.max(2, Math.round(animalCount * 1.5));
-      const rawNext = cur + dailyGain;
+      const rawNext = Math.round(cur + dailyGain);
       if (rawNext >= cap) {
         onUpdateState({
           livestockState: {
@@ -145,54 +149,100 @@ export function useLivestockTicks({
     const nextCattleRecovery = Math.max(0, (livestockState.cattleRecoveryMonthsRemaining ?? 0) - 1);
     const nextSheepRecovery = Math.max(0, (livestockState.sheepRecoveryMonthsRemaining ?? 0) - 1);
 
-    // Automatyczna próba zapłodnienia / postęp ciąży koni po zakończeniu okresu oczekiwania
+    // Niezależny miesięczny cykl rozrodu dla każdej klaczy z osobna
     let horsePatch: Partial<LivestockCapitalismState> = {};
-    const curHorseStage = livestockState.horseStage || 'insemination';
-    if (curHorseStage === 'insemination' && nextHorseRecovery === 0 && nextHorseWait === 0) {
-      const horsesList = livestockState.herd.horses || [];
-      const breedingHorses = horsesList.filter((h) => h.group === 'breeding');
-      const hasMale =
-        horsesList.length > 0
-          ? breedingHorses.some((h, i) => (h.sex ?? (i % 4 === 0 ? 'male' : 'female')) === 'male')
-          : (livestockState.herd.adultDraftHorses ?? 0) > 0;
-      const hasFemale =
-        horsesList.length > 0
-          ? breedingHorses.some((h, i) => (h.sex ?? (i % 4 === 0 ? 'male' : 'female')) === 'female')
-          : (livestockState.herd.adultDraftHorses ?? 0) > 0;
+    const horsesList = livestockState.herd.horses || [];
+    if (horsesList.length > 0) {
+      const params = loadGameParameters();
+      const recMonths = Math.max(1, params.horseRecoveryMonths || 3);
+      const retryMonths = Math.max(1, params.horseInseminationRetryWaitMonths || 1);
+      const maxPreg = Math.max(1, params.horseGestationMonths || 11);
+      const insemId = livestockState.stageAssignments?.insemination;
+      const insemWorker = (livestockState.crew || []).find((w) => w.id === insemId);
+      const successPercent = getInseminationSuccessPercent(insemWorker?.profession);
 
-      if (hasMale && hasFemale) {
-        const insemId = livestockState.stageAssignments?.insemination;
-        const insemWorker = (livestockState.crew || []).find((w) => w.id === insemId);
-        const successPercent = getInseminationSuccessPercent(insemWorker?.profession);
-        if (Math.random() * 100 < successPercent) {
-          horsePatch = {
-            horseStage: 'gestation_9m',
-            horsePregnancyMonths: 1,
-            horseProgress: 25,
-          };
-        } else {
-          horsePatch = {
-            horseInseminationWaitMonths: loadGameParameters().horseInseminationRetryWaitMonths || 1,
-            totalProceduresFailed: (livestockState.totalProceduresFailed || 0) + 1,
-            horseProgress: 10,
+      const breedingList = horsesList.filter((h) => h.group === 'breeding');
+      const hasMale = breedingList.some((h, i) => (h.sex ?? (i % 4 === 0 ? 'male' : 'female')) === 'male');
+
+      const newFoals: HorseAnimal[] = [];
+      let failedInsemCount = 0;
+      let breedingIdx = 0;
+
+      const updatedHorses: HorseAnimal[] = horsesList.map((h) => {
+        if (h.group !== 'breeding') return h;
+        const idx = breedingIdx++;
+        const sex = h.sex ?? (idx % 4 === 0 ? 'male' : 'female');
+        if (sex !== 'female') return h;
+
+        const status = h.breedingStatus ?? (nextHorseRecovery > 0 ? 'waiting' : 'waiting');
+        if (status === 'pregnant') {
+          const nextPreg = (h.pregnancyMonths ?? 1) + 1;
+          if (nextPreg > maxPreg) {
+            newFoals.push({
+              id: `foal_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              name: `Źrebię ${horsesList.length + newFoals.length + 1}`,
+              sex: Math.random() < 0.5 ? 'male' : 'female',
+              ageYears: 0,
+              group: 'growth',
+              postGrowthTarget: 'sale',
+            });
+            return {
+              ...h,
+              breedingStatus: 'waiting',
+              breedingWaitMonths: recMonths,
+              pregnancyMonths: 0,
+            };
+          }
+          return { ...h, pregnancyMonths: nextPreg };
+        }
+
+        const curWait =
+          h.breedingWaitMonths !== undefined
+            ? Math.max(0, h.breedingWaitMonths - 1)
+            : nextHorseRecovery;
+
+        if (curWait > 0) {
+          return {
+            ...h,
+            breedingStatus: status === 'failed_wait' ? 'failed_wait' : 'waiting',
+            breedingWaitMonths: curWait,
           };
         }
-      }
-    } else if (curHorseStage === 'gestation_9m') {
-      const nextPreg = (livestockState.horsePregnancyMonths || 0) + 1;
-      const maxPreg = loadGameParameters().horseGestationMonths || 11;
-      if (nextPreg >= maxPreg) {
-        horsePatch = {
-          horseStage: 'birth',
-          horsePregnancyMonths: maxPreg,
-          horseProgress: 50,
+
+        if (!hasMale) {
+          return { ...h, breedingStatus: 'waiting', breedingWaitMonths: 0 };
+        }
+
+        // Niezależny rzut skuteczności inseminacji dla tej konkretnej klaczy (30% rolnik / 50% weterynarz)
+        if (Math.random() * 100 < successPercent) {
+          return {
+            ...h,
+            breedingStatus: 'pregnant',
+            breedingWaitMonths: 0,
+            pregnancyMonths: 1,
+          };
+        }
+        failedInsemCount += 1;
+        return {
+          ...h,
+          breedingStatus: 'failed_wait',
+          breedingWaitMonths: retryMonths,
+          pregnancyMonths: 0,
         };
-      } else {
-        horsePatch = {
-          horsePregnancyMonths: nextPreg,
-          horseProgress: 25 + Math.round((nextPreg / maxPreg) * 20),
-        };
-      }
+      });
+
+      const finalHorses = newFoals.length > 0 ? [...updatedHorses, ...newFoals] : updatedHorses;
+      horsePatch = {
+        totalProceduresFailed: (livestockState.totalProceduresFailed || 0) + failedInsemCount,
+        herd: {
+          ...livestockState.herd,
+          horses: finalHorses,
+          adultDraftHorses: finalHorses.filter((h) => h.group === 'breeding').length,
+          growingFoalsCount: finalHorses.filter((h) => h.group === 'growth').length,
+          horsesForSale: finalHorses.filter((h) => h.group === 'sale').length,
+          horsesFlockCount: finalHorses.length,
+        },
+      };
     }
 
     const recoveryChanged =
