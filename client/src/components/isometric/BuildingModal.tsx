@@ -106,9 +106,15 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
               Epoka 1 • {clock ? formatGameDate(clock.date) : '1880'}
             </span>
             <h2 className="text-lg sm:text-xl font-bold font-serif text-amber-100 truncate">
-              {isOrchard && buildingState.orchardState?.isFruitLocked && buildingState.orchardState?.fruitType
-                ? `${building.name} • ${FRUITS_CONFIG[buildingState.orchardState.fruitType]?.name || ''}`
-                : building.name}
+              {(() => {
+                const displayName =
+                  building.typeId === 'livestock_farm' && building.name === 'Farma Bydła i Owiec'
+                    ? 'Farma Hodowlana'
+                    : building.name;
+                return isOrchard && buildingState.orchardState?.isFruitLocked && buildingState.orchardState?.fruitType
+                  ? `${displayName} • ${FRUITS_CONFIG[buildingState.orchardState.fruitType]?.name || ''}`
+                  : displayName;
+              })()}
             </h2>
           </div>
 

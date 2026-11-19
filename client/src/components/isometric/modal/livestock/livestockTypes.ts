@@ -373,6 +373,7 @@ export function createDefaultLivestockState(): LivestockCapitalismState {
     horseProgress: 20,
     horsePregnancyMonths: 0,
     foalAgeMonths: 0,
+    horseRecoveryMonthsRemaining: 3,
     selectedHorseBranch: 'sale',
     supplies: {
       strawBeddingKg: 400,

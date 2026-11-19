@@ -160,7 +160,7 @@ export const RURAL_CATALOG: BuildingCatalogItem[] = [
   },
   {
     typeId: 'livestock_farm',
-    name: 'Farma Bydła i Owiec',
+    name: 'Farma Hodowlana',
     category: 'Budynki rolnicze',
     defaultSizeX: 3,
     defaultSizeY: 4,

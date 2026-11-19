@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import type { BuildingState } from '../../types';
 import type { UseGameClockReturn } from '../../clock/useGameClock';
 import { getContractMeta } from '../industryContracts';
-import type { LivestockCapitalismState } from './livestockTypes';
+import { loadGameParameters } from '../../admin/gameParameters';
+import { getInseminationSuccessPercent, type LivestockCapitalismState } from './livestockTypes';
 
 interface UseLivestockTicksParams {
   clock?: UseGameClockReturn;
@@ -42,7 +43,8 @@ export function useLivestockTicks({
         ? (h.adultSheepCount || 0) + (h.growingLambsCount || 0) + (h.sheepForSale ?? 4)
         : (h.adultDraftHorses ?? 10) + (h.growingFoalsCount ?? 4) + (h.horsesForSale ?? 2);
 
-    const cap = livestockState.penManureCapacityKg ?? 200;
+    const perAnimalCap = loadGameParameters().manurePenCapacityKg || 1000;
+    const cap = Math.max(perAnimalCap, animalCount * perAnimalCap);
     const cur = livestockState.penManureKg ?? 0;
     const dailyFeedNeedKg =
       sp === 'horses' ? animalCount * 10 : sp === 'cattle' ? animalCount * 8 : animalCount * 2;
@@ -142,11 +144,63 @@ export function useLivestockTicks({
     const nextHorseWait = Math.max(0, (livestockState.horseInseminationWaitMonths ?? 0) - 1);
     const nextCattleRecovery = Math.max(0, (livestockState.cattleRecoveryMonthsRemaining ?? 0) - 1);
     const nextSheepRecovery = Math.max(0, (livestockState.sheepRecoveryMonthsRemaining ?? 0) - 1);
+
+    // Automatyczna próba zapłodnienia / postęp ciąży koni po zakończeniu okresu oczekiwania
+    let horsePatch: Partial<LivestockCapitalismState> = {};
+    const curHorseStage = livestockState.horseStage || 'insemination';
+    if (curHorseStage === 'insemination' && nextHorseRecovery === 0 && nextHorseWait === 0) {
+      const horsesList = livestockState.herd.horses || [];
+      const breedingHorses = horsesList.filter((h) => h.group === 'breeding');
+      const hasMale =
+        horsesList.length > 0
+          ? breedingHorses.some((h, i) => (h.sex ?? (i % 4 === 0 ? 'male' : 'female')) === 'male')
+          : (livestockState.herd.adultDraftHorses ?? 0) > 0;
+      const hasFemale =
+        horsesList.length > 0
+          ? breedingHorses.some((h, i) => (h.sex ?? (i % 4 === 0 ? 'male' : 'female')) === 'female')
+          : (livestockState.herd.adultDraftHorses ?? 0) > 0;
+
+      if (hasMale && hasFemale) {
+        const insemId = livestockState.stageAssignments?.insemination;
+        const insemWorker = (livestockState.crew || []).find((w) => w.id === insemId);
+        const successPercent = getInseminationSuccessPercent(insemWorker?.profession);
+        if (Math.random() * 100 < successPercent) {
+          horsePatch = {
+            horseStage: 'gestation_9m',
+            horsePregnancyMonths: 1,
+            horseProgress: 25,
+          };
+        } else {
+          horsePatch = {
+            horseInseminationWaitMonths: loadGameParameters().horseInseminationRetryWaitMonths || 1,
+            totalProceduresFailed: (livestockState.totalProceduresFailed || 0) + 1,
+            horseProgress: 10,
+          };
+        }
+      }
+    } else if (curHorseStage === 'gestation_9m') {
+      const nextPreg = (livestockState.horsePregnancyMonths || 0) + 1;
+      const maxPreg = loadGameParameters().horseGestationMonths || 11;
+      if (nextPreg >= maxPreg) {
+        horsePatch = {
+          horseStage: 'birth',
+          horsePregnancyMonths: maxPreg,
+          horseProgress: 50,
+        };
+      } else {
+        horsePatch = {
+          horsePregnancyMonths: nextPreg,
+          horseProgress: 25 + Math.round((nextPreg / maxPreg) * 20),
+        };
+      }
+    }
+
     const recoveryChanged =
       nextHorseRecovery !== (livestockState.horseRecoveryMonthsRemaining ?? 0) ||
       nextHorseWait !== (livestockState.horseInseminationWaitMonths ?? 0) ||
       nextCattleRecovery !== (livestockState.cattleRecoveryMonthsRemaining ?? 0) ||
-      nextSheepRecovery !== (livestockState.sheepRecoveryMonthsRemaining ?? 0);
+      nextSheepRecovery !== (livestockState.sheepRecoveryMonthsRemaining ?? 0) ||
+      Object.keys(horsePatch).length > 0;
 
     if (totalCost > 0 || nextFeedOrder !== livestockState.feedOrder || nextStrawOrder !== livestockState.strawOrder || recoveryChanged) {
       if (totalCost > 0) onSpendGold?.(totalCost);
@@ -161,6 +215,7 @@ export function useLivestockTicks({
           horseInseminationWaitMonths: nextHorseWait,
           cattleRecoveryMonthsRemaining: nextCattleRecovery,
           sheepRecoveryMonthsRemaining: nextSheepRecovery,
+          ...horsePatch,
         },
       });
     }

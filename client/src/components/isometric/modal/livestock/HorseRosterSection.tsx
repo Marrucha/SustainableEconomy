@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { HorseAnimal } from './livestockTypes';
+import { loadGameParameters } from '../../admin/gameParameters';
 
 const HORSE_NAMES = [
   'Samson', 'Duchess', 'Captain', 'Bella', 'Arthur', 'Clover', 'Duke', 'Molly',
@@ -47,6 +48,7 @@ interface HorseRosterSectionProps {
   horseStage?: string;
   horseRecoveryMonthsRemaining?: number;
   horseInseminationWaitMonths?: number;
+  clockDay?: number;
 }
 
 export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
@@ -55,6 +57,7 @@ export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
   horseStage,
   horseRecoveryMonthsRemaining = 0,
   horseInseminationWaitMonths = 0,
+  clockDay = 1,
 }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -147,18 +150,34 @@ export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
                     </span>
                   );
                 }
-                if (horseRecoveryMonthsRemaining > 0) {
-                  return (
-                    <span
-                      title={`Okres oczekiwania po porodzie (${horseRecoveryMonthsRemaining} msc)`}
-                      className="pointer-events-none absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white border-2 border-stone-900 shadow"
-                    />
-                  );
-                }
+                const totalRecMonths = Math.max(1, loadGameParameters().horseRecoveryMonths || 3);
+                const remMonths = horseRecoveryMonthsRemaining > 0 ? horseRecoveryMonthsRemaining : 1;
+                const fillPct =
+                  horseRecoveryMonthsRemaining > 0
+                    ? Math.min(
+                        100,
+                        Math.max(
+                          4,
+                          Math.round(
+                            (((totalRecMonths - remMonths) * 30 + (clockDay - 1)) /
+                              (totalRecMonths * 30)) *
+                              100
+                          )
+                        )
+                      )
+                    : 100;
+
                 return (
                   <span
-                    title="Oczekiwanie na inseminację / gotowa do rozrodu"
-                    className="pointer-events-none absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white border-2 border-stone-900 shadow"
+                    title={
+                      horseRecoveryMonthsRemaining > 0
+                        ? `Okres oczekiwania po porodzie (${horseRecoveryMonthsRemaining} msc • ${fillPct}%)`
+                        : `Oczekiwanie na inseminację (${clockDay}/30 dzień • ${fillPct}%)`
+                    }
+                    className="pointer-events-none absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-stone-900 shadow"
+                    style={{
+                      background: `conic-gradient(#10b981 ${fillPct}%, #ffffff ${fillPct}% 100%)`,
+                    }}
                   />
                 );
               })()}

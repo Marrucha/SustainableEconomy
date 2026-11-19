@@ -56,7 +56,7 @@ const SECTIONS: { title: string; subtitle: string; fields: FieldSpec[] }[] = [
     title: 'Domyślne Pojemności Magazynowe',
     subtitle: 'Bazowe limity pojemności zagrody, spichlerza, stogu słomy i płyty obornikowej',
     fields: [
-      { key: 'manurePenCapacityKg', label: 'Pojemność obornika w zagrodzie', unit: 'kg', min: 50, max: 5000, step: 10 },
+      { key: 'manurePenCapacityKg', label: 'Pojemność zagrody na 1 zwierzę', unit: 'kg/szt.', min: 200, max: 5000, step: 50 },
       { key: 'grainSiloBaseCapacityKg', label: 'Bazowa pojemność spichlerza (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
       { key: 'strawStackBaseCapacityKg', label: 'Bazowa pojemność stogu słomy (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
       { key: 'manureBinBaseCapacityKg', label: 'Bazowa pojemność płyty obornikowej (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },

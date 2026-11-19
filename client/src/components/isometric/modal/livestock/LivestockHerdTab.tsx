@@ -1,14 +1,17 @@
 import React from 'react';
 import type { HorseAnimal, LivestockCapitalismState } from './livestockTypes';
 import { HorseRosterSection, createDefaultHorsesList } from './HorseRosterSection';
+import { loadGameParameters } from '../../admin/gameParameters';
 
 interface LivestockHerdTabProps {
   state: LivestockCapitalismState;
+  clockDay?: number;
   onUpdateState: (patch: Partial<LivestockCapitalismState>) => void;
 }
 
 export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
   state,
+  clockDay = 1,
   onUpdateState,
 }) => {
   const herd = state.herd;
@@ -55,7 +58,8 @@ export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
 
   const totalAnimals = breedingCount + growthCount + forSaleCount;
   const dailyManureRate = Math.max(2, Math.round(totalAnimals * 1.5));
-  const penCap = state.penManureCapacityKg ?? 200;
+  const perAnimalCap = loadGameParameters().manurePenCapacityKg || 1000;
+  const penCap = Math.max(perAnimalCap, totalAnimals * perAnimalCap);
   const penManureKg = Math.min(penCap, state.penManureKg ?? 0);
   const penManurePct = Math.min(100, Math.round((penManureKg / penCap) * 100));
   const isPenFull = penManurePct >= 100;
@@ -131,6 +135,7 @@ export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
           horseStage={state.horseStage}
           horseRecoveryMonthsRemaining={state.horseRecoveryMonthsRemaining}
           horseInseminationWaitMonths={state.horseInseminationWaitMonths}
+          clockDay={clockDay}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">

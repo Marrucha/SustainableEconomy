@@ -60,10 +60,16 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
   if (businessTab === 'energy') {
     return (
       <BusinessEnergySection
-        businessTitle="Ferma Hodowlana Bydła i Owiec"
-        energySource={buildingState.businessEnergySource || 'drewno'}
+        businessTitle="Farma Hodowlana"
+        energySource="konie"
         energyScale={buildingState.businessEnergyScale || 'standard'}
         hasGreenRelief={hasGreenRelief}
+        allowedSources={['konie']}
+        buildingState={buildingState}
+        allWorldBuildings={allWorldBuildings}
+        buildingsState={buildingsState}
+        onSpendGold={onSpendGold}
+        onUpdateAnyBuildingState={onUpdateAnyBuildingState}
         onUpdateState={onUpdateState}
       />
     );
@@ -344,6 +350,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
       {activeTab === 'herd' && (
         <LivestockHerdTab
           state={livestockState}
+          clockDay={clock?.date.day ?? 1}
           onUpdateState={handleUpdateLivestock}
         />
       )}

@@ -47,7 +47,7 @@ export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
   cattleMaxAgeYears: 12,
   sheepMaxAgeYears: 10,
 
-  manurePenCapacityKg: 200,
+  manurePenCapacityKg: 1000,
   grainSiloBaseCapacityKg: 10000,
   strawStackBaseCapacityKg: 20000,
   manureBinBaseCapacityKg: 10000,

@@ -240,7 +240,7 @@ export const INITIAL_RURAL_BUILDINGS: PlacedBuilding[] = [
   {
     id: 'rural_livestock_init',
     typeId: 'livestock_farm',
-    name: 'Farma Bydła i Owiec',
+    name: 'Farma Hodowlana',
     x: 6,
     y: 13,
     sizeX: 6, // 3 * 2
