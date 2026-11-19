@@ -107,22 +107,38 @@ export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
               <div
                 className="p-[2.5px] rounded-xl transition-all"
                 style={{
-                  background: `conic-gradient(${ringColor} ${ringPct}%, #292524 ${ringPct}% 100%)`,
+                  background: h.isDeceased
+                    ? '#44403c'
+                    : `conic-gradient(${ringColor} ${ringPct}%, #292524 ${ringPct}% 100%)`,
                 }}
               >
                 <button
                   type="button"
                   onClick={() => setHoveredId(isOpen ? null : h.id)}
                   className={`w-8 h-8 rounded-[10px] border text-lg leading-none transition-all cursor-pointer flex items-center justify-center shadow-sm ${
-                    isSaleColor
+                    h.isDeceased
+                      ? 'bg-stone-900 border-stone-700 opacity-65 grayscale'
+                      : isSaleColor
                       ? 'bg-stone-100 border-stone-300 hover:border-white'
                       : 'bg-amber-900 border-amber-600 hover:border-amber-300'
                   }`}
-                  title={`${h.name} (${h.ageYears} lat)`}
+                  title={
+                    h.isDeceased
+                      ? `${h.name} — RIP (zniknie za ${h.deceasedMonthsRemaining ?? 3} msc)`
+                      : `${h.name} (${h.ageYears} lat)`
+                  }
                 >
                   <span className={isSaleColor ? 'brightness-110 contrast-125' : ''}>🐎</span>
                 </button>
               </div>
+              {h.isDeceased && (
+                <span
+                  title={`Padłe źrebię — RIP (zniknie za ${h.deceasedMonthsRemaining ?? 3} msc)`}
+                  className="pointer-events-none absolute -top-1.5 -right-1.5 px-1 h-4 rounded-full bg-stone-950 text-stone-100 border border-stone-500 flex items-center justify-center text-[8px] font-black shadow"
+                >
+                  ✝ RIP
+                </span>
+              )}
               {h.group === 'breeding' && getHorseSex(h, idx) === 'male' && (
                 <span
                   title="Ogier (samiec)"

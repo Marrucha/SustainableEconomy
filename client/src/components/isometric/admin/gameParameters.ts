@@ -19,6 +19,9 @@ export interface GameParametersConfig {
   horseMaxAgeYears: number;
   cattleMaxAgeYears: number;
   sheepMaxAgeYears: number;
+  foalMonthlyMortalityPercent: number;
+  foalMonthlyMortalityVetPercent: number;
+  deceasedRemovalMonths: number;
 
   // Domyślne pojemności magazynowe i nawożenie
   manurePenCapacityKg: number;
@@ -47,6 +50,9 @@ export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
   horseMaxAgeYears: 15,
   cattleMaxAgeYears: 12,
   sheepMaxAgeYears: 10,
+  foalMonthlyMortalityPercent: 2,
+  foalMonthlyMortalityVetPercent: 1,
+  deceasedRemovalMonths: 3,
 
   manurePenCapacityKg: 1000,
   grainSiloBaseCapacityKg: 10000,

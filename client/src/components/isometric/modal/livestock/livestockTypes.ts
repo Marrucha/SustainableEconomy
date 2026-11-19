@@ -158,6 +158,8 @@ export interface HorseAnimal {
   breedingStatus?: 'waiting' | 'failed_wait' | 'pregnant';
   breedingWaitMonths?: number;
   pregnancyMonths?: number;
+  isDeceased?: boolean;
+  deceasedMonthsRemaining?: number;
 }
 
 // Struktura Stada (Podział na grupy wiekowe i użytkowe)

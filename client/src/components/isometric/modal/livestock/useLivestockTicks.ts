@@ -162,7 +162,7 @@ export function useLivestockTicks({
       const insemWorker = (livestockState.crew || []).find((w) => w.id === insemId);
       const baseSuccessPercent = getInseminationSuccessPercent(insemWorker?.profession);
 
-      const breedingList = horsesList.filter((h) => h.group === 'breeding');
+      const breedingList = horsesList.filter((h) => h.group === 'breeding' && !h.isDeceased);
       const malesCount = breedingList.filter(
         (h, i) => (h.sex ?? (i % 4 === 0 ? 'male' : 'female')) === 'male'
       ).length;
@@ -170,28 +170,45 @@ export function useLivestockTicks({
       const effectiveSuccessPercent = hasMale
         ? Math.min(100, baseSuccessPercent + Math.max(0, malesCount - 1) * 10)
         : 0;
+      const hasVet = (livestockState.crew || []).some((w) => w.profession === 'vet');
+      const foalMortalityPct = hasVet
+        ? params.foalMonthlyMortalityVetPercent
+        : params.foalMonthlyMortalityPercent;
+      const ripRemovalMonths = Math.max(1, params.deceasedRemovalMonths || 3);
 
       const newFoals: HorseAnimal[] = [];
       let failedInsemCount = 0;
       let breedingIdx = 0;
 
-      const updatedHorses: HorseAnimal[] = horsesList.map((h) => {
-        if (h.group === 'growth') {
-          const nextAgeMonths = (h.ageMonths ?? (h.ageYears || 0) * 12) + 1;
-          const nextAgeYears = Math.floor(nextAgeMonths / 12);
-          if (nextAgeMonths >= maturityMonths) {
-            return {
-              ...h,
-              ageMonths: nextAgeMonths,
-              ageYears: nextAgeYears,
-              group: h.postGrowthTarget,
-              ...(h.postGrowthTarget === 'breeding'
-                ? { breedingStatus: 'waiting' as const, breedingWaitMonths: 0, pregnancyMonths: 0 }
-                : {}),
-            };
+      const updatedHorses = horsesList
+        .map((h): HorseAnimal | null => {
+          if (h.isDeceased) {
+            const rem = (h.deceasedMonthsRemaining ?? ripRemovalMonths) - 1;
+            return rem > 0 ? { ...h, deceasedMonthsRemaining: rem } : null;
           }
-          return { ...h, ageMonths: nextAgeMonths, ageYears: nextAgeYears };
-        }
+          if (h.group === 'growth') {
+            if (Math.random() * 100 < foalMortalityPct) {
+              return {
+                ...h,
+                isDeceased: true,
+                deceasedMonthsRemaining: ripRemovalMonths,
+              };
+            }
+            const nextAgeMonths = (h.ageMonths ?? (h.ageYears || 0) * 12) + 1;
+            const nextAgeYears = Math.floor(nextAgeMonths / 12);
+            if (nextAgeMonths >= maturityMonths) {
+              return {
+                ...h,
+                ageMonths: nextAgeMonths,
+                ageYears: nextAgeYears,
+                group: h.postGrowthTarget,
+                ...(h.postGrowthTarget === 'breeding'
+                  ? { breedingStatus: 'waiting' as const, breedingWaitMonths: 0, pregnancyMonths: 0 }
+                  : {}),
+              };
+            }
+            return { ...h, ageMonths: nextAgeMonths, ageYears: nextAgeYears };
+          }
         if (h.group !== 'breeding') return h;
         const idx = breedingIdx++;
         const sex = h.sex ?? (idx % 4 === 0 ? 'male' : 'female');
@@ -255,16 +272,18 @@ export function useLivestockTicks({
         };
       });
 
-      const finalHorses = newFoals.length > 0 ? [...updatedHorses, ...newFoals] : updatedHorses;
+      const finalHorses = (
+        newFoals.length > 0 ? [...updatedHorses, ...newFoals] : updatedHorses
+      ).filter((h): h is HorseAnimal => Boolean(h));
       horsePatch = {
         totalProceduresFailed: (livestockState.totalProceduresFailed || 0) + failedInsemCount,
         herd: {
           ...livestockState.herd,
           horses: finalHorses,
-          adultDraftHorses: finalHorses.filter((h) => h.group === 'breeding').length,
-          growingFoalsCount: finalHorses.filter((h) => h.group === 'growth').length,
-          horsesForSale: finalHorses.filter((h) => h.group === 'sale').length,
-          horsesFlockCount: finalHorses.length,
+          adultDraftHorses: finalHorses.filter((h) => h.group === 'breeding' && !h.isDeceased).length,
+          growingFoalsCount: finalHorses.filter((h) => h.group === 'growth' && !h.isDeceased).length,
+          horsesForSale: finalHorses.filter((h) => h.group === 'sale' && !h.isDeceased).length,
+          horsesFlockCount: finalHorses.filter((h) => !h.isDeceased).length,
         },
       };
     }

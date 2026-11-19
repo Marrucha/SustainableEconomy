@@ -50,6 +50,9 @@ const SECTIONS: { title: string; subtitle: string; fields: FieldSpec[] }[] = [
       { key: 'horseMaxAgeYears', label: 'Maksymalny wiek konia', unit: 'lata', min: 5, max: 40 },
       { key: 'cattleMaxAgeYears', label: 'Maksymalny wiek krowy', unit: 'lata', min: 5, max: 30 },
       { key: 'sheepMaxAgeYears', label: 'Maksymalny wiek owcy', unit: 'lata', min: 4, max: 25 },
+      { key: 'foalMonthlyMortalityPercent', label: 'Miesięczna śmiertelność źrebiąt (bez wet.)', unit: '%/msc', min: 0, max: 50, step: 0.5 },
+      { key: 'foalMonthlyMortalityVetPercent', label: 'Miesięczna śmiertelność źrebiąt (z wet.)', unit: '%/msc', min: 0, max: 50, step: 0.5 },
+      { key: 'deceasedRemovalMonths', label: 'Czas widoczności RIP na planszy', unit: 'msc', min: 1, max: 12 },
     ],
   },
   {
