@@ -101,23 +101,43 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-1.5">
-        <select
-          value={qtyKg}
-          onChange={(e) => setQtyKg(Number(e.target.value))}
-          className="bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 text-[11px] text-stone-200 cursor-pointer"
-        >
-          {[100, 200, 300, 500].map((v) => (
-            <option key={v} value={v}>
-              {v} kg / msc
-            </option>
-          ))}
-        </select>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setQtyKg((q) => Math.max(100, q - 100))}
+              className="px-2 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-200 font-mono font-bold cursor-pointer"
+              title="Odejmij 100 kg"
+            >
+              -100
+            </button>
+            <span className="px-2 py-1 rounded-lg bg-stone-950 border border-stone-700 text-amber-200 font-mono font-bold min-w-[82px] text-center">
+              {qtyKg.toLocaleString('pl-PL')} kg/msc
+            </span>
+            <button
+              type="button"
+              onClick={() => setQtyKg((q) => q + 100)}
+              className="px-2 py-1 rounded-lg bg-emerald-900/60 hover:bg-emerald-800/70 border border-emerald-600/50 text-emerald-200 font-mono font-bold cursor-pointer"
+              title="Dodaj 100 kg"
+            >
+              +100
+            </button>
+            <button
+              type="button"
+              onClick={() => setQtyKg((q) => q + 1000)}
+              className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/50 text-amber-200 font-mono font-bold cursor-pointer"
+              title="Dodaj 1 tonę (1000 kg)"
+            >
+              ++1t
+            </button>
+          </div>
+        </div>
 
         <select
           value={contractType}
           onChange={(e) => setContractType(e.target.value as ContractType)}
-          className="bg-stone-950 border border-amber-500/50 rounded-lg px-2 py-1 text-[11px] text-amber-200 font-semibold cursor-pointer"
+          className="w-full bg-stone-950 border border-amber-500/50 rounded-lg px-2 py-1 text-[11px] text-amber-200 font-semibold cursor-pointer"
         >
           {CONTRACT_OPTIONS.map((opt) => (
             <option key={opt.id} value={opt.id}>

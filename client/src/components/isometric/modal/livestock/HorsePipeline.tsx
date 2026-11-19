@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React from 'react';
 import type {
   LivestockCapitalismState,
   LivestockStage,
@@ -21,8 +21,6 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
   onUpdateState,
   onGoToCrewTab,
 }) => {
-  const [feedback] = useState<string | null>(null);
-
   const crew = state.crew || [];
   const assignments = state.stageAssignments || {};
   const curStage = state.horseStage || 'insemination';
@@ -61,6 +59,7 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
     });
   };
 
+
   const insemWorker = getWorkerForStage('insemination');
   const birthWorker = getWorkerForStage('birth');
   const insemRisk = calculateFailureRisk(insemWorker?.profession);
@@ -71,9 +70,9 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
       <div className="bg-stone-950/95 border border-stone-800 rounded-3xl p-4 space-y-4 shadow-2xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-base">đźŽ</span>
+            <span className="text-base">🐎</span>
             <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-              RurociÄ…g Hodowli Koni (4 Etapy)
+              Rurociąg Hodowli Koni (4 Etapy)
             </h3>
           </div>
 
@@ -82,31 +81,25 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
               onClick={onGoToCrewTab}
               className="py-1.5 px-3.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-200 border border-stone-700 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
             >
-              <span>đź‘Ą</span> Kadra Fermy
+              <span>👥</span> Kadra Fermy
             </button>
           </div>
         </div>
 
-        {feedback && (
-          <div className="bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs px-3.5 py-2 rounded-xl font-medium">
-            {feedback}
-          </div>
-        )}
-
         <div className="grid grid-cols-1 md:grid-cols-[1fr_32px_1fr_32px_1fr_32px_1fr] items-stretch gap-2">
           <LivestockStageCard
             stepNum={1}
-            icon="đź§¬"
-            title="StanĂłwka Klaczy"
-            tooltipDesc="Krycie klaczy przez Weterynarza (1-10% ryzyka) lub HodowcÄ™ (10-30% ryzyka)."
+            icon="🧬"
+            title="Stanówka Klaczy"
+            tooltipDesc="Krycie klaczy przez Weterynarza (1-10% ryzyka) lub Hodowcę (10-30% ryzyka)."
             requiredProfessionLabel="Weterynarz / Hodowca"
             badgeText={`${insemRisk.avg}% Ryz.`}
             isCurrent={curStage === 'insemination'}
             assignedWorker={insemWorker || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder')}
-            selectPlaceholder="âš ď¸Ź [Wybierz kadrÄ™]"
-            hireButtonLabel="âž• Zatrudnij hodowcÄ™"
-            secondaryHireButtonLabel="đź©ş Zatrudnij weterynarza"
+            selectPlaceholder="⚠️ [Wybierz kadrę]"
+            hireButtonLabel="➕ Zatrudnij hodowcę"
+            secondaryHireButtonLabel="🩺 Zatrudnij weterynarza"
             onAssign={(id) => handleAssign('insemination', id)}
             onHireAndAssign={() => handleHireAndAssign('insemination', 'breeder')}
             onSecondaryHireAndAssign={() => handleHireAndAssign('insemination', 'vet')}
@@ -118,18 +111,18 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
 
           <LivestockStageCard
             stepNum={2}
-            icon="đźŽ"
-            title="ĹąrebnoĹ›Ä‡ (11 msc)"
-            tooltipDesc="CiÄ…ĹĽa klaczy trwa dokĹ‚adnie 11 miesiÄ™cy pod staĹ‚Ä… opiekÄ… hodowcy."
+            icon="🐎"
+            title="Źrebność (11 msc)"
+            tooltipDesc="Ciąża klaczy trwa dokładnie 11 miesięcy pod stałą opieką hodowcy."
             requiredProfessionLabel="Hodowca"
             badgeText="11 Msc"
             badgeVariant="sky"
-            statusLine={`CiÄ…ĹĽa: ${state.horsePregnancyMonths || 0}/11 msc`}
+            statusLine={`Ciąża: ${state.horsePregnancyMonths || 0}/11 msc`}
             isCurrent={curStage === 'gestation_9m'}
             assignedWorker={getWorkerForStage('gestation_9m') || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'breeder')}
-            selectPlaceholder="âš ď¸Ź [Wybierz hodowcÄ™]"
-            hireButtonLabel="âž• Zatrudnij hodowcÄ™"
+            selectPlaceholder="⚠️ [Wybierz hodowcę]"
+            hireButtonLabel="➕ Zatrudnij hodowcę"
             onAssign={(id) => handleAssign('gestation_9m', id)}
             onHireAndAssign={() => handleHireAndAssign('gestation_9m', 'breeder')}
           />
@@ -140,17 +133,17 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
 
           <LivestockStageCard
             stepNum={3}
-            icon="đź´"
-            title="WyĹşrebienie"
-            tooltipDesc="OdbiĂłr porodu Ĺşrebaka przez Weterynarza (1-10%) lub HodowcÄ™ (10-30%)."
+            icon="🐴"
+            title="Wyźrebienie"
+            tooltipDesc="Odbiór porodu źrebaka przez Weterynarza (1-10%) lub Hodowcę (10-30%)."
             requiredProfessionLabel="Weterynarz / Hodowca"
             badgeText={`${birthRisk.avg}% Ryz.`}
             isCurrent={curStage === 'birth'}
             assignedWorker={birthWorker || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder')}
-            selectPlaceholder="âš ď¸Ź [Wybierz kadrÄ™]"
-            hireButtonLabel="âž• Zatrudnij hodowcÄ™"
-            secondaryHireButtonLabel="đź©ş Zatrudnij weterynarza"
+            selectPlaceholder="⚠️ [Wybierz kadrę]"
+            hireButtonLabel="➕ Zatrudnij hodowcę"
+            secondaryHireButtonLabel="🩺 Zatrudnij weterynarza"
             onAssign={(id) => handleAssign('birth', id)}
             onHireAndAssign={() => handleHireAndAssign('birth', 'breeder')}
             onSecondaryHireAndAssign={() => handleHireAndAssign('birth', 'vet')}
@@ -162,9 +155,9 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
 
           <LivestockStageCard
             stepNum={4}
-            icon="đźŹ‡"
-            title="OdchĂłw (3 lata)"
-            tooltipDesc="WychĂłw i ujeĹĽdĹĽanie Ĺşrebaka trwa 36 miesiÄ™cy (3 lata) pod opiekÄ… hodowcy."
+            icon="🏇"
+            title="Odchów (3 lata)"
+            tooltipDesc="Wychów i ujeżdżanie źrebaka trwa 36 miesięcy (3 lata) pod opieką hodowcy."
             requiredProfessionLabel="Hodowca"
             badgeText="36 Msc"
             badgeVariant="emerald"
@@ -172,8 +165,8 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
             isCurrent={curStage === 'calf_growth_2y'}
             assignedWorker={getWorkerForStage('calf_growth_2y') || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'breeder')}
-            selectPlaceholder="âš ď¸Ź [Wybierz hodowcÄ™]"
-            hireButtonLabel="âž• Zatrudnij hodowcÄ™"
+            selectPlaceholder="⚠️ [Wybierz hodowcę]"
+            hireButtonLabel="➕ Zatrudnij hodowcę"
             onAssign={(id) => handleAssign('calf_growth_2y', id)}
             onHireAndAssign={() => handleHireAndAssign('calf_growth_2y', 'breeder')}
           />

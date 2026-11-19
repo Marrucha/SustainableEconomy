@@ -4,6 +4,7 @@ import type { WorldSupplierBuilding } from '../industrySupplyConfig';
 import type { LivestockCapitalismState } from './livestockTypes';
 import { LIVESTOCK_PRODUCTS } from './livestockTypes';
 import { LivestockSupplyOrderCard } from './LivestockSupplyOrderCard';
+import { loadGameParameters } from '../../admin/gameParameters';
 
 interface LivestockStorageBinsProps {
   state: LivestockCapitalismState;
@@ -13,7 +14,11 @@ interface LivestockStorageBinsProps {
   onUpdateState: (patch: Partial<LivestockCapitalismState>) => void;
 }
 
-const MAX_BIN_CAPACITY = 1000;
+  const params = loadGameParameters();
+  const feedCapKg = params.grainSiloBaseCapacityKg || 10000;
+  const strawCapKg = params.strawStackBaseCapacityKg || 20000;
+  const manureCapKg = params.manureBinBaseCapacityKg || 10000;
+  const MAX_BIN_CAPACITY = feedCapKg;
 
 export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
   state,
@@ -100,7 +105,7 @@ export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
                 <span className="text-[10px] text-stone-400 font-mono">Pasza dla zwierząt (kg)</span>
               </div>
             </div>
-            {renderFillBar(supplies.feedGrainKg, MAX_BIN_CAPACITY, 'bg-amber-500')}
+            {renderFillBar(supplies.feedGrainKg, feedCapKg, 'bg-amber-500')}
           </div>
           <LivestockSupplyOrderCard
             kind="feed"
@@ -129,7 +134,7 @@ export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
                 <span className="text-[10px] text-stone-400 font-mono">Słoma do zagrody (kg)</span>
               </div>
             </div>
-            {renderFillBar(supplies.strawBeddingKg, MAX_BIN_CAPACITY, 'bg-yellow-500')}
+            {renderFillBar(supplies.strawBeddingKg, strawCapKg, 'bg-yellow-500')}
           </div>
           <LivestockSupplyOrderCard
             kind="straw"
@@ -158,7 +163,7 @@ export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
                 <span className="text-[10px] text-stone-400 font-mono">Zebrany z zagrody (kg)</span>
               </div>
             </div>
-            {renderFillBar(storage.manureKg || 0, MAX_BIN_CAPACITY, 'bg-emerald-500')}
+            {renderFillBar(storage.manureKg || 0, manureCapKg, 'bg-emerald-500')}
           </div>
           <div className="pt-2 border-t border-stone-800 text-[10px] font-mono text-stone-400">
             Gotowy do zakontraktowania przez odbiorcę (tylko stan)

@@ -160,6 +160,7 @@ export interface HorseAnimal {
   pregnancyMonths?: number;
   isDeceased?: boolean;
   deceasedMonthsRemaining?: number;
+  vitalityPercent?: number; // 0..100% (bez paszy -1%/dzień, przy 0% -> RIP)
 }
 
 // Struktura Stada (Podział na grupy wiekowe i użytkowe)

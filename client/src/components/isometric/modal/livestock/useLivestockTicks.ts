@@ -38,6 +38,7 @@ export function useLivestockTicks({
     if (lastClockKeyRef.current === key) return;
     lastClockKeyRef.current = key;
 
+    const params = loadGameParameters();
     const h = livestockState.herd;
     const sp = livestockState.activeSpecies || 'cattle';
     const animalCount =
@@ -45,29 +46,68 @@ export function useLivestockTicks({
         ? (h.milkingGroupCows || 0) + (h.growingGroupCalves || 0) + (h.cattleForSale ?? 4)
         : sp === 'sheep'
         ? (h.adultSheepCount || 0) + (h.growingLambsCount || 0) + (h.sheepForSale ?? 4)
-        : (h.adultDraftHorses ?? 10) + (h.growingFoalsCount ?? 4) + (h.horsesForSale ?? 2);
+        : (h.horses && h.horses.length > 0
+            ? h.horses.filter((x) => !x.isDeceased).length
+            : (h.adultDraftHorses ?? 10) + (h.growingFoalsCount ?? 4) + (h.horsesForSale ?? 2));
 
-    const perAnimalCap = loadGameParameters().manurePenCapacityKg || 1000;
+    const perAnimalCap = params.manurePenCapacityKg || 1000;
     const cap = Math.max(perAnimalCap, animalCount * perAnimalCap);
+    const manureHeapCap = params.manureBinBaseCapacityKg || 10000;
     const cur = livestockState.penManureKg ?? 0;
     const dailyFeedNeedKg =
-      sp === 'horses' ? animalCount * 10 : sp === 'cattle' ? animalCount * 8 : animalCount * 2;
+      sp === 'horses'
+        ? animalCount * (params.horseDailyFeedKg || 10)
+        : sp === 'cattle'
+        ? animalCount * 8
+        : animalCount * 2;
+    const dailyStrawNeedKg = sp === 'horses' ? animalCount * 15 : 0;
     const curSupplies = livestockState.supplies || { strawBeddingKg: 400, feedGrainKg: 350 };
+    const hasEnoughFeed = (curSupplies.feedGrainKg || 0) >= dailyFeedNeedKg;
     const nextFeedGrainKg = Math.max(0, (curSupplies.feedGrainKg || 0) - dailyFeedNeedKg);
+    const nextStrawBeddingKg = Math.max(0, (curSupplies.strawBeddingKg || 0) - dailyStrawNeedKg);
+
+    // Witalność koni: bez paszy jedzą marną trawę i tracą 1% dziennie (po 100 dniach -> RIP)
+    let nextHerd = livestockState.herd;
+    if (sp === 'horses' && h.horses && h.horses.length > 0) {
+      const ripMonths = Math.max(1, params.deceasedRemovalMonths || 3);
+      const updatedVitalityHorses = h.horses.map((horse) => {
+        if (horse.isDeceased) return horse;
+        const curVit = horse.vitalityPercent ?? 100;
+        if (!hasEnoughFeed && dailyFeedNeedKg > 0) {
+          const nextVit = Math.max(0, curVit - 1);
+          if (nextVit <= 0) {
+            return { ...horse, vitalityPercent: 0, isDeceased: true, deceasedMonthsRemaining: ripMonths };
+          }
+          return { ...horse, vitalityPercent: nextVit };
+        }
+        return curVit < 100 ? { ...horse, vitalityPercent: Math.min(100, curVit + 1) } : horse;
+      });
+      nextHerd = {
+        ...h,
+        horses: updatedVitalityHorses,
+        adultDraftHorses: updatedVitalityHorses.filter((x) => x.group === 'breeding' && !x.isDeceased).length,
+        growingFoalsCount: updatedVitalityHorses.filter((x) => x.group === 'growth' && !x.isDeceased).length,
+        horsesForSale: updatedVitalityHorses.filter((x) => x.group === 'sale' && !x.isDeceased).length,
+        horsesFlockCount: updatedVitalityHorses.filter((x) => !x.isDeceased).length,
+      };
+    }
 
     if (animalCount > 0) {
       const dailyGain = Math.max(2, Math.round(animalCount * 1.5));
       const rawNext = Math.round(cur + dailyGain);
       if (rawNext >= cap) {
+        // Obornik, który nie mieści się na hałdę, przepada
+        const nextHeapManure = Math.min(manureHeapCap, (livestockState.storage.manureKg || 0) + cap);
         onUpdateState({
           livestockState: {
             ...livestockState,
+            herd: nextHerd,
             penManureKg: rawNext - cap,
             penManureCapacityKg: cap,
-            supplies: { ...curSupplies, feedGrainKg: nextFeedGrainKg },
+            supplies: { feedGrainKg: nextFeedGrainKg, strawBeddingKg: nextStrawBeddingKg },
             storage: {
               ...livestockState.storage,
-              manureKg: (livestockState.storage.manureKg || 0) + cap,
+              manureKg: nextHeapManure,
             },
           },
         });
@@ -75,9 +115,10 @@ export function useLivestockTicks({
         onUpdateState({
           livestockState: {
             ...livestockState,
+            herd: nextHerd,
             penManureKg: rawNext,
             penManureCapacityKg: cap,
-            supplies: { ...curSupplies, feedGrainKg: nextFeedGrainKg },
+            supplies: { feedGrainKg: nextFeedGrainKg, strawBeddingKg: nextStrawBeddingKg },
           },
         });
       }
@@ -141,8 +182,13 @@ export function useLivestockTicks({
       return order;
     };
 
+    const paramsForCap = loadGameParameters();
+    const feedHeapCap = paramsForCap.grainSiloBaseCapacityKg || 10000;
+    const strawHeapCap = paramsForCap.strawStackBaseCapacityKg || 20000;
     nextFeedOrder = fulfill(nextFeedOrder, 'feed');
     nextStrawOrder = fulfill(nextStrawOrder, 'straw');
+    nextFeed = Math.min(feedHeapCap, nextFeed);
+    nextStraw = Math.min(strawHeapCap, nextStraw);
 
     const nextHorseRecovery = Math.max(0, (livestockState.horseRecoveryMonthsRemaining ?? 0) - 1);
     const nextHorseWait = Math.max(0, (livestockState.horseInseminationWaitMonths ?? 0) - 1);

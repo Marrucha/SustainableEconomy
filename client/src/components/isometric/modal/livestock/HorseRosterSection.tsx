@@ -240,7 +240,7 @@ export const HorseRosterSection: React.FC<HorseRosterSectionProps> = ({
                         </span>
                       </span>
                       <span className="text-[10px] font-mono text-stone-300">
-                        {h.ageYears} / 15 lat
+                        {h.ageYears}/15 lat • ❤️{h.vitalityPercent ?? 100}%
                       </span>
                     </div>
 
