@@ -66,6 +66,7 @@ const SECTIONS: { title: string; subtitle: string; fields: FieldSpec[] }[] = [
       { key: 'cattleMaxAgeYears', label: 'Maksymalny wiek krowy', unit: 'lata', min: 5, max: 30 },
       { key: 'sheepMaxAgeYears', label: 'Maksymalny wiek owcy', unit: 'lata', min: 4, max: 25 },
       { key: 'horseDailyFeedKg', label: 'Dzienne zużycie paszy przez konia', unit: 'kg/dzień', min: 0, max: 100, step: 0.5 },
+      { key: 'horseDailyVitalityLossNoFeedPercent', label: 'Utrata zdrowia bez paszy', unit: '%/dzień', min: 0.1, max: 25, step: 0.5 },
       { key: 'manurePenCapacityKg', label: 'Pojemność zagrody na 1 zwierzę', unit: 'kg/szt.', min: 200, max: 5000, step: 50 },
     ],
   },

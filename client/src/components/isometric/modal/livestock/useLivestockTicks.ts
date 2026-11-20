@@ -67,15 +67,16 @@ export function useLivestockTicks({
     const nextFeedGrainKg = Math.max(0, (curSupplies.feedGrainKg || 0) - dailyFeedNeedKg);
     const nextStrawBeddingKg = Math.max(0, (curSupplies.strawBeddingKg || 0) - dailyStrawNeedKg);
 
-    // Witalność koni: bez paszy jedzą marną trawę i tracą 1% dziennie (po 100 dniach -> RIP)
+    // Witalność koni: bez paszy jedzą marną trawę i tracą zdrowie dziennie (domyślnie 1%/dzień -> po 100 dniach RIP)
     let nextHerd = livestockState.herd;
     if (sp === 'horses' && h.horses && h.horses.length > 0) {
       const ripMonths = Math.max(1, params.deceasedRemovalMonths || 3);
+      const dailyVitLoss = params.horseDailyVitalityLossNoFeedPercent ?? 1;
       const updatedVitalityHorses = h.horses.map((horse) => {
         if (horse.isDeceased) return horse;
         const curVit = horse.vitalityPercent ?? 100;
         if (!hasEnoughFeed && dailyFeedNeedKg > 0) {
-          const nextVit = Math.max(0, curVit - 1);
+          const nextVit = Math.max(0, Number((curVit - dailyVitLoss).toFixed(1)));
           if (nextVit <= 0) {
             return { ...horse, vitalityPercent: 0, isDeceased: true, deceasedMonthsRemaining: ripMonths };
           }

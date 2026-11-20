@@ -23,6 +23,7 @@ export interface GameParametersConfig {
   foalMonthlyMortalityPercent: number;
   foalMonthlyMortalityVetPercent: number;
   deceasedRemovalMonths: number;
+  horseDailyVitalityLossNoFeedPercent: number;
 
   // Domyślne pojemności magazynowe i nawożenie
   manurePenCapacityKg: number;
@@ -56,6 +57,7 @@ export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
   foalMonthlyMortalityPercent: 2,
   foalMonthlyMortalityVetPercent: 1,
   deceasedRemovalMonths: 3,
+  horseDailyVitalityLossNoFeedPercent: 1,
 
   manurePenCapacityKg: 1000,
   grainSiloBaseCapacityKg: 10000,
