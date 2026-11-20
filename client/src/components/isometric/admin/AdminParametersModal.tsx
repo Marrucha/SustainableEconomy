@@ -41,7 +41,7 @@ const SECTIONS: { title: string; subtitle: string; fields: FieldSpec[] }[] = [
     subtitle: 'Parametry biologiczne stada oraz dzienne zużycie paszy',
     fields: [
       { key: 'horseDailyFeedKg', label: 'Dzienne zużycie paszy przez konia', unit: 'kg/dzień', min: 0, max: 100, step: 0.5 },
-      { key: 'horseWorkCapacityHa', label: 'Areał obrabiany przez 1 konia', unit: 'ha/koń', min: 0.1, max: 5, step: 0.1 },
+      { key: 'horseWorkCapacityHa', label: 'Areał obrabiany przez 1 konia', unit: 'ha/koń', min: 0.5, max: 20, step: 0.5 },
       { key: 'horseGestationMonths', label: 'Czas ciąży klaczy', unit: 'msc', min: 1, max: 24 },
       { key: 'cattleGestationMonths', label: 'Czas ciąży krowy', unit: 'msc', min: 1, max: 24 },
       { key: 'sheepGestationMonths', label: 'Czas ciąży owcy', unit: 'msc', min: 1, max: 24 },

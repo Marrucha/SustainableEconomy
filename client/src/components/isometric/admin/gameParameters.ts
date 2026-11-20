@@ -41,7 +41,7 @@ export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
   horseInseminationRetryWaitMonths: 1,
 
   horseDailyFeedKg: 10,
-  horseWorkCapacityHa: 0.5,
+  horseWorkCapacityHa: 5,
   horseGestationMonths: 11,
   cattleGestationMonths: 9,
   sheepGestationMonths: 5,

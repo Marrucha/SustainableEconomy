@@ -147,7 +147,7 @@ export function computeFarmYieldSummary(
     (w) => w.profession === 'farmer' || w.profession === 'all_rounder'
   ).length;
   const farmerCapacityHa = fieldFarmersCount * 2;
-  const horseCapPerHorse = loadGameParameters().horseWorkCapacityHa || 0.5;
+  const horseCapPerHorse = loadGameParameters().horseWorkCapacityHa || 5;
   const horsesCount = typeof ownedHorsesCount === 'number' ? ownedHorsesCount : 2;
   const horseCapacityHa = Number((horsesCount * horseCapPerHorse).toFixed(2));
   const requiredHorsesCount = Math.ceil(totalHectares / horseCapPerHorse);
