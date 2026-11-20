@@ -55,9 +55,14 @@ export function useLivestockTicks({
     const cap = Math.max(perAnimalCap, animalCount * perAnimalCap);
     const manureHeapCap = params.manureBinBaseCapacityKg || 10000;
     const cur = livestockState.penManureKg ?? 0;
+    const baseFeedPerHorse = params.horseDailyFeedKg || 10;
+    const recoveringHorsesCount =
+      sp === 'horses' && h.horses && h.horses.length > 0
+        ? h.horses.filter((x) => !x.isDeceased && (x.vitalityPercent ?? 100) < 100).length
+        : 0;
     const dailyFeedNeedKg =
       sp === 'horses'
-        ? animalCount * (params.horseDailyFeedKg || 10)
+        ? (animalCount + recoveringHorsesCount) * baseFeedPerHorse // Konie w rekonwalescencji jedzą 2x paszy aż do 100% zdrowia
         : sp === 'cattle'
         ? animalCount * 8
         : animalCount * 2;
@@ -67,7 +72,7 @@ export function useLivestockTicks({
     const nextFeedGrainKg = Math.max(0, (curSupplies.feedGrainKg || 0) - dailyFeedNeedKg);
     const nextStrawBeddingKg = Math.max(0, (curSupplies.strawBeddingKg || 0) - dailyStrawNeedKg);
 
-    // Witalność koni: bez paszy jedzą marną trawę i tracą zdrowie dziennie (domyślnie 1%/dzień -> po 100 dniach RIP)
+    // Witalność koni: bez paszy tracą zdrowie; gdy jest pasza, jedzą 2x i odzyskują ten sam % aż do 100%
     let nextHerd = livestockState.herd;
     if (sp === 'horses' && h.horses && h.horses.length > 0) {
       const ripMonths = Math.max(1, params.deceasedRemovalMonths || 3);
@@ -82,7 +87,9 @@ export function useLivestockTicks({
           }
           return { ...horse, vitalityPercent: nextVit };
         }
-        return curVit < 100 ? { ...horse, vitalityPercent: Math.min(100, curVit + 1) } : horse;
+        return curVit < 100
+          ? { ...horse, vitalityPercent: Math.min(100, Number((curVit + dailyVitLoss).toFixed(1))) }
+          : horse;
       });
       nextHerd = {
         ...h,

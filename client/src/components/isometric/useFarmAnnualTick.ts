@@ -189,6 +189,15 @@ export function useFarmAnnualTick({
           patch.totalCyclesCompleted = (farmCap.totalCyclesCompleted || 0) + 1;
           patch.lastHarvestYear = completedYear;
           patch.lastCycleYieldKg = totalYieldKg;
+          patch.annualYieldHistory = [
+            ...(farmCap.annualYieldHistory || []),
+            {
+              year: completedYear,
+              cropType: activeCrop,
+              yieldKg: totalYieldKg,
+              hectares: yieldSummary.totalHectares,
+            },
+          ];
           patch.lastCycleRevenue = revenue;
           patch.lastCycleCost = totalCosts;
 

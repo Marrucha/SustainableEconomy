@@ -3,6 +3,7 @@ import type { BuildingState, PlacedBuilding } from '../types';
 import { formatSupplierOrderLabel, type WorldSupplierBuilding } from './industrySupplyConfig';
 import { BASE_UNIT_MARKET_PRICE, getContractMeta } from './industryContracts';
 import { FarmFinanceSummary, type FinanceContractLine } from './FarmFinanceSummary';
+import { FarmAnnualYieldChart } from './FarmAnnualYieldChart';
 import { LivestockFinanceSummary } from './LivestockFinanceSummary';
 
 interface FarmLivestockFinanceTabProps {
@@ -22,7 +23,7 @@ export const FarmLivestockFinanceTab: React.FC<FarmLivestockFinanceTabProps> = (
   buildingsState,
   onUpdateState,
 }) => {
-  const [subTab, setSubTab] = useState<'summary' | 'pricelist'>('summary');
+  const [subTab, setSubTab] = useState<'summary' | 'pricelist' | 'yields'>('summary');
   const isFarm = building.typeId === 'wheat_farm';
 
   // Kontrakty odbiorców przemysłowych / usługowych wskazujące na ten budynek
@@ -70,9 +71,27 @@ export const FarmLivestockFinanceTab: React.FC<FarmLivestockFinanceTabProps> = (
         >
           🏷️ Cennik
         </button>
+        {isFarm && (
+          <button
+            type="button"
+            onClick={() => setSubTab('yields')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              subTab === 'yields'
+                ? 'bg-sky-500/20 text-sky-200 border border-sky-500/50'
+                : 'bg-stone-900 text-stone-400 border border-stone-800 hover:text-stone-200'
+            }`}
+          >
+            📈 Plony roczne
+          </button>
+        )}
       </div>
 
-      {isFarm ? (
+      {isFarm && subTab === 'yields' ? (
+        <FarmAnnualYieldChart
+          buildingState={buildingState}
+          attachedFieldsCount={attachedFieldsCount}
+        />
+      ) : isFarm ? (
         <FarmFinanceSummary
           building={building}
           buildingState={buildingState}
@@ -80,7 +99,7 @@ export const FarmLivestockFinanceTab: React.FC<FarmLivestockFinanceTabProps> = (
           allWorldBuildings={allWorldBuildings}
           buildingsState={buildingsState}
           industryBuyerLines={industryBuyerLines}
-          activeSubTab={subTab}
+          activeSubTab={subTab === 'pricelist' ? 'pricelist' : 'summary'}
           onUpdateState={onUpdateState}
         />
       ) : (
@@ -90,7 +109,7 @@ export const FarmLivestockFinanceTab: React.FC<FarmLivestockFinanceTabProps> = (
           allWorldBuildings={allWorldBuildings}
           buildingsState={buildingsState}
           industryBuyerLines={industryBuyerLines}
-          activeSubTab={subTab}
+          activeSubTab={subTab === 'pricelist' ? 'pricelist' : 'summary'}
           onUpdateState={onUpdateState}
         />
       )}

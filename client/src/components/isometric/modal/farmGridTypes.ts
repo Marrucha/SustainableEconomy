@@ -181,6 +181,7 @@ export interface FarmCapitalismState {
   lastCycleRevenue: number;
   lastCycleCost: number;
   lastCycleYieldKg: number;
+  annualYieldHistory?: { year: number; cropType: CropType; yieldKg: number; hectares: number }[];
 }
 
 import type { ContractType } from './industryContracts';
