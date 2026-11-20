@@ -42,6 +42,7 @@ const SECTIONS: { title: string; subtitle: string; fields: FieldSpec[] }[] = [
     fields: [
       { key: 'horseDailyFeedKg', label: 'Dzienne zużycie paszy przez konia', unit: 'kg/dzień', min: 0, max: 100, step: 0.5 },
       { key: 'horseWorkCapacityHa', label: 'Areał obrabiany przez 1 konia', unit: 'ha/koń', min: 0.5, max: 20, step: 0.5 },
+      { key: 'farmerWorkCapacityHa', label: 'Areał obrabiany przez 1 rolnika', unit: 'ha/rolnik', min: 1, max: 50, step: 1 },
       { key: 'horseGestationMonths', label: 'Czas ciąży klaczy', unit: 'msc', min: 1, max: 24 },
       { key: 'cattleGestationMonths', label: 'Czas ciąży krowy', unit: 'msc', min: 1, max: 24 },
       { key: 'sheepGestationMonths', label: 'Czas ciąży owcy', unit: 'msc', min: 1, max: 24 },

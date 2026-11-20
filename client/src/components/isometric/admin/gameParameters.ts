@@ -10,6 +10,7 @@ export interface GameParametersConfig {
   // Hodowla — Ciąża, Wzrost i Żywienie
   horseDailyFeedKg: number;
   horseWorkCapacityHa: number;
+  farmerWorkCapacityHa: number;
   horseGestationMonths: number;
   cattleGestationMonths: number;
   sheepGestationMonths: number;
@@ -42,6 +43,7 @@ export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
 
   horseDailyFeedKg: 10,
   horseWorkCapacityHa: 5,
+  farmerWorkCapacityHa: 10,
   horseGestationMonths: 11,
   cattleGestationMonths: 9,
   sheepGestationMonths: 5,
