@@ -5,7 +5,7 @@ import type {
   LivestockWorker,
   LivestockProfession,
 } from './livestockTypes';
-import { calculateFailureRisk, LIVESTOCK_PROFESSIONS_CONFIG } from './livestockTypes';
+import { calculateFailureRisk, getInseminationSuccessPercent, LIVESTOCK_PROFESSIONS_CONFIG } from './livestockTypes';
 import { generateRandomEnglishName } from '../englishNames';
 import { FarmPipelineArrow } from '../FarmPipelineArrow';
 import { LivestockStageCard } from './LivestockStageCard';
@@ -62,7 +62,6 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
 
   const insemWorker = getWorkerForStage('insemination');
   const birthWorker = getWorkerForStage('birth');
-  const insemRisk = calculateFailureRisk(insemWorker?.profession);
   const birthRisk = calculateFailureRisk(birthWorker?.profession);
 
   return (
@@ -91,9 +90,9 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
             stepNum={1}
             icon="🧬"
             title="Stanówka Klaczy"
-            tooltipDesc="Krycie klaczy przez Weterynarza (1-10% ryzyka) lub Hodowcę (10-30% ryzyka)."
+            tooltipDesc="Krycie klaczy przez Weterynarza (50% skuteczności) lub Hodowcę (30% skuteczności; +10% za każdego kolejnego ogiera)."
             requiredProfessionLabel="Weterynarz / Hodowca"
-            badgeText={`${insemRisk.avg}% Ryz.`}
+            badgeText={`Skut. ${getInseminationSuccessPercent(insemWorker?.profession)}%`}
             isCurrent={curStage === 'insemination'}
             assignedWorker={insemWorker || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder')}

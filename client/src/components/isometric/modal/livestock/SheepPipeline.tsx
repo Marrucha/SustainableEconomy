@@ -254,7 +254,6 @@ export const SheepPipeline: React.FC<SheepPipelineProps> = ({
 
   const insemWorker = getWorkerForStage('insemination');
   const birthWorker = getWorkerForStage('birth');
-  const insemRisk = calculateFailureRisk(insemWorker?.profession);
   const birthRisk = calculateFailureRisk(birthWorker?.profession);
 
   return (
@@ -297,9 +296,9 @@ export const SheepPipeline: React.FC<SheepPipelineProps> = ({
             stepNum={1}
             icon="🧬"
             title="Stanówka"
-            tooltipDesc="Krycie owcy przez Weterynarza (1-10% ryzyka) lub Hodowcę (10-30% ryzyka)."
+            tooltipDesc="Krycie owcy przez Weterynarza (50% skuteczności) lub Hodowcę (30% skuteczności)."
             requiredProfessionLabel="Weterynarz / Hodowca"
-            badgeText={`${insemRisk.avg}% Ryz.`}
+            badgeText={`Skut. ${getInseminationSuccessPercent(insemWorker?.profession)}%`}
             isCurrent={state.sheepStage === 'insemination'}
             assignedWorker={insemWorker || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder')}

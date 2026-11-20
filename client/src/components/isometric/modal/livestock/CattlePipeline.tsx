@@ -268,7 +268,6 @@ export const CattlePipeline: React.FC<CattlePipelineProps> = ({
 
   const insemWorker = getWorkerForStage('insemination');
   const birthWorker = getWorkerForStage('birth');
-  const insemRisk = calculateFailureRisk(insemWorker?.profession);
   const birthRisk = calculateFailureRisk(birthWorker?.profession);
 
   return (
@@ -313,7 +312,7 @@ export const CattlePipeline: React.FC<CattlePipelineProps> = ({
             title="Inseminacja"
             tooltipDesc={`Rozmnażanie na populacji mlecznej (${state.herd.milkingGroupCows} krów matek, max 50% pogłowia). Weterynarz: 1-10% ryzyka, Hodowca: 10-30%.`}
             requiredProfessionLabel="Weterynarz / Hodowca"
-            badgeText={`${insemRisk.avg}% Ryz.`}
+            badgeText={`Skut. ${getInseminationSuccessPercent(insemWorker?.profession)}%`}
             isCurrent={state.currentStage === 'insemination'}
             assignedWorker={insemWorker || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder')}
