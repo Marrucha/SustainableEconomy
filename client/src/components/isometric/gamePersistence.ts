@@ -17,3 +17,18 @@ export function savePersistedState<T>(key: string, value: T): void {
     // Ignoruj przekroczenie limitu localStorage
   }
 }
+
+export function clearAllPersistedGameState(): void {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.startsWith(STORAGE_PREFIX)) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach((k) => window.localStorage.removeItem(k));
+  } catch {
+    // Ignore storage errors
+  }
+}

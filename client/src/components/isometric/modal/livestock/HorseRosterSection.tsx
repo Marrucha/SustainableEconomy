@@ -9,34 +9,18 @@ const HORSE_NAMES = [
 
 export const createDefaultHorsesList = (): HorseAnimal[] => {
   const list: HorseAnimal[] = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 3; i++) {
     list.push({
       id: `horse_b_${i}`,
       name: HORSE_NAMES[i % HORSE_NAMES.length],
-      sex: i < 2 ? 'male' : 'female', // min. 1 samiec (2 ogiery + 8 klaczy)
-      ageYears: 4 + (i % 7),
+      sex: i === 0 ? 'male' : 'female', // 1 ogier + 2 klacze
+      ageYears: 4 + i,
       group: 'breeding',
       postGrowthTarget: 'sale',
-    });
-  }
-  for (let i = 0; i < 4; i++) {
-    list.push({
-      id: `horse_g_${i}`,
-      name: HORSE_NAMES[(10 + i) % HORSE_NAMES.length],
-      sex: i % 2 === 0 ? 'male' : 'female',
-      ageYears: 1 + (i % 2),
-      group: 'growth',
-      postGrowthTarget: i % 2 === 0 ? 'sale' : 'breeding',
-    });
-  }
-  for (let i = 0; i < 2; i++) {
-    list.push({
-      id: `horse_s_${i}`,
-      name: HORSE_NAMES[(14 + i) % HORSE_NAMES.length],
-      sex: i % 2 === 0 ? 'male' : 'female',
-      ageYears: 5 + i,
-      group: 'sale',
-      postGrowthTarget: 'sale',
+      breedingStatus: 'waiting',
+      breedingWaitMonths: 0,
+      pregnancyMonths: 0,
+      vitalityPercent: 100,
     });
   }
   return list;

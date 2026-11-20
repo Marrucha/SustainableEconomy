@@ -384,7 +384,7 @@ export function createDefaultLivestockState(): LivestockCapitalismState {
     selectedHorseBranch: 'sale',
     supplies: {
       strawBeddingKg: 400,
-      feedGrainKg: 350,
+      feedGrainKg: 10800, // Zapas zboża na 1 rok dla 3 koni (3 * 10 kg/dzień * 360 dni)
     },
     herd: {
       milkingGroupCows: 12,
@@ -392,9 +392,10 @@ export function createDefaultLivestockState(): LivestockCapitalismState {
       sheepFlockCount: 22,
       adultSheepCount: 16,
       growingLambsCount: 6,
-      horsesFlockCount: 14,
-      adultDraftHorses: 10,
-      growingFoalsCount: 4,
+      horsesFlockCount: 3,
+      adultDraftHorses: 3,
+      growingFoalsCount: 0,
+      horsesForSale: 0,
     },
     storage: {
       beefKg: 250,

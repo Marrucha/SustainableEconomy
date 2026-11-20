@@ -7,6 +7,7 @@ import {
   type GameParametersConfig,
 } from './gameParameters';
 import { CONTRACT_OPTIONS } from '../modal/industryContracts';
+import { clearAllPersistedGameState } from '../gamePersistence';
 
 interface AdminParametersModalProps {
   isOpen: boolean;
@@ -122,6 +123,15 @@ export const AdminParametersModal: React.FC<AdminParametersModalProps> = ({ isOp
               {savedNotice}
             </span>
           )}
+          <button
+            onClick={() => {
+              clearAllPersistedGameState();
+              window.location.reload();
+            }}
+            className="px-3 py-1.5 rounded-lg bg-rose-900/70 hover:bg-rose-800 border border-rose-600/60 text-xs font-bold text-rose-100 cursor-pointer"
+          >
+            🔄 Resetuj grę
+          </button>
           <button
             onClick={handleCopyJson}
             className="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 border border-stone-700 text-xs font-semibold cursor-pointer"
