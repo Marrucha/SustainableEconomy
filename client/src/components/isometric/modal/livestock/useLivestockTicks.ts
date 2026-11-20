@@ -3,6 +3,7 @@ import type { BuildingState } from '../../types';
 import type { UseGameClockReturn } from '../../clock/useGameClock';
 import { getContractMeta } from '../industryContracts';
 import { loadGameParameters } from '../../admin/gameParameters';
+import { createDefaultHorsesList } from './HorseRosterSection';
 import {
   getInseminationSuccessPercent,
   type HorseAnimal,
@@ -197,7 +198,10 @@ export function useLivestockTicks({
 
     // Niezależny miesięczny cykl rozrodu dla każdej klaczy z osobna
     let horsePatch: Partial<LivestockCapitalismState> = {};
-    const horsesList = livestockState.herd.horses || [];
+    const horsesList =
+      livestockState.herd.horses && livestockState.herd.horses.length > 0
+        ? livestockState.herd.horses
+        : createDefaultHorsesList();
     if (horsesList.length > 0) {
       const params = loadGameParameters();
       const recMonths = Math.max(1, params.horseRecoveryMonths || 3);
