@@ -12,6 +12,27 @@ interface LivestockCrewTabProps {
   onUpdateState: (patch: Partial<LivestockCapitalismState>) => void;
 }
 
+const STAGE_LABELS: Record<string, string> = {
+  insemination: 'Stanówka / Inseminacja',
+  gestation_9m: 'Ciąża',
+  birth: 'Poród / Wyźrebienie',
+  calf_growth_2y: 'Odchów młodych',
+  branch_milking: 'Dojenie / Obsługa',
+  branch_sale: 'Sprzedaż żywca',
+};
+
+const InfoHoverIcon: React.FC<{ title: string; body: string }> = ({ title, body }) => (
+  <span className="relative group inline-flex items-center">
+    <span className="w-4 h-4 rounded-full bg-stone-800 hover:bg-stone-700 text-sky-300 text-[10px] font-bold inline-flex items-center justify-center cursor-help border border-stone-700">
+      ℹ
+    </span>
+    <span className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-60 p-2.5 rounded-xl bg-stone-950 border border-amber-500/60 shadow-2xl text-[11px] text-stone-200 z-50 leading-snug font-normal">
+      <strong className="block text-amber-300 mb-0.5">{title}</strong>
+      <span className="text-stone-300">{body}</span>
+    </span>
+  </span>
+);
+
 export const LivestockCrewTab: React.FC<LivestockCrewTabProps> = ({
   state,
   onUpdateState,
@@ -58,72 +79,78 @@ export const LivestockCrewTab: React.FC<LivestockCrewTabProps> = ({
   };
 
   return (
-    <div className="space-y-5">
-      {/* NAGŁÓWEK KADRY */}
-      <div className="bg-stone-950/80 border border-stone-800 rounded-2xl p-4 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-800">
-          <div>
-            <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2 leading-[2.5]">
-              <span>👥</span> Kadra Fermy Zwierzęcej (Specjaliści, Hodowcy, Obsługa i Kupcy)
+    <div className="space-y-2.5">
+      <div className="bg-stone-950/80 border border-stone-800 rounded-2xl p-3 space-y-2.5">
+        {/* NAGŁÓWEK */}
+        <div className="flex items-center justify-between gap-2 pb-2 border-b border-stone-800">
+          <div className="flex items-center gap-2">
+            <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+              👥 Kadra Farmy Hodowlanej
             </h4>
-            <p className="text-[11px] text-stone-400 leading-[2.5]">
-              Weterynarz (1-10% ryzyka porażki), Agronom (Klasa M), Hodowcy stada, Dojarze (Obsługa) oraz Kupiec handlowy.
-            </p>
+            <InfoHoverIcon
+              title="Kadra i Specjaliści"
+              body="Weterynarz (50% skuteczności inseminacji, 1% śmiertelności źrebiąt), Hodowca (30% skuteczności, odchów), Obsługa (dojenie/obornik) oraz Kupiec."
+            />
           </div>
           <button
+            type="button"
             onClick={() => {
               setNewWorkerName(generateRandomEnglishName(crew.map((w) => w.name)));
-              setIsAddingNew(true);
+              setIsAddingNew((v) => !v);
             }}
-            className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 leading-[2.5] self-start sm:self-auto"
+            className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-bold cursor-pointer"
           >
-            <span>➕</span> Zatrudnij Nowego Pracownika
+            ➕ Zatrudnij
           </button>
         </div>
 
-        {/* FORMULARZ ZATRUDNIENIA */}
+        {/* ZWARTY FORMULARZ ZATRUDNIENIA (SPÓJNY Z FARMĄ ZBOŻOWĄ) */}
         {isAddingNew && (
-          <div className="bg-stone-900/95 border border-amber-500/60 rounded-xl p-4 space-y-4 animate-fade-in shadow-2xl">
-            <div className="text-xs font-bold text-amber-200 flex items-center justify-between leading-[2.5]">
-              <span>Nowa umowa o pracę w fermie zwierzęcej (1880 r.)</span>
-              <button onClick={() => setIsAddingNew(false)} className="text-stone-400 hover:text-white cursor-pointer px-2">✕</button>
+          <div className="bg-stone-900 border border-amber-500/60 rounded-xl p-3 space-y-2.5 text-xs">
+            <div className="flex items-center justify-between font-bold text-amber-200">
+              <span>Nowy pracownik</span>
+              <button
+                type="button"
+                onClick={() => setIsAddingNew(false)}
+                className="text-stone-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-[11px] text-stone-400 block mb-1.5 leading-[2.5]">Imię i nazwisko pracownika:</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="flex gap-1">
                 <input
                   type="text"
-                  placeholder="np. William Stewart"
                   value={newWorkerName}
                   onChange={(e) => setNewWorkerName(e.target.value)}
-                  className="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-xs text-stone-200 leading-[2.5]"
+                  placeholder="Imię i nazwisko"
+                  className="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 text-xs text-stone-100"
                 />
-              </div>
-
-              <div>
-                <label className="text-[11px] text-stone-400 block mb-1.5 leading-[2.5]">Zawód i funkcja w fermie:</label>
-                <select
-                  value={newProfession}
-                  onChange={(e) => {
-                    const prof = e.target.value as LivestockProfession;
-                    setNewProfession(prof);
-                    setNewWage(LIVESTOCK_PROFESSIONS_CONFIG[prof].defaultWage);
-                  }}
-                  className="w-full bg-stone-950 border border-stone-700 rounded-lg p-2 text-stone-200 text-xs cursor-pointer leading-[2.5]"
+                <button
+                  type="button"
+                  onClick={() => setNewWorkerName(generateRandomEnglishName(crew.map((w) => w.name)))}
+                  className="px-2 rounded-lg bg-stone-800 border border-stone-700 cursor-pointer"
+                  title="Losuj imię"
                 >
-                  <option value="vet">🩺 Weterynarz (Chirurg weterynarii – 1-10% porażki)</option>
-                  <option value="agronomist">🎩 Agronom Zwierzęcy (Klasa M – żywienie i pastwiska)</option>
-                  <option value="breeder">🤠 Hodowca Zwierząt (Ciąża, odchów młodych, opieka nad stadem)</option>
-                  <option value="handler">🥛 Obsługa Fermy (Dojenie krów i zbiórka obornika)</option>
-                  <option value="trader">💰 Kupiec / Handlarz (Sprzedaż żywych zwierząt, mleka, wełny i obornika)</option>
-                </select>
+                  🎲
+                </button>
               </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-stone-800">
-              <div className="flex items-center gap-3 leading-[2.5]">
-                <span className="text-[11px] text-stone-400 leading-[2.5]">Płaca dzienna:</span>
+              <select
+                value={newProfession}
+                onChange={(e) => {
+                  const prof = e.target.value as LivestockProfession;
+                  setNewProfession(prof);
+                  setNewWage(LIVESTOCK_PROFESSIONS_CONFIG[prof].defaultWage);
+                }}
+                className="bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 text-xs text-stone-100"
+              >
+                {Object.entries(LIVESTOCK_PROFESSIONS_CONFIG).map(([id, cfg]) => (
+                  <option key={id} value={id}>
+                    {cfg.icon} {cfg.label}
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center justify-between gap-2">
                 <input
                   type="range"
                   min="1.5"
@@ -131,106 +158,108 @@ export const LivestockCrewTab: React.FC<LivestockCrewTabProps> = ({
                   step="0.1"
                   value={newWage}
                   onChange={(e) => setNewWage(parseFloat(e.target.value))}
-                  className="w-32 accent-amber-500 cursor-pointer"
+                  className="flex-1 accent-amber-500 cursor-pointer"
                 />
-                <span className="text-xs font-mono font-bold text-amber-300 leading-[2.5]">£ {newWage.toFixed(1)} / dzień</span>
-              </div>
-
-              <div className="flex gap-2">
+                <span className="font-mono font-bold text-amber-300 shrink-0">
+                  £{newWage.toFixed(1)}/d
+                </span>
                 <button
-                  onClick={() => setIsAddingNew(false)}
-                  className="px-3.5 py-1.5 rounded-lg text-stone-400 hover:text-white text-xs cursor-pointer leading-[2.5]"
-                >
-                  Anuluj
-                </button>
-                <button
+                  type="button"
                   onClick={handleAddWorker}
                   disabled={!newWorkerName.trim()}
-                  className="px-4 py-1.5 rounded-lg bg-amber-500 text-stone-950 font-bold text-xs hover:bg-amber-400 cursor-pointer disabled:opacity-40 leading-[2.5]"
+                  className="px-3 py-1 rounded-lg bg-amber-500 text-stone-950 font-bold cursor-pointer disabled:opacity-40"
                 >
-                  Zatrudnij
+                  OK
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* PIONOWA LISTA KAFELKÓW KADRY */}
-        <div className="flex flex-col gap-3.5">
-          {crew.map((worker) => {
-            const profCfg = LIVESTOCK_PROFESSIONS_CONFIG[worker.profession] || LIVESTOCK_PROFESSIONS_CONFIG.breeder;
-            const isClassM = worker.profession === 'vet' || worker.profession === 'agronomist';
+        {/* ZWARTE WIERSZE PRACOWNIKÓW */}
+        <div className="space-y-1.5">
+          {crew.length === 0 ? (
+            <div className="p-3 rounded-xl bg-stone-900/50 border border-stone-800 text-center text-xs text-stone-400">
+              Brak zatrudnionych pracowników. Kliknij „➕ Zatrudnij” lub dodaj kadrę z poziomu etapów.
+            </div>
+          ) : (
+            [...crew].reverse().map((worker) => {
+              const profCfg =
+                LIVESTOCK_PROFESSIONS_CONFIG[worker.profession] || LIVESTOCK_PROFESSIONS_CONFIG.breeder;
+              const isClassM = worker.profession === 'vet' || worker.profession === 'agronomist';
+              const assignedStages = Object.entries(state.stageAssignments || {})
+                .filter(([, wId]) => wId === worker.id)
+                .map(([stage]) => STAGE_LABELS[stage] || stage);
+              const isAssigned = assignedStages.length > 0;
 
-            return (
-              <div
-                key={worker.id}
-                className={`border rounded-2xl p-4 transition-all flex flex-col justify-between shadow-md space-y-3 ${
-                  isClassM
-                    ? 'bg-gradient-to-r from-stone-900/95 via-sky-950/25 to-stone-900/95 border-sky-600/50'
-                    : 'bg-stone-900/75 border-stone-800 hover:border-amber-500/40'
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3.5">
-                    <span className="text-3xl p-2 rounded-xl bg-stone-950 border border-stone-800 shadow-sm">
-                      {worker.avatar || profCfg.icon}
+              return (
+                <div
+                  key={worker.id}
+                  className={`border rounded-xl px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs transition-colors ${
+                    isAssigned
+                      ? 'bg-stone-900/90 border-emerald-500/40 hover:border-emerald-400/60'
+                      : 'bg-stone-950/60 border-stone-800/80 opacity-80 hover:opacity-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-base">{worker.avatar || profCfg.icon}</span>
+                    <span className="font-bold text-amber-100">{worker.name}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-mono border ${
+                        isClassM
+                          ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                          : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                      }`}
+                    >
+                      {profCfg.icon} {profCfg.label}
                     </span>
-                    <div>
-                      <div className="flex items-center gap-2.5 leading-[2.5]">
-                        <p className="font-bold text-sm text-amber-100 leading-[2.5]">{worker.name}</p>
-                        <span
-                          className={`inline-block text-[10px] px-2.5 py-0.5 rounded font-mono font-bold leading-[2.5] ${
-                            isClassM
-                              ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
-                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          }`}
-                        >
-                          {profCfg.icon} {profCfg.label}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-stone-400 leading-[2.5]">{worker.title || profCfg.desc}</p>
-                    </div>
+                    <InfoHoverIcon
+                      title={worker.title || profCfg.label}
+                      body={
+                        worker.profession === 'vet'
+                          ? `${profCfg.desc} Skuteczność inseminacji: 50%, śmiertelność źrebiąt: 1%.`
+                          : worker.profession === 'breeder'
+                          ? `${profCfg.desc} Skuteczność inseminacji: 30%.`
+                          : profCfg.desc
+                      }
+                    />
                   </div>
 
-                  <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className="text-right leading-[2.5]">
-                      <span className="font-mono text-xs font-bold text-amber-300 block leading-[2.5]">
-                        £ {worker.wageDaily.toFixed(1)} / dzień
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    {isAssigned ? (
+                      <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/50 border border-emerald-700/50 px-2 py-0.5 rounded-md">
+                        ✓ {assignedStages.join(', ')}
                       </span>
-                    </div>
+                    ) : (
+                      <span className="text-[10px] font-mono text-stone-500">Nieprzypisany</span>
+                    )}
+                    <span className="font-mono font-bold text-amber-300">
+                      £{worker.wageDaily.toFixed(1)}/d
+                    </span>
                     <button
+                      type="button"
                       onClick={() => handleRemoveWorker(worker.id)}
-                      className="px-3 py-1 rounded-lg text-xs font-bold text-rose-400 hover:text-rose-200 bg-rose-950/40 border border-rose-900/60 hover:bg-rose-900/40 cursor-pointer transition-all leading-[2.5]"
+                      className="px-2 py-0.5 rounded-md text-[11px] font-bold text-rose-400 hover:text-rose-200 bg-rose-950/40 border border-rose-900/60 hover:bg-rose-900/40 cursor-pointer"
                     >
                       Zwolnij
                     </button>
                   </div>
                 </div>
-
-                <div className="pt-2 border-t border-stone-800/80 text-[11px] text-stone-400 leading-[2.5] flex items-center justify-between">
-                  <span>Kompetencje w cyklu: {profCfg.desc}</span>
-                  {worker.profession === 'vet' && (
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold">✓ 1-10% ryzyka porażki</span>
-                  )}
-                  {worker.profession === 'breeder' && (
-                    <span className="text-[10px] font-mono text-amber-400 font-bold">⚠️ 10-30% ryzyka porażki</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
 
       {/* PODSUMOWANIE FUNDUSZU PŁAC */}
-      <div className="bg-stone-900/60 p-4 rounded-2xl border border-stone-800 text-xs flex flex-wrap items-center justify-between gap-3 font-mono leading-[2.5]">
-        <span className="text-stone-300 leading-[2.5]">
+      <div className="bg-stone-900/60 px-3.5 py-2.5 rounded-xl border border-stone-800 text-xs flex flex-wrap items-center justify-between gap-2 font-mono">
+        <span className="text-stone-300">
           Zatrudnieni w fermie: <strong className="text-amber-300">{crew.length} osób</strong>
         </span>
-        <span className="text-stone-300 leading-[2.5]">
-          Dzienny fundusz płac fermy:{' '}
-          <strong className="text-emerald-400 text-sm">£ {totalDailyPayroll.toFixed(1)} / dzień</strong>{' '}
-          (£ {Math.round(totalDailyPayroll * 30)} / msc)
+        <span className="text-stone-300">
+          Dzienny fundusz płac:{' '}
+          <strong className="text-emerald-400">£{totalDailyPayroll.toFixed(1)}/d</strong>{' '}
+          (£{Math.round(totalDailyPayroll * 30)}/msc)
         </span>
       </div>
     </div>
