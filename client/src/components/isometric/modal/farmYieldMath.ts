@@ -68,7 +68,8 @@ export function computeFarmYieldSummary(
   ownedHorsesCount?: number
 ): FarmYieldSummary {
   const extraFields = Math.max(0, attachedFieldsCount);
-  const totalHectares = Number((1 + extraFields * 0.5).toFixed(2));
+  const baseHa = loadGameParameters().farmBaseHectares || 10;
+  const totalHectares = Number((baseHa + extraFields * 0.5).toFixed(2));
   const selectedCrop = CROPS_CONFIG[state.cropType || 'pszenica'];
 
   const seedRequiredKg = Math.round(300 * totalHectares);

@@ -29,6 +29,7 @@ export interface GameParametersConfig {
   strawStackBaseCapacityKg: number;
   manureBinBaseCapacityKg: number;
   manurePerHa100Kg: number;
+  farmBaseHectares: number;
 }
 
 export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
@@ -59,6 +60,7 @@ export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
   strawStackBaseCapacityKg: 20000,
   manureBinBaseCapacityKg: 10000,
   manurePerHa100Kg: 10000,
+  farmBaseHectares: 10,
 };
 
 const STORAGE_KEY = 'sustainable_economy_admin_params_v1';

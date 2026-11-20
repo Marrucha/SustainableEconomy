@@ -329,7 +329,7 @@ export function createDefaultFarmCapitalismState(): FarmCapitalismState {
     enableWeeding: true,
     enableIrrigation: false,
     grainStockKg: {
-      pszenica: 300,
+      pszenica: 3000,
       zyto: 0,
       owies: 0,
       jeczmien: 0,
@@ -338,7 +338,7 @@ export function createDefaultFarmCapitalismState(): FarmCapitalismState {
     strawStockKg: 600,
     seedsStockKg: 200,
     fertilizerStockKg: 250,
-    wheatStockKg: 300,
+    wheatStockKg: 3000,
     currentStage: 'seed_intake',
     stageProgress: 30,
     totalCyclesCompleted: 2,
