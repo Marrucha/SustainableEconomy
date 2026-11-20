@@ -41,138 +41,206 @@ export const LivestockStageCard: React.FC<LivestockStageCardProps> = ({
   onSecondaryHireAndAssign,
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [showStaffModal, setShowStaffModal] = useState(false);
 
   const isMissing = !assignedWorker;
   const borderAndBg = isMissing
-    ? 'border-solid border-2 border-rose-500 bg-rose-950/40 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.35)]'
-    : 'border-solid border border-emerald-500/70 bg-stone-900/90 text-stone-200 shadow-[0_0_10px_rgba(16,185,129,0.15)]';
+    ? 'border-solid border-2 border-rose-500 bg-rose-100 text-stone-900 shadow-sm'
+    : 'border-solid border border-stone-400 bg-stone-200 text-stone-900 shadow-sm';
 
   const badgeCls =
     badgeVariant === 'sky'
-      ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+      ? 'bg-sky-200 text-sky-950 border-sky-400'
       : badgeVariant === 'emerald'
-      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-      : 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+      ? 'bg-emerald-200 text-emerald-950 border-emerald-500'
+      : 'bg-amber-200 text-amber-950 border-amber-500';
 
   return (
-    <div
-      className={`relative h-full min-h-[240px] rounded-2xl p-4 transition-all duration-200 flex flex-col justify-between select-none ${
-        isCurrent
-          ? 'bg-gradient-to-br from-amber-500/25 via-amber-950/60 to-stone-900 border-2 border-amber-300 ring-4 ring-amber-400/55 shadow-[0_0_24px_rgba(251,191,36,0.55)] scale-[1.02] z-30 text-amber-50'
-          : `${borderAndBg} ${!isMissing ? 'opacity-85' : ''} z-10`
-      }`}
-    >
-      {/* 1. GÓRNY PASEK: IKONA, NUMER, TYTUŁ I DYMEK ℹ */}
-      <div>
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-lg p-1 rounded-lg bg-stone-950/80 border border-stone-800 shrink-0">
-              {icon}
-            </span>
-            <span className="font-bold text-xs text-amber-100 tracking-wide truncate">
-              {stepNum}. {title}
-            </span>
+    <>
+      <div
+        className={`relative h-full rounded-xl px-2.5 py-2 transition-all duration-200 flex flex-col justify-between gap-2 select-none ${
+          isCurrent
+            ? 'bg-gradient-to-br from-orange-300 via-amber-300 to-orange-400 border-2 border-red-600 ring-2 ring-orange-500/80 shadow-[0_0_18px_rgba(249,115,22,0.65)] z-30 text-stone-950'
+            : `${borderAndBg} z-10`
+        }`}
+      >
+        {/* 1. GÓRNY PASEK: IKONA, NUMER, TYTUŁ, DYMEK ORAZ IKONA OBSADY PO PRAWEJ */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-1 bg-stone-400/65 px-1.5 py-1 rounded-lg border border-stone-500/75 shadow-xs">
+            <div className="flex items-center gap-1.5 min-w-0 leading-tight">
+              <span className="text-sm p-0.5 rounded bg-white border border-stone-500 shadow-sm contrast-125 shrink-0">
+                {icon}
+              </span>
+              <span className="font-bold text-[11px] text-blue-950 tracking-wide truncate border-b-[3px] border-double border-blue-950 leading-none pb-[1px]">
+                {stepNum}. {title}
+              </span>
 
-            <div className="relative inline-block shrink-0">
-              <button
-                type="button"
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-                onClick={() => setShowTooltip(!showTooltip)}
-                className="w-4 h-4 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white text-[10px] flex items-center justify-center cursor-pointer transition-colors"
-              >
-                ℹ
-              </button>
+              <div className="relative inline-block shrink-0">
+                <button
+                  type="button"
+                  onMouseEnter={() => setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+                  onClick={() => setShowTooltip(!showTooltip)}
+                  className="w-4 h-4 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white text-[10px] flex items-center justify-center cursor-pointer transition-colors shadow-sm"
+                >
+                  ℹ
+                </button>
 
-              {showTooltip && (
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 p-3 rounded-2xl bg-stone-950/95 border border-amber-500/70 shadow-2xl text-xs text-stone-200 z-50 pointer-events-none backdrop-blur-md">
-                  <div className="font-bold text-amber-300 mb-1.5 flex items-center gap-1.5 text-xs">
-                    <span>{icon}</span>
-                    <span>{title}</span>
+                {showTooltip && (
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 rounded-2xl bg-stone-950/95 border border-amber-500/70 shadow-2xl text-xs text-stone-200 z-50 pointer-events-none backdrop-blur-md leading-snug">
+                    <div className="font-bold text-amber-300 mb-1 flex items-center gap-1.5 text-xs">
+                      <span>{icon}</span>
+                      <span>{title}</span>
+                    </div>
+                    <p className="text-stone-300 text-[11px] mb-2 leading-snug">{tooltipDesc}</p>
+                    <div className="pt-2 border-t border-stone-800 flex justify-between text-[10px] font-mono text-stone-400">
+                      <span>Wymaga:</span>
+                      <span className="text-amber-200 font-bold">{requiredProfessionLabel}</span>
+                    </div>
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-amber-500/70" />
                   </div>
-                  <p className="text-stone-300 text-[11px] leading-relaxed mb-2">{tooltipDesc}</p>
-                  <div className="pt-2 border-t border-stone-800 flex justify-between text-[10px] font-mono text-stone-400">
-                    <span>Wymaga:</span>
-                    <span className="text-amber-200 font-bold">{requiredProfessionLabel}</span>
-                  </div>
-                  <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-amber-500/70" />
-                </div>
+                )}
+              </div>
+            </div>
+
+            {/* STATUS + IKONKA OBSADY */}
+            <div className="flex items-center gap-1 leading-tight shrink-0">
+              {isCurrent && (
+                <span className="text-[9px] font-mono font-extrabold text-stone-950 animate-pulse bg-amber-400 px-1.5 py-0.5 rounded-full shadow-md">
+                  ⚡
+                </span>
+              )}
+              {assignedWorker && (
+                <button
+                  type="button"
+                  onClick={() => setShowStaffModal(true)}
+                  title={`${assignedWorker.name} (${assignedWorker.profession === 'vet' ? 'Weterynarz' : 'Hodowca'}) — kliknij, aby zarządzać obsadą`}
+                  className="relative w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110 shadow-sm border bg-emerald-950 border-emerald-500 text-emerald-300"
+                >
+                  <span className="text-[11px]">👤</span>
+                  <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-stone-950 text-white border border-stone-600 text-[8px] font-mono font-bold flex items-center justify-center">
+                    1
+                  </span>
+                </button>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            {isCurrent && (
-              <span className="text-[10px] font-mono font-extrabold text-stone-950 animate-pulse bg-amber-400 px-2 py-0.5 rounded-full shadow-md">
-                ⚡ AKTYWNY
-              </span>
-            )}
-            <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold border ${badgeCls}`}>
+          <div className="flex items-center justify-between gap-1.5 px-0.5">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold border ${badgeCls}`}>
               {badgeText}
             </span>
+            {assignedWorker && (
+              <span className="text-[10px] font-mono font-bold text-emerald-900">
+                £{assignedWorker.wageDaily.toFixed(1)}/d
+              </span>
+            )}
           </div>
-        </div>
 
-        {statusLine && (
-          <div className="bg-stone-950/80 border border-stone-800 px-2.5 py-1.5 rounded-xl text-[11px] font-mono text-stone-300">
-            {statusLine}
-          </div>
-        )}
-      </div>
-
-      {/* 2. OBSADA PRACOWNIKA + AUTOMATYCZNE ZATRUDNIANIE */}
-      <div className="mt-4 pt-3 border-t border-stone-800/80 space-y-2">
-        {eligibleWorkers.length === 0 ? (
-          <div className="p-2 rounded-lg bg-rose-950/60 border border-rose-500/60 text-rose-200 text-[11px] font-semibold text-center">
-            ⚠️ Brak pracownika — zatrudnij poniżej
-          </div>
-        ) : (
-          <select
-            value={assignedWorker?.id || ''}
-            onChange={(e) => onAssign(e.target.value)}
-            className={`w-full p-2 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              isMissing
-                ? 'bg-rose-950 border border-rose-500 text-rose-200'
-                : 'bg-stone-950 border border-emerald-500/60 text-emerald-200'
-            }`}
-          >
-            <option value="">{selectPlaceholder}</option>
-            {[...eligibleWorkers].reverse().map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.avatar} {w.name} ({w.profession === 'vet' ? 'Weterynarz' : 'Hodowca'})
-              </option>
-            ))}
-          </select>
-        )}
-
-        <div className="flex flex-col gap-1.5">
-          <button
-            type="button"
-            onClick={onHireAndAssign}
-            className="w-full py-1.5 px-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/50 text-amber-200 font-bold text-[11px] cursor-pointer transition-all"
-          >
-            {hireButtonLabel}
-          </button>
-          {secondaryHireButtonLabel && onSecondaryHireAndAssign && (
-            <button
-              type="button"
-              onClick={onSecondaryHireAndAssign}
-              className="w-full py-1.5 px-2.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/35 border border-sky-500/50 text-sky-200 font-bold text-[11px] cursor-pointer transition-all"
-            >
-              {secondaryHireButtonLabel}
-            </button>
+          {statusLine && (
+            <div className="bg-stone-300/80 border border-stone-400 px-2 py-1 rounded-lg text-[10px] font-mono font-bold text-stone-900">
+              {statusLine}
+            </div>
           )}
         </div>
 
-        {assignedWorker && (
-          <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-stone-800/80 font-mono">
-            <span className="truncate max-w-[140px] text-emerald-300 font-semibold">
-              {assignedWorker.title}
-            </span>
-            <span className="font-bold text-amber-300">£{assignedWorker.wageDaily.toFixed(1)}/d</span>
+        {/* 2. PRZYCISK OBSADA (TYLKO GDY BRAK PRACOWNIKA) */}
+        {isMissing && (
+          <div className="pt-1 border-t border-stone-300">
+            <button
+              type="button"
+              onClick={() => setShowStaffModal(true)}
+              className="w-full py-1 px-2 rounded-md font-bold text-[11px] cursor-pointer transition-all border bg-rose-200 hover:bg-rose-300 border-rose-500 text-rose-950"
+            >
+              👥 Obsada
+            </button>
           </div>
         )}
       </div>
-    </div>
+
+      {/* MODAL OBSADY ETAPU (SPÓJNY Z FARMĄ ZBOŻOWĄ) */}
+      {showStaffModal && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 backdrop-blur-sm p-3"
+          onClick={() => setShowStaffModal(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#1c1917] border-2 border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3 text-xs text-stone-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-stone-800 pb-2">
+              <span className="font-bold text-amber-200 flex items-center gap-1.5">
+                <span>{icon}</span>
+                <span>Obsada: {stepNum}. {title}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowStaffModal(false)}
+                className="w-6 h-6 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {assignedWorker ? (
+              <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 space-y-1 font-mono">
+                <div className="flex items-center justify-between text-emerald-100 font-bold">
+                  <span>{assignedWorker.avatar} {assignedWorker.name}</span>
+                  <span className="text-amber-300">£{assignedWorker.wageDaily.toFixed(1)}/d</span>
+                </div>
+                <div className="text-[11px] text-emerald-300">{assignedWorker.title}</div>
+              </div>
+            ) : (
+              <div className="p-2 rounded-lg bg-rose-950/60 border border-rose-500/60 text-rose-200 text-[11px] font-semibold text-center">
+                ⚠️ Brak przypisanego pracownika
+              </div>
+            )}
+
+            {eligibleWorkers.length > 0 && (
+              <select
+                value={assignedWorker?.id || ''}
+                onChange={(e) => {
+                  onAssign(e.target.value);
+                  setShowStaffModal(false);
+                }}
+                className="w-full p-2 px-2.5 rounded-lg text-xs font-bold bg-stone-950 border border-stone-700 text-stone-100 cursor-pointer"
+              >
+                <option value="">{selectPlaceholder}</option>
+                {[...eligibleWorkers].reverse().map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.avatar} {w.name} ({w.profession === 'vet' ? 'Weterynarz' : 'Hodowca'})
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <div className="flex flex-col gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  onHireAndAssign();
+                  setShowStaffModal(false);
+                }}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/50 text-amber-200 font-bold text-[11px] cursor-pointer transition-all"
+              >
+                {hireButtonLabel}
+              </button>
+              {secondaryHireButtonLabel && onSecondaryHireAndAssign && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSecondaryHireAndAssign();
+                    setShowStaffModal(false);
+                  }}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/35 border border-sky-500/50 text-sky-200 font-bold text-[11px] cursor-pointer transition-all"
+                >
+                  {secondaryHireButtonLabel}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
