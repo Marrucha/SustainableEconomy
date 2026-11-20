@@ -25,8 +25,21 @@ interface FieldSpec {
 
 const SECTIONS: { title: string; subtitle: string; fields: FieldSpec[] }[] = [
   {
-    title: 'Rozród i Inseminacja',
-    subtitle: 'Skuteczność zabiegów oraz okresy regeneracji po porodzie',
+    title: '🌾 Farma Zbożowa',
+    subtitle: 'Areał, wydajność pracy, nawożenie i pojemności magazynowe farmy zbożowej',
+    fields: [
+      { key: 'farmBaseHectares', label: 'Bazowy areał farmy zbożowej', unit: 'ha', min: 1, max: 50, step: 1 },
+      { key: 'farmerWorkCapacityHa', label: 'Areał obrabiany przez 1 rolnika', unit: 'ha/rolnik', min: 1, max: 50, step: 1 },
+      { key: 'horseWorkCapacityHa', label: 'Areał obrabiany przez 1 konia', unit: 'ha/koń', min: 0.5, max: 20, step: 0.5 },
+      { key: 'manurePerHa100Kg', label: 'Dawka obornika na 1 ha (100% nawożenia)', unit: 'kg/ha', min: 500, max: 50000, step: 500 },
+      { key: 'grainSiloBaseCapacityKg', label: 'Bazowa pojemność spichlerza (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
+      { key: 'strawStackBaseCapacityKg', label: 'Bazowa pojemność stogu słomy (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
+      { key: 'manureBinBaseCapacityKg', label: 'Bazowa pojemność płyty obornikowej (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
+    ],
+  },
+  {
+    title: '🐎 Farma Hodowlana — Rozród i Śmiertelność',
+    subtitle: 'Skuteczność inseminacji, regeneracja po porodzie oraz śmiertelność źrebiąt',
     fields: [
       { key: 'inseminationSuccessFarmerPercent', label: 'Skuteczność inseminacji — Rolnik', unit: '%', min: 0, max: 100 },
       { key: 'inseminationSuccessVetPercent', label: 'Skuteczność inseminacji — Weterynarz', unit: '%', min: 0, max: 100 },
@@ -34,15 +47,15 @@ const SECTIONS: { title: string; subtitle: string; fields: FieldSpec[] }[] = [
       { key: 'cattleRecoveryMonths', label: 'Regeneracja krowy po porodzie', unit: 'msc', min: 0, max: 24 },
       { key: 'sheepRecoveryMonths', label: 'Regeneracja owcy po wykocie', unit: 'msc', min: 0, max: 24 },
       { key: 'horseInseminationRetryWaitMonths', label: 'Odczekanie po nieudanej próbie (klacz)', unit: 'msc', min: 1, max: 12 },
+      { key: 'foalMonthlyMortalityPercent', label: 'Miesięczna śmiertelność źrebiąt (bez wet.)', unit: '%/msc', min: 0, max: 50, step: 0.5 },
+      { key: 'foalMonthlyMortalityVetPercent', label: 'Miesięczna śmiertelność źrebiąt (z wet.)', unit: '%/msc', min: 0, max: 50, step: 0.5 },
+      { key: 'deceasedRemovalMonths', label: 'Czas widoczności RIP na planszy', unit: 'msc', min: 1, max: 12 },
     ],
   },
   {
-    title: 'Ciąża, Wzrost i Żywienie',
-    subtitle: 'Parametry biologiczne stada oraz dzienne zużycie paszy',
+    title: '🐄 Farma Hodowlana — Biologia, Żywienie i Zagroda',
+    subtitle: 'Czas ciąży, wiek dorosłości, maksymalny wiek oraz zapasy i obornik',
     fields: [
-      { key: 'horseDailyFeedKg', label: 'Dzienne zużycie paszy przez konia', unit: 'kg/dzień', min: 0, max: 100, step: 0.5 },
-      { key: 'horseWorkCapacityHa', label: 'Areał obrabiany przez 1 konia', unit: 'ha/koń', min: 0.5, max: 20, step: 0.5 },
-      { key: 'farmerWorkCapacityHa', label: 'Areał obrabiany przez 1 rolnika', unit: 'ha/rolnik', min: 1, max: 50, step: 1 },
       { key: 'horseGestationMonths', label: 'Czas ciąży klaczy', unit: 'msc', min: 1, max: 24 },
       { key: 'cattleGestationMonths', label: 'Czas ciąży krowy', unit: 'msc', min: 1, max: 24 },
       { key: 'sheepGestationMonths', label: 'Czas ciąży owcy', unit: 'msc', min: 1, max: 24 },
@@ -52,21 +65,8 @@ const SECTIONS: { title: string; subtitle: string; fields: FieldSpec[] }[] = [
       { key: 'horseMaxAgeYears', label: 'Maksymalny wiek konia', unit: 'lata', min: 5, max: 40 },
       { key: 'cattleMaxAgeYears', label: 'Maksymalny wiek krowy', unit: 'lata', min: 5, max: 30 },
       { key: 'sheepMaxAgeYears', label: 'Maksymalny wiek owcy', unit: 'lata', min: 4, max: 25 },
-      { key: 'foalMonthlyMortalityPercent', label: 'Miesięczna śmiertelność źrebiąt (bez wet.)', unit: '%/msc', min: 0, max: 50, step: 0.5 },
-      { key: 'foalMonthlyMortalityVetPercent', label: 'Miesięczna śmiertelność źrebiąt (z wet.)', unit: '%/msc', min: 0, max: 50, step: 0.5 },
-      { key: 'deceasedRemovalMonths', label: 'Czas widoczności RIP na planszy', unit: 'msc', min: 1, max: 12 },
-    ],
-  },
-  {
-    title: 'Domyślne Pojemności Magazynowe',
-    subtitle: 'Bazowe limity pojemności zagrody, spichlerza, stogu słomy i płyty obornikowej',
-    fields: [
+      { key: 'horseDailyFeedKg', label: 'Dzienne zużycie paszy przez konia', unit: 'kg/dzień', min: 0, max: 100, step: 0.5 },
       { key: 'manurePenCapacityKg', label: 'Pojemność zagrody na 1 zwierzę', unit: 'kg/szt.', min: 200, max: 5000, step: 50 },
-      { key: 'grainSiloBaseCapacityKg', label: 'Bazowa pojemność spichlerza (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
-      { key: 'strawStackBaseCapacityKg', label: 'Bazowa pojemność stogu słomy (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
-      { key: 'manureBinBaseCapacityKg', label: 'Bazowa pojemność płyty obornikowej (poziom 1)', unit: 'kg', min: 1000, max: 100000, step: 500 },
-      { key: 'manurePerHa100Kg', label: 'Dawka obornika na 1 ha (100% nawożenia)', unit: 'kg/ha', min: 500, max: 50000, step: 500 },
-      { key: 'farmBaseHectares', label: 'Bazowy areał farmy zbożowej', unit: 'ha', min: 1, max: 50, step: 1 },
     ],
   },
 ];
@@ -200,9 +200,9 @@ export const AdminParametersModal: React.FC<AdminParametersModalProps> = ({ isOp
 
           <section className="bg-stone-900/80 border border-stone-800 rounded-xl p-4 flex flex-col gap-3">
             <div className="border-b border-stone-800 pb-2">
-              <h2 className="text-sm font-bold text-amber-200">Kontrakty Terminowe (Standard Systemowy)</h2>
+              <h2 className="text-sm font-bold text-amber-200">🌐 Ogólne — Kontrakty Terminowe</h2>
               <p className="text-[11px] text-stone-400">
-                Jedno źródło prawdy z industryContracts.ts (podgląd stałych)
+                Jedno źródło prawdy dla wszystkich budynków z industryContracts.ts
               </p>
             </div>
             <div className="flex flex-col gap-2 text-xs">
