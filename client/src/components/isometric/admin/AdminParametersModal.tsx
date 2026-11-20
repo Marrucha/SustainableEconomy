@@ -75,6 +75,8 @@ const SECTIONS: { title: string; subtitle: string; fields: FieldSpec[] }[] = [
 export const AdminParametersModal: React.FC<AdminParametersModalProps> = ({ isOpen, onClose }) => {
   const [form, setForm] = useState<GameParametersConfig>(() => loadGameParameters());
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'general' | 'grain_farm' | 'livestock_farm'>('grain_farm');
+  const [livestockSubTab, setLivestockSubTab] = useState<'repro' | 'biology'>('repro');
 
   useEffect(() => {
     if (isOpen) {
@@ -162,9 +164,54 @@ export const AdminParametersModal: React.FC<AdminParametersModalProps> = ({ isOp
         </div>
       </header>
 
+      <nav className="flex items-center gap-2 px-6 py-2.5 border-b border-stone-800 bg-stone-900/60">
+        {([
+          { id: 'general', label: '🌐 Ogólne' },
+          { id: 'grain_farm', label: '🌾 Farma Zbożowa' },
+          { id: 'livestock_farm', label: '🐎 Farma Hodowlana' },
+        ] as const).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+              activeTab === tab.id
+                ? 'bg-amber-500/20 border-amber-500/60 text-amber-200 shadow-sm'
+                : 'bg-stone-950/60 border-stone-800 text-stone-400 hover:text-stone-200'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
       <main className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
-          {SECTIONS.map((sec) => (
+        <div className="max-w-3xl mx-auto space-y-4">
+          {activeTab === 'livestock_farm' && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setLivestockSubTab('repro')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer border ${
+                  livestockSubTab === 'repro'
+                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
+                    : 'bg-stone-900 border-stone-800 text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                🧬 Podstrona 1: Rozród i Śmiertelność
+              </button>
+              <button
+                onClick={() => setLivestockSubTab('biology')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer border ${
+                  livestockSubTab === 'biology'
+                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
+                    : 'bg-stone-900 border-stone-800 text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                🐄 Podstrona 2: Biologia, Żywienie i Zagroda
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'grain_farm' && [SECTIONS[0]].map((sec) => (
             <section
               key={sec.title}
               className="bg-stone-900/80 border border-stone-800 rounded-xl p-4 flex flex-col gap-3"
@@ -199,27 +246,65 @@ export const AdminParametersModal: React.FC<AdminParametersModalProps> = ({ isOp
             </section>
           ))}
 
-          <section className="bg-stone-900/80 border border-stone-800 rounded-xl p-4 flex flex-col gap-3">
-            <div className="border-b border-stone-800 pb-2">
-              <h2 className="text-sm font-bold text-amber-200">🌐 Ogólne — Kontrakty Terminowe</h2>
-              <p className="text-[11px] text-stone-400">
-                Jedno źródło prawdy dla wszystkich budynków z industryContracts.ts
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 text-xs">
-              {CONTRACT_OPTIONS.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between px-3 py-1.5 rounded bg-stone-950/70 border border-stone-800"
-                >
-                  <span className="font-semibold text-stone-200">{c.label}</span>
-                  <span className="font-mono text-stone-400">
-                    {c.durationMonths} msc • -{c.discountPercent}% zniżki
-                  </span>
+          {activeTab === 'livestock_farm' &&
+            [livestockSubTab === 'repro' ? SECTIONS[1] : SECTIONS[2]].map((sec) => (
+              <section
+                key={sec.title}
+                className="bg-stone-900/80 border border-stone-800 rounded-xl p-4 flex flex-col gap-3"
+              >
+                <div className="border-b border-stone-800 pb-2">
+                  <h2 className="text-sm font-bold text-amber-200">{sec.title}</h2>
+                  <p className="text-[11px] text-stone-400">{sec.subtitle}</p>
                 </div>
-              ))}
-            </div>
-          </section>
+
+                <div className="flex flex-col gap-2.5">
+                  {sec.fields.map((f) => (
+                    <label key={f.key} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="text-stone-200">{f.label}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <input
+                          type="number"
+                          min={f.min}
+                          max={f.max}
+                          step={f.step ?? 1}
+                          value={form[f.key]}
+                          onChange={(e) => handleChange(f.key, e.target.value)}
+                          className="w-20 px-2 py-1 rounded bg-stone-950 border border-stone-700 text-right font-mono text-amber-200 focus:outline-none focus:border-amber-500"
+                        />
+                        <span className="w-14 text-[11px] text-stone-400">{f.unit}</span>
+                        <span className="text-[10px] text-stone-500" title="Wartość domyślna">
+                          ({DEFAULT_GAME_PARAMETERS[f.key]})
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </section>
+            ))}
+
+          {activeTab === 'general' && (
+            <section className="bg-stone-900/80 border border-stone-800 rounded-xl p-4 flex flex-col gap-3">
+              <div className="border-b border-stone-800 pb-2">
+                <h2 className="text-sm font-bold text-amber-200">🌐 Ogólne — Kontrakty Terminowe</h2>
+                <p className="text-[11px] text-stone-400">
+                  Jedno źródło prawdy dla wszystkich budynków z industryContracts.ts
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 text-xs">
+                {CONTRACT_OPTIONS.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between px-3 py-1.5 rounded bg-stone-950/70 border border-stone-800"
+                  >
+                    <span className="font-semibold text-stone-200">{c.label}</span>
+                    <span className="font-mono text-stone-400">
+                      {c.durationMonths} msc • -{c.discountPercent}% zniżki
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </main>
     </div>
