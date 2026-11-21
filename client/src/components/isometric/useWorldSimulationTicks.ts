@@ -4,6 +4,9 @@ import type { GameDate } from './clock/gameClockTypes';
 import { useMineMonthlyTick } from './useMineMonthlyTick';
 import { useWoodcutterMonthlyTick } from './useWoodcutterMonthlyTick';
 import { useFarmAnnualTick } from './useFarmAnnualTick';
+import { useMillWorldTick } from './useMillWorldTick';
+import { useBakeryWorldTick } from './useBakeryWorldTick';
+import { useCoalContractsWorldTick } from './useCoalContractsWorldTick';
 import { useCityHousingGrowth } from './useCityHousingGrowth';
 
 interface UseWorldSimulationTicksParams {
@@ -31,5 +34,14 @@ export function useWorldSimulationTicks({
   useMineMonthlyTick({ clockDate, placedBuildings, buildingsState, setBuildingsState, setGold });
   useWoodcutterMonthlyTick({ clockDate, placedBuildings, buildingsState, setBuildingsState });
   useFarmAnnualTick({ clockDate, placedBuildings, buildingsState, setBuildingsState, setGold });
-  useCityHousingGrowth({ cityBuildings, buildingsState, autoPlaceCityBuildings });
+  useMillWorldTick({ clockDate, cityBuildings, buildingsState, setBuildingsState, setGold });
+  useBakeryWorldTick({ clockDate, cityBuildings, buildingsState, setBuildingsState, setGold });
+  useCoalContractsWorldTick({
+    clockDate,
+    allBuildings: [...placedBuildings, ...cityBuildings],
+    buildingsState,
+    setBuildingsState,
+    setGold,
+  });
+  useCityHousingGrowth({ cityBuildings, buildingsState, setBuildingsState, autoPlaceCityBuildings });
 }

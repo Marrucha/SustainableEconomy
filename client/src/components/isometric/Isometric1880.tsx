@@ -38,7 +38,7 @@ export const Isometric1880: React.FC = () => {
   } = useWorldMaps();
 
   // Budowanie i tryb wyburzania
-  const [isBuildMode, setIsBuildMode] = useState<boolean>(true);
+  const [isBuildMode, setIsBuildMode] = useState<boolean>(false);
   const [isDemolishMode, setIsDemolishMode] = useState<boolean>(false);
   const [selectedType, setSelectedType] = useState<BuildingCatalogItem | null>(null);
   const [activeCategory, setActiveCategory] = useState<BuildingCategory | 'Wszystkie'>('Wszystkie');
@@ -406,7 +406,11 @@ export const Isometric1880: React.FC = () => {
         }}
       />
       <div className="absolute top-3 left-4 z-30">
-        <IsometricHeader gold={gold} clock={gameClock} />
+        <IsometricHeader
+          gold={gold}
+          clock={gameClock}
+          onRefreshGold={() => setGold(350000)}
+        />
       </div>
       {currentMap !== 'world' && (
         <div className="absolute top-28 left-4 z-30 flex flex-col items-start">

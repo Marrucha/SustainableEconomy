@@ -9,14 +9,58 @@ export interface WorldSupplierBuilding extends PlacedBuilding {
 export const CURRENT_PLAYER_NAME = 'JOHN BIG';
 export const DEFAULT_CITY_NAME = 'Londyn';
 
-export function formatSupplierOrderLabel(b: {
-  name: string;
-  playerName?: string;
-  cityName?: string;
-}): string {
+function resolveNormalizedFarmDisplayName(
+  b: { id?: string; name: string },
+  buildingsState?: Record<string, BuildingState>
+): string {
+  if (b.name === 'Wielka Farma Zbożowa') {
+    const crew = b.id ? buildingsState?.[b.id]?.farmCapitalism?.crew : undefined;
+    const firstFarmer = crew?.find(
+      (w) => w.profession === 'farmer' || w.profession === 'all_rounder'
+    );
+    if (firstFarmer) {
+      const parts = firstFarmer.name.trim().split(/\s+/);
+      const surname = parts[parts.length - 1] || firstFarmer.name.trim();
+      return `Farma zbożowa ${surname}`;
+    }
+    return 'Farma Zbożowa';
+  }
+  if (b.name === 'Farma Bydła i Owiec') {
+    return 'Farma Hodowlana';
+  }
+  return b.name;
+}
+
+export function formatSupplierOrderLabel(
+  b: {
+    id?: string;
+    typeId?: string;
+    name: string;
+    playerName?: string;
+    cityName?: string;
+  },
+  buildingsState?: Record<string, BuildingState>,
+  allBuildings?: Array<{ id?: string; name: string }>
+): string {
   const player = b.playerName || CURRENT_PLAYER_NAME;
   const city = b.cityName || DEFAULT_CITY_NAME;
-  return `${player} • ${city} • ${b.name}`;
+  let displayName = resolveNormalizedFarmDisplayName(b, buildingsState);
+
+  if (allBuildings && b.id) {
+    const sameNameList = allBuildings.filter(
+      (item) =>
+        resolveNormalizedFarmDisplayName(item, buildingsState).toLowerCase() ===
+        displayName.toLowerCase()
+    );
+    if (sameNameList.length > 1) {
+      const idx = sameNameList.findIndex((item) => item.id === b.id);
+      if (idx > 0) {
+        displayName = `${displayName} ${idx + 1}`;
+      }
+    }
+  }
+
+  return `${player} • ${city} • ${displayName}`;
 }
 
 export function resolveUniqueFarmName(
@@ -47,7 +91,7 @@ export interface IndustrySupplyRule {
 
 export const INDUSTRY_SUPPLY_RULES: Record<string, IndustrySupplyRule> = {
   mill: {
-    requiredGoodsLabel: 'Zboże (pszenica / żyto / owies / jęczmień)',
+    requiredGoodsLabel: 'Zboże (pszenica / żyto / jęczmień)',
     allowedProducerTypeIds: ['wheat_farm'],
     emptyHint: 'Brak farm zbożowych na rynku. Wybuduj Wielką Farmę Zbożową na mapie Wieś, aby móc zamawiać ziarno.',
   },
@@ -154,10 +198,9 @@ export const INDUSTRY_SUPPLY_RULES: Record<string, IndustrySupplyRule> = {
 };
 
 const CROP_LABELS: Record<string, string> = {
-  pszenica: 'Pszenica',
-  zyto: 'Żyto',
-  owies: 'Owies',
-  jeczmien: 'Jęczmień',
+  pszenica: 'Pszenica Złocista',
+  zyto: 'Żyto Ozime',
+  jeczmien: 'Jęczmień Browarny',
 };
 
 export interface ProducerAvailability {
@@ -267,11 +310,15 @@ export function getProducerMarketAvailability(
   }
 
   if (supplier.typeId === 'mine_shaft') {
+    const crew = st.mineCapitalism?.crew || [];
+    const hasSeller =
+      hasFactorySeller ||
+      crew.some((m) => m.profession === 'merchant' || m.profession === 'warehouseman' || m.profession === 'manager');
     const stock = st.mineStock ?? 0;
     return {
-      hasSeller: hasFactorySeller,
+      hasSeller,
       stockUnits: stock,
-      isAvailable: hasFactorySeller && stock > 0,
+      isAvailable: hasSeller && stock > 0,
       stockLabel: `${stock.toFixed(1)} t`,
     };
   }
@@ -283,6 +330,34 @@ export function getProducerMarketAvailability(
       stockUnits: stock,
       isAvailable: hasFactorySeller && stock > 0,
       stockLabel: `${stock.toFixed(1)} t`,
+    };
+  }
+
+  if (supplier.typeId === 'mill') {
+    const crew = st.millState?.crew || [];
+    const hasSeller =
+      hasFactorySeller ||
+      crew.some((m) => m.profession === 'merchant' || m.profession === 'warehouseman' || m.profession === 'manager');
+    const stock = (st.millState?.flourStockKg ?? 0) + (st.millState?.branStockKg ?? 0);
+    return {
+      hasSeller,
+      stockUnits: stock,
+      isAvailable: hasSeller && stock > 0,
+      stockLabel: `${Math.round(stock)} kg`,
+    };
+  }
+
+  if (supplier.typeId === 'bakery') {
+    const crew = st.bakeryState?.crew || [];
+    const hasSeller =
+      hasFactorySeller ||
+      crew.some((m) => m.profession === 'merchant' || m.profession === 'warehouseman' || m.profession === 'manager');
+    const stock = (st.bakeryState?.breadStockKg ?? 0) + (st.bakeryState?.rusksStockKg ?? 0);
+    return {
+      hasSeller,
+      stockUnits: stock,
+      isAvailable: hasSeller && stock > 0,
+      stockLabel: `${Math.round(stock)} kg`,
     };
   }
 
@@ -321,4 +396,187 @@ export function getSupplierStatusSummary(
   }
 
   return prefix;
+}
+
+export interface IncomingSalesContractLine {
+  id: string;
+  buyerId: string;
+  buyerLabel: string;
+  isOurBuyer: boolean;
+  productLabel: string;
+  monthlyQtyLabel: string;
+  contractLabel: string;
+}
+
+const EXTRA_ING_LABELS: Record<string, string> = {
+  salt: 'Sól Kamienna',
+  yeast: 'Drożdże Piekarskie',
+  butter: 'Masło Świeże',
+  sugar: 'Cukier',
+};
+
+const CONTRACT_LABELS: Record<string, string> = {
+  pay_as_you_go: 'PAYG',
+  contract_3y: 'Kontrakt 3-letni',
+  contract_5y: 'Kontrakt 5-letni',
+  contract_10y: 'Kontrakt 10-letni',
+};
+
+export function getIncomingSalesContracts(
+  sellerBuildingId: string,
+  allWorldBuildings: WorldSupplierBuilding[],
+  buildingsState: Record<string, BuildingState>
+): IncomingSalesContractLine[] {
+  const lines: IncomingSalesContractLine[] = [];
+
+  for (const b of allWorldBuildings) {
+    const st = buildingsState[b.id];
+    if (!st) continue;
+    const owner = st.ownerName || b.playerName;
+    const isOurBuyer = !owner || owner === 'Gracz';
+    const buyerLabel = formatSupplierOrderLabel(b, buildingsState, allWorldBuildings);
+
+    // 1. Piekarnia zamawiająca mąkę i dodatki
+    if (b.typeId === 'bakery' && st.bakeryState) {
+      const flourOrders = Array.isArray(st.bakeryState.flourOrders) ? st.bakeryState.flourOrders : [];
+      flourOrders
+        .filter((o) => o.supplierId === sellerBuildingId)
+        .forEach((o, i) => {
+          lines.push({
+            id: `bakery_flour_${b.id}_${i}`,
+            buyerId: b.id,
+            buyerLabel,
+            isOurBuyer,
+            productLabel: 'Mąka Piekarnicza',
+            monthlyQtyLabel: `${o.monthlyKg.toLocaleString('pl-PL')} kg/msc`,
+            contractLabel: CONTRACT_LABELS[o.contractType] || o.contractType,
+          });
+        });
+
+      const extraOrders = Array.isArray(st.bakeryState.extraOrders) ? st.bakeryState.extraOrders : [];
+      extraOrders
+        .filter((o) => o.supplierId === sellerBuildingId)
+        .forEach((o, i) => {
+          lines.push({
+            id: `bakery_extra_${b.id}_${o.ingredient}_${i}`,
+            buyerId: b.id,
+            buyerLabel,
+            isOurBuyer,
+            productLabel: EXTRA_ING_LABELS[o.ingredient] || o.ingredient,
+            monthlyQtyLabel: `${o.monthlyKg.toLocaleString('pl-PL')} kg/msc`,
+            contractLabel: CONTRACT_LABELS[o.contractType] || o.contractType,
+          });
+        });
+    }
+
+    // 2. Młyn zamawiający ziarno
+    if (b.typeId === 'mill' && st.millState) {
+      const grainOrders = Array.isArray(st.millState.grainOrders)
+        ? st.millState.grainOrders
+        : st.millState.grainOrder
+        ? [st.millState.grainOrder]
+        : [];
+      grainOrders
+        .filter((o) => o.supplierId === sellerBuildingId)
+        .forEach((o, i) => {
+          lines.push({
+            id: `mill_grain_${b.id}_${i}`,
+            buyerId: b.id,
+            buyerLabel,
+            isOurBuyer,
+            productLabel: 'Ziarno Zbożowe',
+            monthlyQtyLabel: `${o.monthlyKg.toLocaleString('pl-PL')} kg/msc`,
+            contractLabel: CONTRACT_LABELS[o.contractType] || o.contractType,
+          });
+        });
+    }
+
+    // 3. Ferma hodowlana zamawiająca paszę (w tym otręby z młyna) i ściółkę
+    if (
+      (b.typeId === 'livestock_farm' || b.typeId === 'pasture_cattle' || b.typeId === 'pasture_sheep') &&
+      st.livestockState
+    ) {
+      const feedOrders = Array.isArray(st.livestockState.feedOrders)
+        ? st.livestockState.feedOrders
+        : st.livestockState.feedOrder
+        ? [st.livestockState.feedOrder]
+        : [];
+      feedOrders
+        .filter((o) => o.supplierId === sellerBuildingId)
+        .forEach((o, i) => {
+          lines.push({
+            id: `ls_feed_${b.id}_${i}`,
+            buyerId: b.id,
+            buyerLabel,
+            isOurBuyer,
+            productLabel: 'Pasza / Otręby',
+            monthlyQtyLabel: `${o.monthlyQuantityKg.toLocaleString('pl-PL')} kg/msc`,
+            contractLabel: CONTRACT_LABELS[o.contractType] || o.contractType,
+          });
+        });
+
+      const strawOrders = Array.isArray(st.livestockState.strawOrders)
+        ? st.livestockState.strawOrders
+        : st.livestockState.strawOrder
+        ? [st.livestockState.strawOrder]
+        : [];
+      strawOrders
+        .filter((o) => o.supplierId === sellerBuildingId)
+        .forEach((o, i) => {
+          lines.push({
+            id: `ls_straw_${b.id}_${i}`,
+            buyerId: b.id,
+            buyerLabel,
+            isOurBuyer,
+            productLabel: 'Słoma / Ściółka',
+            monthlyQtyLabel: `${o.monthlyQuantityKg.toLocaleString('pl-PL')} kg/msc`,
+            contractLabel: CONTRACT_LABELS[o.contractType] || o.contractType,
+          });
+        });
+    }
+
+    // 4. Farma zbożowa zamawiająca obornik
+    if (b.typeId === 'wheat_farm' && st.farmCapitalism?.manureOrder?.supplierId === sellerBuildingId) {
+      const mo = st.farmCapitalism.manureOrder;
+      lines.push({
+        id: `farm_manure_${b.id}`,
+        buyerId: b.id,
+        buyerLabel,
+        isOurBuyer,
+        productLabel: 'Obornik Naturalny',
+        monthlyQtyLabel: `${mo.monthlyQuantityKg.toLocaleString('pl-PL')} kg/msc`,
+        contractLabel: CONTRACT_LABELS[mo.contractType] || mo.contractType,
+      });
+    }
+
+    // 5. Kontrakty na węgiel do zasilania kotłów parowych
+    if (st.coalOrder?.supplierId === sellerBuildingId) {
+      const co = st.coalOrder;
+      lines.push({
+        id: `coal_energy_${b.id}`,
+        buyerId: b.id,
+        buyerLabel,
+        isOurBuyer,
+        productLabel: 'Węgiel kamienny (Energia)',
+        monthlyQtyLabel: `${co.monthlyTons} t/msc`,
+        contractLabel: CONTRACT_LABELS[co.contractType] || co.contractType,
+      });
+    }
+
+    // 6. Kontrakty na węgiel drzewny do zasilania pieców
+    if (st.charcoalOrder?.supplierId === sellerBuildingId) {
+      const ch = st.charcoalOrder;
+      lines.push({
+        id: `charcoal_energy_${b.id}`,
+        buyerId: b.id,
+        buyerLabel,
+        isOurBuyer,
+        productLabel: 'Węgiel Drzewny (Energia)',
+        monthlyQtyLabel: `${ch.monthlyTons} t/msc`,
+        contractLabel: CONTRACT_LABELS[ch.contractType] || ch.contractType,
+      });
+    }
+  }
+
+  return lines;
 }

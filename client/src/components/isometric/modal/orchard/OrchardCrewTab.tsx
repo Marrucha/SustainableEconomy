@@ -8,6 +8,7 @@ import {
   ORCHARD_STAGE_LABELS,
   ORCHARD_PROFESSION_LABELS,
 } from './orchardTypes';
+import { WorkdayHoursBar, WorkerDailyWageInput } from '../CrewControls';
 
 interface OrchardCrewTabProps {
   state: OrchardCapitalismState;
@@ -88,9 +89,15 @@ export const OrchardCrewTab: React.FC<OrchardCrewTabProps> = ({
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
                   Klasa M (Zarządca i Uczony 1880 r.)
                 </span>
-                <span className="text-xs font-mono text-stone-400">
-                  Płaca: £{pomologist.wageDaily} / dzień
-                </span>
+                <WorkerDailyWageInput
+                  wage={pomologist.wageDaily}
+                  min={1}
+                  max={15}
+                  step={0.5}
+                  onChangeWage={(val) =>
+                    onUpdateState({ pomologist: { ...pomologist, wageDaily: val } })
+                  }
+                />
               </div>
               <h4 className="text-sm font-bold text-amber-100 mt-1">
                 {pomologist.name} – {pomologist.title}
@@ -131,6 +138,11 @@ export const OrchardCrewTab: React.FC<OrchardCrewTabProps> = ({
           </div>
         </div>
 
+        <WorkdayHoursBar
+          workdayHours={state.workdayHours ?? 10}
+          onChangeHours={(h) => onUpdateState({ workdayHours: h })}
+        />
+
         {/* LISTA AKTYWNYCH PRACOWNIKÓW */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {crew.map((member) => {
@@ -145,9 +157,19 @@ export const OrchardCrewTab: React.FC<OrchardCrewTabProps> = ({
                     <span className="text-2xl p-1 bg-stone-950 rounded-xl border border-stone-800">
                       {member.avatar}
                     </span>
-                    <span className="text-[10px] font-mono text-stone-400">
-                      £{member.wageDaily}/dzień
-                    </span>
+                    <WorkerDailyWageInput
+                      wage={member.wageDaily}
+                      min={0.5}
+                      max={12}
+                      step={0.5}
+                      onChangeWage={(val) =>
+                        onUpdateState({
+                          crew: crew.map((m) =>
+                            m.id === member.id ? { ...m, wageDaily: val } : m
+                          ),
+                        })
+                      }
+                    />
                   </div>
 
                   <h5 className="text-xs font-bold text-amber-100">{member.name}</h5>

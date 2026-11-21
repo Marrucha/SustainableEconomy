@@ -21,7 +21,10 @@ export const ALL_MARKET_GOODS: MarketGoodOption[] = [
   { id: 'drewno', label: 'Drewno i Dłużyca', icon: '🪵', producerTypeIds: ['woodcutter'], defaultPrice: 1.3 },
   { id: 'wegiel_ruda', label: 'Węgiel, Ruda i Siarka', icon: '⛏️', producerTypeIds: ['mine_shaft'], defaultPrice: 1.8 },
   { id: 'maka', label: 'Mąka i Kasza', icon: '🥖', producerTypeIds: ['mill'], defaultPrice: 1.5 },
-  { id: 'chleb', label: 'Pieczywo i Wypieki', icon: '🥐', producerTypeIds: ['bakery'], defaultPrice: 1.7 },
+  { id: 'chleb_pszenny', label: 'Chleb Pszenny', icon: '🥖', producerTypeIds: ['bakery'], defaultPrice: 1.7 },
+  { id: 'chleb_zytni', label: 'Chleb Żytni na Zakwasie', icon: '🍞', producerTypeIds: ['bakery'], defaultPrice: 1.55 },
+  { id: 'wypieki_cukiernicze', label: 'Rogaliki', icon: '🥐', producerTypeIds: ['bakery'], defaultPrice: 2.4 },
+  { id: 'suchary', label: 'Bułka Tarta', icon: '🥣', producerTypeIds: ['bakery'], defaultPrice: 0.65 },
   { id: 'tarcica', label: 'Tarcica i Deski', icon: '🪚', producerTypeIds: ['sawmill'], defaultPrice: 1.6 },
   { id: 'material_lniany', label: 'Materiał Lniany', icon: '🧶', producerTypeIds: ['spinning_mill'], defaultPrice: 2.0 },
   { id: 'material_welniany', label: 'Materiał Wełniany', icon: '🧵', producerTypeIds: ['spinning_mill'], defaultPrice: 2.4 },
@@ -102,6 +105,32 @@ export interface AvailableMarketOffer {
   price: number;
 }
 
+function isGoodInProductionForBuilding(
+  b: WorldSupplierBuilding,
+  st: BuildingState | undefined,
+  goodId: string,
+  matchingGoods: MarketGoodOption[]
+): boolean {
+  if (b.typeId === 'bakery') {
+    const activeTarget = st?.bakeryState?.productTarget || 'chleb_pszenny';
+    if (goodId === 'suchary') {
+      return (st?.bakeryState?.rusksStockKg ?? 0) > 0;
+    }
+    return goodId === activeTarget;
+  }
+  if (b.typeId === 'mill' && matchingGoods.length > 1) {
+    const activeTarget = st?.millState?.productTarget || 'maka_pszenna';
+    return goodId === activeTarget || goodId === 'maka';
+  }
+  if (
+    st?.productionTarget &&
+    matchingGoods.some((g) => g.id === st.productionTarget)
+  ) {
+    return goodId === st.productionTarget;
+  }
+  return true;
+}
+
 export function getAvailableMarketOffers(
   allWorldBuildings: WorldSupplierBuilding[],
   buildingsState: Record<string, BuildingState>
@@ -118,6 +147,7 @@ export function getAvailableMarketOffers(
     const area = b.mapType === 'rural' ? 'Wieś' : 'Miasto';
     const locationLabel = `${area} (${b.x}, ${b.y}) • Magazyn: ${availability.stockLabel}`;
     for (const good of matchingGoods) {
+      if (!isGoodInProductionForBuilding(b, st, good.id, matchingGoods)) continue;
       offers.push({
         offerKey: `${good.id}::${b.id}`,
         good,

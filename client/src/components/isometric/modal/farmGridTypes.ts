@@ -36,8 +36,13 @@ export const GRAIN_SILO_BASE_CAPACITY_KG = 10000; // 10 ton bazowej pojemności 
 export const GRAIN_SILO_MAX_LEVEL = 4; // Maksymalnie 40 ton (4 poziomy po 10 ton)
 export const STRAW_STACK_BASE_CAPACITY_KG = 20000; // 20 ton bazowej pojemności stogu słomy
 
-export function getGrainSiloCapacityKg(siloLevel = 1): number {
-  const lvl = Math.min(GRAIN_SILO_MAX_LEVEL, Math.max(1, siloLevel));
+export function getMaxGrainSiloLevel(attachedFieldsCount = 0): number {
+  return GRAIN_SILO_MAX_LEVEL + Math.max(0, attachedFieldsCount) * 2;
+}
+
+export function getGrainSiloCapacityKg(siloLevel = 1, attachedFieldsCount = 0): number {
+  const maxLevel = getMaxGrainSiloLevel(attachedFieldsCount);
+  const lvl = Math.min(maxLevel, Math.max(1, siloLevel));
   return lvl * GRAIN_SILO_BASE_CAPACITY_KG;
 }
 
@@ -52,7 +57,7 @@ export function getManureBinCapacityKg(manureLevel = 1): number {
 }
 
 export function getGrainSiloDailyCostPence(siloLevel = 1): number {
-  const lvl = Math.min(GRAIN_SILO_MAX_LEVEL, Math.max(1, siloLevel));
+  const lvl = Math.max(1, siloLevel);
   return 1 + (lvl - 1) * 0.5;
 }
 
@@ -79,7 +84,7 @@ export interface FarmAgronomist {
   lossReductionPercent: number; // np. 50%
 }
 
-export type CropType = 'pszenica' | 'zyto' | 'owies' | 'jeczmien';
+export type CropType = 'pszenica' | 'zyto' | 'jeczmien';
 
 export type FarmWeatherType = 'sunny' | 'partly_cloudy' | 'cloudy' | 'rainy' | 'stormy';
 
@@ -109,14 +114,6 @@ export const CROPS_CONFIG: Record<CropType, CropInfo> = {
     marketPricePerTon: 95,
     desc: 'Odporne na chłody i ubogie gleby, doskonałe na chleb razowy.',
   },
-  owies: {
-    id: 'owies',
-    name: 'Owies Koński',
-    icon: '🌱',
-    baseYield: 3800,
-    marketPricePerTon: 85,
-    desc: 'Kluczowe ziarno paszowe dla miejskich koni roboczych i dorożek.',
-  },
   jeczmien: {
     id: 'jeczmien',
     name: 'Jęczmień Browarny',
@@ -131,6 +128,7 @@ export type FertilizingLevel = 0 | 50 | 100;
 
 export interface FarmCapitalismState {
   crew: FarmCrewMember[];
+  workdayHours?: number;
   agronomist: FarmAgronomist;
   cropType: CropType;
 
@@ -332,7 +330,6 @@ export function createDefaultFarmCapitalismState(): FarmCapitalismState {
     grainStockKg: {
       pszenica: 3000,
       zyto: 0,
-      owies: 0,
       jeczmien: 0,
     },
     manureStockKg: 250,

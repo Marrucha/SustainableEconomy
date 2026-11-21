@@ -280,36 +280,65 @@ export const LivestockFinanceSummary: React.FC<LivestockFinanceSummaryProps> = (
   const totalSalesRevenue = Number(salesLines.reduce((s, l) => s + l.monthlyValueGbp, 0).toFixed(2));
 
   const purchaseLines: FinanceContractLine[] = [];
-  if (ls.feedOrder) {
-    const prod = allWorldBuildings.find((b) => b.id === ls.feedOrder?.supplierId);
-    const meta = getContractMeta(ls.feedOrder.contractType);
+  const feedOrdersList = Array.isArray(ls.feedOrders)
+    ? ls.feedOrders
+    : ls.feedOrder
+    ? [ls.feedOrder]
+    : [];
+  const strawOrdersList = Array.isArray(ls.strawOrders)
+    ? ls.strawOrders
+    : ls.strawOrder
+    ? [ls.strawOrder]
+    : [];
+
+  feedOrdersList.forEach((ord, idx) => {
+    const isShip = ord.supplierId.startsWith('trade_ship');
+    const prod = allWorldBuildings.find((b) => b.id === ord.supplierId);
+    const isMill = prod?.typeId === 'mill';
+    const meta = getContractMeta(ord.contractType);
+    const basePer100 = isShip
+      ? 11
+      : isMill
+      ? Number(((buildingsState[ord.supplierId]?.millState?.branPricePerKg ?? 0.45) * 100).toFixed(2))
+      : 10;
     const cost = Number(
-      ((ls.feedOrder.monthlyQuantityKg / 100) * 10 * (1 - meta.discountPercent / 100)).toFixed(2)
+      ((ord.monthlyQuantityKg / 100) * basePer100 * (1 - meta.discountPercent / 100)).toFixed(2)
     );
     purchaseLines.push({
-      id: 'buy_feed',
-      counterpartyName: prod ? formatSupplierOrderLabel(prod) : 'Farma Zbożowa',
-      goodsLabel: 'Pasza zbożowa',
-      amountLabel: `${ls.feedOrder.monthlyQuantityKg} kg/msc`,
+      id: `buy_feed_${ord.supplierId}_${idx}`,
+      counterpartyName: isShip
+        ? '🚢 Port Londyn • Statek Handlowy'
+        : prod
+        ? formatSupplierOrderLabel(prod, buildingsState)
+        : 'Farma Zbożowa',
+      goodsLabel: isShip ? 'Pasza (Import)' : isMill ? 'Otręby Paszowe' : 'Pasza zbożowa',
+      amountLabel: `${ord.monthlyQuantityKg} kg/msc`,
       contractLabel: meta.label,
       monthlyValueGbp: cost,
     });
-  }
-  if (ls.strawOrder) {
-    const prod = allWorldBuildings.find((b) => b.id === ls.strawOrder?.supplierId);
-    const meta = getContractMeta(ls.strawOrder.contractType);
+  });
+
+  strawOrdersList.forEach((ord, idx) => {
+    const isShip = ord.supplierId.startsWith('trade_ship');
+    const prod = allWorldBuildings.find((b) => b.id === ord.supplierId);
+    const meta = getContractMeta(ord.contractType);
+    const basePer100 = isShip ? 6.6 : 6;
     const cost = Number(
-      ((ls.strawOrder.monthlyQuantityKg / 100) * 6 * (1 - meta.discountPercent / 100)).toFixed(2)
+      ((ord.monthlyQuantityKg / 100) * basePer100 * (1 - meta.discountPercent / 100)).toFixed(2)
     );
     purchaseLines.push({
-      id: 'buy_straw',
-      counterpartyName: prod ? formatSupplierOrderLabel(prod) : 'Farma Zbożowa',
-      goodsLabel: 'Ściółka (słoma)',
-      amountLabel: `${ls.strawOrder.monthlyQuantityKg} kg/msc`,
+      id: `buy_straw_${ord.supplierId}_${idx}`,
+      counterpartyName: isShip
+        ? '🚢 Port Londyn • Statek Handlowy'
+        : prod
+        ? formatSupplierOrderLabel(prod, buildingsState)
+        : 'Farma Zbożowa',
+      goodsLabel: isShip ? 'Ściółka (Import)' : 'Ściółka (słoma)',
+      amountLabel: `${ord.monthlyQuantityKg} kg/msc`,
       contractLabel: meta.label,
       monthlyValueGbp: cost,
     });
-  }
+  });
   const monthlyWages = Number(((ls.crew || []).reduce((s, w) => s + w.wageDaily, 0) * 30).toFixed(2));
   purchaseLines.push({
     id: 'buy_wages',

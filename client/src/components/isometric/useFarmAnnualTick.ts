@@ -83,7 +83,7 @@ export function useFarmAnnualTick({
           const dailyFeedPerHorse = loadGameParameters().horseDailyFeedKg;
           const totalHorseFeedKg = ownedHorsesCount * dailyFeedPerHorse;
           const activeCrop: CropType = farmCap.cropType || 'pszenica';
-          const curGrainMap = farmCap.grainStockKg || { pszenica: farmCap.wheatStockKg ?? 0, zyto: 0, owies: 0, jeczmien: 0 };
+          const curGrainMap = farmCap.grainStockKg || { pszenica: farmCap.wheatStockKg ?? 0, zyto: 0, jeczmien: 0 };
           const curStock = curGrainMap[activeCrop] ?? farmCap.wheatStockKg ?? 0;
           if (curStock > 0) {
             const nextStock = Math.max(0, Number((curStock - totalHorseFeedKg).toFixed(2)));
@@ -122,11 +122,10 @@ export function useFarmAnnualTick({
         }
 
         // Miesięczna utrata jakości składowanego ziarna (-1% / miesiąc, 1. dnia miesiąca) oraz dzienny koszt składowania
-        const storedGrainMap = farmCap.grainStockKg || { pszenica: 0, zyto: 0, owies: 0, jeczmien: 0 };
+        const storedGrainMap = farmCap.grainStockKg || { pszenica: 0, zyto: 0, jeczmien: 0 };
         const totalStoredKg =
           (storedGrainMap.pszenica || 0) +
           (storedGrainMap.zyto || 0) +
-          (storedGrainMap.owies || 0) +
           (storedGrainMap.jeczmien || 0);
         if (totalStoredKg > 0) {
           if (clockDate.day === 1) {
@@ -202,11 +201,11 @@ export function useFarmAnnualTick({
           patch.lastCycleCost = totalCosts;
 
           // Zawsze składujemy zbiory do spichlerza (jednokomorowego do 10 t), dopóki nie zostaną sprzedane graczowi/młynowi
-          const rawGrainMap = farmCap.grainStockKg || { pszenica: 0, zyto: 0, owies: 0, jeczmien: 0 };
+          const rawGrainMap = farmCap.grainStockKg || { pszenica: 0, zyto: 0, jeczmien: 0 };
           const isLegacyDummy =
-            activeCrop === 'pszenica' && rawGrainMap.zyto === 120 && rawGrainMap.owies === 80;
+            activeCrop === 'pszenica' && rawGrainMap.zyto === 120;
           const grainMap = isLegacyDummy
-            ? { ...rawGrainMap, zyto: 0, owies: 0 }
+            ? { ...rawGrainMap, zyto: 0 }
             : rawGrainMap;
           const currentCropKg = grainMap[activeCrop] ?? 0;
           const otherGrainKg = (Object.entries(grainMap) as [CropType, number][])
@@ -214,7 +213,7 @@ export function useFarmAnnualTick({
             .reduce((sum, [, kg]) => sum + (kg || 0), 0);
 
           if (otherGrainKg === 0) {
-            const siloCapKg = getGrainSiloCapacityKg(farmCap.siloLevel);
+            const siloCapKg = getGrainSiloCapacityKg(farmCap.siloLevel, extraFields);
             const nextAmount = Math.min(siloCapKg, currentCropKg + totalYieldKg);
             const addedKg = Math.max(0, nextAmount - currentCropKg);
             const oldQuality = patch.grainQualityPercent ?? farmCap.grainQualityPercent ?? 100;

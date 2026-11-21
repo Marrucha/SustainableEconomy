@@ -3,11 +3,12 @@ import type { BuildingState, BusinessEnergySource, BusinessEnergyScale } from '.
 import type { WorldSupplierBuilding } from './industrySupplyConfig';
 import { ENERGY_SOURCES_INFO, SCALE_CONFIG } from './energyConfig';
 import { HorsePurchaseOfferPanel } from './HorsePurchaseOfferPanel';
+import { CoalPurchaseOfferPanel } from './CoalPurchaseOfferPanel';
 import { loadGameParameters } from '../admin/gameParameters';
 
 interface BusinessEnergySectionProps {
   businessTitle: string;
-  energySource: BusinessEnergySource;
+  energySource?: BusinessEnergySource;
   energyScale: BusinessEnergyScale;
   hasGreenRelief: boolean;
   allowedSources?: BusinessEnergySource[];
@@ -39,26 +40,26 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
     ][]
   ).filter(([key]) => !allowedSources || allowedSources.includes(key));
 
-  const effectiveSourceKey: BusinessEnergySource =
-    allowedSources && !allowedSources.includes(energySource)
-      ? allowedSources[0]
-      : energySource || 'drewno';
+  const effectiveSourceKey: BusinessEnergySource | null =
+    energySource && (!allowedSources || allowedSources.includes(energySource))
+      ? energySource
+      : null;
 
   const isFarmHorseOnly = allowedSources?.length === 1 && allowedSources[0] === 'konie';
-  const rawSource = ENERGY_SOURCES_INFO[effectiveSourceKey] || ENERGY_SOURCES_INFO.drewno;
+  const rawSource = effectiveSourceKey ? ENERGY_SOURCES_INFO[effectiveSourceKey] : null;
   const currentSource =
-    isFarmHorseOnly && effectiveSourceKey === 'konie'
+    isFarmHorseOnly && (effectiveSourceKey === 'konie' || effectiveSourceKey === null)
       ? {
-          ...rawSource,
+          ...ENERGY_SOURCES_INFO.konie,
           name: 'Konie Pociągowe',
           description:
             'Tradycyjna siła pociągowa w rolnictwie 1880 r. Konie pociągowe obsługują orkę, bronowanie, siew oraz transport plonów wozami.',
         }
       : rawSource;
   const currentScale = SCALE_CONFIG[energyScale || 'standard'];
-  const finalCost = (currentSource.baseCost * currentScale.multiplier).toFixed(2);
-  const finalEfficiency = Math.round(currentSource.baseEfficiency * currentScale.effMultiplier);
-  const chimneyTax = currentSource.hasChimneyTax && !hasGreenRelief ? 5.0 : 0.0;
+  const finalCost = currentSource ? (currentSource.baseCost * currentScale.multiplier).toFixed(2) : '0.00';
+  const finalEfficiency = currentSource ? Math.round(currentSource.baseEfficiency * currentScale.effMultiplier) : 0;
+  const chimneyTax = currentSource && currentSource.hasChimneyTax && !hasGreenRelief ? 5.0 : 0.0;
 
   if (isFarmHorseOnly) {
     const ownedCount = buildingState?.ownedHorses?.length ?? 0;
@@ -114,6 +115,11 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
         <label className="block text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">
           1. Wybierz źródło napędu i paliwa ({availableEntries.length} {availableEntries.length === 1 ? 'opcja' : 'opcji'})
         </label>
+        {!effectiveSourceKey && (
+          <div className="mb-2 px-3 py-2 rounded-xl bg-rose-500/15 border border-rose-500/40 text-xs text-rose-200 font-semibold">
+            ⚠️ Brak wybranego źródła napędu i paliwa — wybierz poniżej, aby uruchomić budynek.
+          </div>
+        )}
         <div className="space-y-2">
           {availableEntries.map(
             ([key, rawInfo]) => {
@@ -188,6 +194,29 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
         />
       )}
 
+      {(effectiveSourceKey === 'wegiel' || effectiveSourceKey === 'wegiel_drzewny') && (
+        <CoalPurchaseOfferPanel
+          fuelKind={effectiveSourceKey}
+          coalStockTons={
+            effectiveSourceKey === 'wegiel_drzewny'
+              ? (buildingState?.charcoalStockTons ?? 0)
+              : (buildingState?.coalStockTons ?? 0)
+          }
+          coalOrder={
+            effectiveSourceKey === 'wegiel_drzewny'
+              ? buildingState?.charcoalOrder
+              : buildingState?.coalOrder
+          }
+          coalInterventionBuyEnabled={buildingState?.coalInterventionBuyEnabled}
+          energyScale={energyScale || 'standard'}
+          allWorldBuildings={allWorldBuildings}
+          buildingsState={buildingsState}
+          onSpendGold={onSpendGold}
+          onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+          onUpdateState={onUpdateState}
+        />
+      )}
+
       <div>
         <label className="block text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">
           2. Tryb pracy i obciążenie instalacji
@@ -221,12 +250,13 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-xs uppercase font-mono text-amber-300 font-bold">Miesięczny Rachunek Energii:</span>
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-stone-800 text-stone-300">
-              {currentSource.name} ({currentScale.label})
+              {currentSource ? `${currentSource.name} (${currentScale.label})` : 'Nie wybrano'}
             </span>
           </div>
           <p className="text-[11px] text-stone-400">
-            Zawiera koszt paliwa/przesyłu ({finalCost})
-            {chimneyTax > 0 ? ` + opłata za dym kominowy (£ ${chimneyTax.toFixed(2)})` : ''}
+            {currentSource
+              ? `Zawiera koszt paliwa/przesyłu (${finalCost})${chimneyTax > 0 ? ` + opłata za dym kominowy (£ ${chimneyTax.toFixed(2)})` : ''}`
+              : 'Wybierz źródło napędu i paliwa powyżej.'}
           </p>
         </div>
 

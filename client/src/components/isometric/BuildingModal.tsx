@@ -5,18 +5,37 @@ import { FarmSection } from './modal/FarmSection';
 import { FlaxSection } from './modal/flax/FlaxSection';
 import { HopSection } from './modal/hop/HopSection';
 import { OrchardSection } from './modal/orchard/OrchardSection';
-import { FRUITS_CONFIG } from './modal/orchard/orchardTypes';
 import { LivestockSection } from './modal/livestock/LivestockSection';
 import { MineSection } from './modal/mine/MineSection';
+import { MineProductsTab } from './modal/mine/MineProductsTab';
+import { MineStorageBins } from './modal/mine/MineStorageBins';
+import { MineFinanceTab } from './modal/mine/MineFinanceTab';
+import { LivestockStorageBins } from './modal/livestock/LivestockStorageBins';
+import { createDefaultLivestockState } from './modal/livestock/livestockTypes';
 import { WoodcutterSection } from './modal/woodcutter/WoodcutterSection';
+import { MillSection } from './modal/mill/MillSection';
+import { MillProductsTab } from './modal/mill/MillProductsTab';
+import { MillFinanceTab } from './modal/mill/MillFinanceTab';
+import { MillRecipesTab } from './modal/mill/MillRecipesTab';
+import { MillStorageBins } from './modal/mill/MillStorageBins';
+import { createDefaultMillState, MILL_PRODUCTS_CONFIG, type MillProductTarget } from './modal/mill/millTypes';
+import { BakerySection } from './modal/bakery/BakerySection';
+import { BakeryProductsSection } from './modal/bakery/BakeryProductsSection';
+import { BakeryFinanceTab } from './modal/bakery/BakeryFinanceTab';
+import { BakeryStorageBins } from './modal/bakery/BakeryStorageBins';
+import { createDefaultBakeryState } from './modal/bakery/bakeryTypes';
+import { loadGameParameters } from './admin/gameParameters';
+import { BuildingModalHeader } from './modal/BuildingModalHeader';
+import { BuildingModalTabs, type BusinessTabType } from './modal/BuildingModalTabs';
 import { ResidentialSection } from './modal/ResidentialSection';
 import { IndustrySection } from './modal/IndustrySection';
+import { UniversitySection } from './modal/UniversitySection';
+import { TradeSchoolSection } from './modal/TradeSchoolSection';
 import { TownHallSection } from './modal/TownHallSection';
 import { MarketplaceSection } from './modal/MarketplaceSection';
+import { TradeShipSection } from './modal/TradeShipSection';
 import { computeCityHousingStatus } from './cityAutoGrowth';
 import type { UseGameClockReturn } from './clock/useGameClock';
-import { formatGameDate } from './clock/gameClockTypes';
-import { checkIsProductionReady, createDefaultFarmCapitalismState } from './modal/farmGridTypes';
 import type { WorldSupplierBuilding } from './modal/industrySupplyConfig';
 import { ProductInventoryCard } from './modal/ProductInventoryCard';
 import { FarmLivestockProductsTab } from './modal/FarmLivestockProductsTab';
@@ -69,15 +88,21 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
     building.typeId === 'pasture_sheep';
   const isMine = building.typeId.startsWith('mine_');
   const isWoodcutter = building.typeId === 'woodcutter';
+  const isMill = building.typeId === 'mill';
+  const isBakery = building.typeId === 'bakery';
+  const isUniversity = building.typeId === 'university';
+  const isTradeSchool = building.typeId === 'trade_school';
   const isResidential = building.typeId.startsWith('tenement');
   const isTownHall = building.typeId === 'town_hall';
   const isMarketplace = building.typeId === 'marketplace';
+  const isTradeShip = building.typeId === 'trade_ship';
   const isPark = building.typeId === 'oak';
-  const isBusiness = isFarm || isFlax || isHop || isOrchard || isLivestock || isMine || isWoodcutter || (!isWheatField && !isResidential && !isTownHall && !isMarketplace && !isPark);
+  const isBusiness = isFarm || isFlax || isHop || isOrchard || isLivestock || isMine || isWoodcutter || isMill || isBakery || (!isWheatField && !isResidential && !isTownHall && !isMarketplace && !isTradeShip && !isPark);
 
   const validation = canDemolishBuildingWithPastureRules(building, placedBuildings);
 
-  const [businessTab, setBusinessTab] = useState<'production' | 'products' | 'energy' | 'finance'>('production');
+  const [businessTab, setBusinessTab] = useState<BusinessTabType>('production');
+  const [productsSubTab, setProductsSubTab] = useState<'inventory' | 'recipes'>('inventory');
   const [residentialTab, setResidentialTab] = useState<'rent' | 'energy'>('rent');
 
   const activeReliefs = buildingState.appliedTaxReliefs || {};
@@ -92,186 +117,72 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
     });
   };
 
+  const isWideModal =
+    isFarm || isFlax || isHop || isLivestock || isOrchard || isMine || isWoodcutter || isMill || isBakery || isTownHall || isTradeShip;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2.5 animate-fade-in select-none">
+    <div
+      className={`fixed inset-0 z-50 flex justify-center bg-black/70 backdrop-blur-sm p-2.5 animate-fade-in select-none ${
+        isWideModal ? 'items-start pt-[3vh]' : 'items-center'
+      }`}
+    >
       <div
         className={`relative w-full ${
-          isFarm || isFlax || isHop || isLivestock || isOrchard || isMine || isWoodcutter ? 'max-w-6xl' : isTownHall ? 'max-w-5xl' : isBusiness ? 'max-w-2xl' : 'max-w-xl'
-        } bg-stone-900/95 border border-amber-500/50 rounded-3xl p-3.5 shadow-2xl text-stone-200 font-sans max-h-[95vh] flex flex-col transition-all duration-200`}
+          isTradeShip
+            ? 'max-w-7xl h-[92vh]'
+            : isFarm || isFlax || isHop || isLivestock || isOrchard || isMine || isWoodcutter || isMill || isBakery
+            ? 'max-w-6xl h-[92vh]'
+            : isTownHall
+            ? 'max-w-5xl h-[92vh]'
+            : isBusiness
+            ? 'max-w-2xl h-[82vh]'
+            : 'max-w-xl max-h-[92vh]'
+        } bg-stone-900/95 border border-amber-500/50 rounded-3xl p-3.5 shadow-2xl text-stone-200 font-sans flex flex-col`}
       >
-        {/* NAGŁÓWEK (JEDNA LINIA: EPOKA + NAZWA BUDYNKU PO LEWEJ | PRĘDKOŚĆ + STATUS + ZAMKNIJ PO PRAWEJ) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 pb-2 flex-shrink-0">
-          <div className="flex flex-wrap items-center gap-3 min-w-0">
-            <span className="text-xs tracking-wider uppercase font-mono font-bold px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-200 border border-amber-500/40 shadow-sm shrink-0">
-              Epoka 1 • {clock ? formatGameDate(clock.date) : '1880'}
-            </span>
-            <h2 className="text-lg sm:text-xl font-bold font-serif text-amber-100 truncate">
-              {(() => {
-                const displayName =
-                  building.typeId === 'livestock_farm' && building.name === 'Farma Bydła i Owiec'
-                    ? 'Farma Hodowlana'
-                    : building.name;
-                return isOrchard && buildingState.orchardState?.isFruitLocked && buildingState.orchardState?.fruitType
-                  ? `${displayName} • ${FRUITS_CONFIG[buildingState.orchardState.fruitType]?.name || ''}`
-                  : displayName;
-              })()}
-            </h2>
-          </div>
+        <BuildingModalHeader
+          building={building}
+          buildingState={buildingState}
+          isFarm={isFarm}
+          isOrchard={isOrchard}
+          isMill={isMill}
+          isBakery={isBakery}
+          isMine={isMine}
+          clock={clock}
+          onClose={onClose}
+        />
 
-          <div className="flex items-center gap-2 shrink-0">
-            {clock && (
-              <div className="flex items-center gap-1.5 font-mono mr-1">
-                <button
-                  onClick={clock.togglePlay}
-                  className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-100 text-xs font-bold cursor-pointer transition-colors"
-                >
-                  {clock.isPlaying ? '⏸️' : '▶️'}
-                </button>
-                {[1, 2, 5].map((sp) => (
-                  <button
-                    key={sp}
-                    onClick={() => clock.setSpeed(sp)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
-                      clock.speed === sp ? 'bg-amber-500 text-stone-950 shadow-sm' : 'text-stone-300 hover:text-white bg-stone-800/80 border border-stone-700'
-                    }`}
-                  >
-                    {sp}x
-                  </button>
-                ))}
-              </div>
-            )}
-            {isFarm && (() => {
-              const rawCap = buildingState.farmCapitalism;
-              const farmCap =
-                rawCap && Array.isArray(rawCap.crew) && rawCap.agronomist && rawCap.stageAssignments
-                  ? rawCap
-                  : createDefaultFarmCapitalismState();
-              const farmReady = checkIsProductionReady(farmCap).isReady;
-              return (
-                <span
-                  title={farmReady ? 'Przepływ aktywny' : 'Brak pełnej obsady'}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${
-                    farmReady
-                      ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-                      : 'bg-rose-500/20 border-rose-500 text-rose-300'
-                  }`}
-                >
-                  {farmReady ? '✓' : '✕'}
-                </span>
-              );
-            })()}
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
-        {/* ZAKŁADKI DLA BIZNESU (ZARZĄDZANIE / ZAKUP ENERGII) */}
-        {isBusiness && (
-          <div className="mt-1 mb-0 flex-shrink-0">
-            <div className="bg-stone-950/80 p-0.5 rounded-xl border border-stone-800 shadow-inner flex gap-1">
-              <button
-                onClick={() => setBusinessTab('production')}
-                className={`flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  businessTab === 'production'
-                    ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-sm'
-                    : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-                }`}
-              >
-                <span className="text-sm">{isFarm ? '🌾' : isOrchard ? '🍎' : isLivestock ? '🐄' : isMine ? '⛏️' : isWoodcutter ? '🪓' : '⚙️'}</span>
-                <span className="tracking-wide">
-                  {isFarm ? 'Uprawa i Załoga' : isOrchard ? 'Sadownictwo i Załoga' : isLivestock ? 'Hodowla i Załoga' : isMine ? 'Wydobycie i Załoga' : isWoodcutter ? 'Zrąb i Składnica' : 'Profil Produkcji'}
-                </span>
-              </button>
-
-              <button
-                onClick={() => setBusinessTab('products')}
-                className={`flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  businessTab === 'products'
-                    ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-sm'
-                    : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-                }`}
-              >
-                <span className="text-sm">📦</span>
-                <span className="tracking-wide">Produkty</span>
-              </button>
-
-              <button
-                onClick={() => setBusinessTab('energy')}
-                className={`relative flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  businessTab === 'energy'
-                    ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-sm'
-                    : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-                }`}
-              >
-                <span className="text-sm">⚡</span>
-                <span className="tracking-wide">Zakup Energii do Produkcji</span>
-                {isFarm && (buildingState.ownedHorses?.length ?? 0) >= 1 && (
-                  <span
-                    className="ml-auto w-4 h-4 rounded-full bg-emerald-500 text-stone-950 flex items-center justify-center text-[10px] font-black shrink-0 shadow-sm"
-                    title="Energia (konie robocze) zapewniona"
-                  >
-                    ✓
-                  </span>
-                )}
-              </button>
-
-              {(isFarm || isLivestock) && (
-                <button
-                  onClick={() => setBusinessTab('finance')}
-                  className={`flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    businessTab === 'finance'
-                      ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-sm'
-                      : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-                  }`}
-                >
-                  <span className="text-sm">📊</span>
-                  <span className="tracking-wide">Finanse — Zestawienie</span>
-                </button>
-              )}
-            </div>
-            <div className="h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent mt-1 mb-0" />
-          </div>
-        )}
-
-        {/* ZAKŁADKI DLA KAMIENIC (NAJEM / OGRZEWANIE I ENERGIA) */}
-        {isResidential && (
-          <div className="mt-3 mb-1 flex-shrink-0">
-            <div className="bg-stone-950/80 p-1.5 rounded-2xl border border-stone-800 shadow-inner flex gap-2">
-              <button
-                onClick={() => setResidentialTab('rent')}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-sm md:text-base font-bold transition-all cursor-pointer flex items-center justify-center gap-2.5 ${
-                  residentialTab === 'rent'
-                    ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
-                    : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-                }`}
-              >
-                <span className="text-lg">🪙</span>
-                <span className="tracking-wide">Czynsz i Standard</span>
-              </button>
-
-              <button
-                onClick={() => setResidentialTab('energy')}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-sm md:text-base font-bold transition-all cursor-pointer flex items-center justify-center gap-2.5 ${
-                  residentialTab === 'energy'
-                    ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
-                    : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-                }`}
-              >
-                <span className="text-lg">🔥</span>
-                <span className="tracking-wide">Ogrzewanie i Energia</span>
-              </button>
-            </div>
-            <div className="h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent mt-1.5 mb-0.5" />
-          </div>
-        )}
+        <BuildingModalTabs
+          isBusiness={isBusiness}
+          isResidential={isResidential}
+          isFarm={isFarm}
+          isLivestock={isLivestock}
+          isMill={isMill}
+          isBakery={isBakery}
+          isMine={isMine}
+          businessTab={businessTab}
+          residentialTab={residentialTab}
+          onSelectBusinessTab={setBusinessTab}
+          onSelectResidentialTab={setResidentialTab}
+        />
 
         {/* ZAWARTOŚĆ SPECYFICZNA DLA TYPU BUDYNKU */}
         <div className="py-1.5 px-1 space-y-2 text-sm overflow-y-auto flex-1">
-          {businessTab === 'finance' && (isFarm || isLivestock) ? (
+          {businessTab === 'finance' && isMine ? (
+            <MineFinanceTab buildingState={buildingState} onUpdateState={onUpdateState} />
+          ) : businessTab === 'finance' && isBakery ? (
+            <BakeryFinanceTab
+              buildingState={buildingState}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              onUpdateState={onUpdateState}
+            />
+          ) : businessTab === 'finance' && isMill ? (
+            <MillFinanceTab
+              buildingState={buildingState}
+              allWorldBuildings={allWorldBuildings}
+              onUpdateState={onUpdateState}
+            />
+          ) : businessTab === 'finance' && (isFarm || isLivestock) ? (
             <FarmLivestockFinanceTab
               building={building}
               buildingState={buildingState}
@@ -280,6 +191,101 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
               buildingsState={buildingsState}
               onUpdateState={onUpdateState}
             />
+          ) : isBusiness && businessTab === 'trade' && isLivestock ? (
+            <LivestockStorageBins
+              state={buildingState.livestockState || createDefaultLivestockState()}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              onSpendGold={onSpendGold}
+              onUpdateState={(patch) => {
+                const cur = buildingState.livestockState || createDefaultLivestockState();
+                onUpdateState({ livestockState: { ...cur, ...patch } });
+              }}
+            />
+          ) : isBusiness && businessTab === 'trade' && isMine ? (
+            <MineStorageBins
+              buildingId={building.id}
+              buildingState={buildingState}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              onSpendGold={onSpendGold}
+              onUpdateState={onUpdateState}
+            />
+          ) : isBusiness && businessTab === 'trade' && isBakery ? (
+            <BakeryStorageBins
+              buildingId={building.id}
+              state={buildingState.bakeryState || createDefaultBakeryState()}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              clock={clock}
+              onSpendGold={onSpendGold}
+              onUpdate={(updates) => {
+                const cur = buildingState.bakeryState || createDefaultBakeryState();
+                onUpdateState({ bakeryState: { ...cur, ...updates } });
+              }}
+            />
+          ) : isBusiness && businessTab === 'trade' && isMill ? (
+            <MillStorageBins
+              buildingId={building.id}
+              state={buildingState.millState || createDefaultMillState()}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              clock={clock}
+              onSpendGold={onSpendGold}
+              onUpdate={(updates) => {
+                const cur = buildingState.millState || createDefaultMillState();
+                onUpdateState({ millState: { ...cur, ...updates } });
+              }}
+            />
+          ) : isBusiness && businessTab === 'products' && isMine ? (
+            <MineProductsTab buildingState={buildingState} />
+          ) : isBusiness && businessTab === 'products' && isBakery ? (
+            <BakeryProductsSection buildingState={buildingState} onUpdateState={onUpdateState} />
+          ) : isBusiness && businessTab === 'products' && isMill ? (
+            <div className="space-y-3">
+              <div className="flex gap-1.5 bg-stone-950/80 p-1 rounded-xl border border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setProductsSubTab('inventory')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                    productsSubTab === 'inventory'
+                      ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50'
+                      : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
+                  }`}
+                >
+                  📦 Stany magazynowe
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProductsSubTab('recipes')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                    productsSubTab === 'recipes'
+                      ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50'
+                      : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
+                  }`}
+                >
+                  📜 Przepisy
+                </button>
+              </div>
+              {productsSubTab === 'inventory' ? (
+                <MillProductsTab buildingState={buildingState} />
+              ) : (
+                <MillRecipesTab
+                  state={buildingState.millState || createDefaultMillState()}
+                  baseDailyGrainKg={loadGameParameters().millBaseDailyGrainKg ?? 200}
+                  onSelectRecipe={(target: MillProductTarget) => {
+                    const cur = buildingState.millState || createDefaultMillState();
+                    onUpdateState({
+                      millState: {
+                        ...cur,
+                        productTarget: target,
+                        flourPricePerKg: MILL_PRODUCTS_CONFIG[target].defaultPricePerKg,
+                      },
+                    });
+                  }}
+                />
+              )}
+            </div>
           ) : isBusiness && businessTab === 'products' && (isFarm || isLivestock) ? (
             <FarmLivestockProductsTab
               building={building}
@@ -326,7 +332,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
                   Pole należy do: {parentFarm ? parentFarm.name : 'Farmy Zbożowej'}
                 </h3>
                 <p className="text-xs text-stone-300 max-w-md mx-auto leading-relaxed">
-                  To pole uprawne (+1 ha • +150 kg wysiewu • +2 t bazowego plonu) jest częścią powyższego gospodarstwa. Załogą, produkcją, spichlerzem i końmi pociągowymi zarządzasz bezpośrednio w oknie farmy.
+                  To pole uprawne (+5 ha) jest częścią powyższego gospodarstwa. Załogą, produkcją, spichlerzem i końmi pociągowymi zarządzasz bezpośrednio w oknie farmy.
                 </p>
               </div>
             );
@@ -336,7 +342,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             <FarmSection
               building={building}
               buildingState={buildingState}
-              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
+              businessTab="production"
               hasGreenRelief={hasGreenRelief}
               attachedFieldsCount={countAttachedWheatFields(building, placedBuildings)}
               allWorldBuildings={allWorldBuildings}
@@ -352,7 +358,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           {isFlax && (
             <FlaxSection
               buildingState={buildingState}
-              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
+              businessTab="production"
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
@@ -362,7 +368,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           {isHop && (
             <HopSection
               buildingState={buildingState}
-              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
+              businessTab="production"
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
@@ -372,7 +378,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           {isOrchard && (
             <OrchardSection
               buildingState={buildingState}
-              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
+              businessTab="production"
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
@@ -383,7 +389,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             <LivestockSection
               building={building}
               buildingState={buildingState}
-              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
+              businessTab="production"
               hasGreenRelief={hasGreenRelief}
               allWorldBuildings={allWorldBuildings}
               buildingsState={buildingsState}
@@ -399,10 +405,15 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             <MineSection
               building={building}
               buildingState={buildingState}
-              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              businessTab="production"
               hasGreenRelief={hasGreenRelief}
               clock={clock}
+              onSpendGold={onSpendGold}
               onUpdateState={onUpdateState}
+              onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+              onRenameBuilding={onRenameBuilding}
             />
           )}
 
@@ -410,28 +421,91 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             <WoodcutterSection
               building={building}
               buildingState={buildingState}
-              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
+              businessTab="production"
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onUpdateState={onUpdateState}
             />
           )}
 
+          {isMill && (
+            <MillSection
+              building={building}
+              buildingState={buildingState}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              businessTab="production"
+              hasGreenRelief={hasGreenRelief}
+              clock={clock}
+              onSpendGold={onSpendGold}
+              onUpdateState={onUpdateState}
+              onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+            />
+          )}
+
+          {isBakery && (
+            <BakerySection
+              building={building}
+              buildingState={buildingState}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              businessTab="production"
+              hasGreenRelief={hasGreenRelief}
+              clock={clock}
+              onSpendGold={onSpendGold}
+              onUpdateState={onUpdateState}
+              onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+            />
+          )}
+
           {isResidential && (
             <ResidentialSection
+              building={building}
               buildingState={buildingState}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
               residentialTab={residentialTab}
               onUpdateState={onUpdateState}
             />
           )}
 
-          {isBusiness && !isFarm && !isFlax && !isHop && !isOrchard && !isLivestock && !isMine && !isWoodcutter && (
+          {isUniversity && (
+            <UniversitySection
+              buildingId={building.id}
+              buildingTitle={building.name || 'Wiktoriański Uniwersytet'}
+              buildingState={buildingState}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              businessTab="production"
+              hasGreenRelief={hasGreenRelief}
+              onSpendGold={onSpendGold}
+              onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+              onUpdateState={onUpdateState}
+            />
+          )}
+
+          {isTradeSchool && (
+            <TradeSchoolSection
+              buildingId={building.id}
+              buildingTitle={building.name || 'Szkoła Branżowa i Techniczna'}
+              buildingState={buildingState}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              businessTab="production"
+              hasGreenRelief={hasGreenRelief}
+              onSpendGold={onSpendGold}
+              onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+              onUpdateState={onUpdateState}
+            />
+          )}
+
+          {isBusiness && !isUniversity && !isTradeSchool && !isFarm && !isFlax && !isHop && !isOrchard && !isLivestock && !isMine && !isWoodcutter && !isMill && !isBakery && (
             <IndustrySection
               building={building}
               buildingState={buildingState}
               allWorldBuildings={allWorldBuildings}
               buildingsState={buildingsState}
-              businessTab={businessTab === 'energy' ? 'energy' : 'production'}
+              businessTab="production"
               hasGreenRelief={hasGreenRelief}
               clock={clock}
               onSpendGold={onSpendGold}
@@ -448,6 +522,8 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
                 allWorldBuildings.filter((b) => b.mapType !== 'rural'),
                 buildingsState
               )}
+              cityBuildings={allWorldBuildings.filter((b) => b.mapType !== 'rural')}
+              buildingsState={buildingsState}
               cityPlayersCount={cityPlayersCount}
               onAddNewCityPlayer={onAddNewCityPlayer}
             />
@@ -461,6 +537,14 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
               clock={clock}
               onSpendGold={onSpendGold}
               onUpdateState={onUpdateState}
+            />
+          )}
+
+          {isTradeShip && (
+            <TradeShipSection
+              buildingId={building.id}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
             />
           )}
 

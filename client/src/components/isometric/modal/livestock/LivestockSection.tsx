@@ -6,7 +6,6 @@ import { BusinessEnergySection } from '../BusinessEnergySection';
 import { LivestockPipeline } from './LivestockPipeline';
 import { LivestockHerdTab } from './LivestockHerdTab';
 import { LivestockCrewTab } from './LivestockCrewTab';
-import { LivestockStorageBins } from './LivestockStorageBins';
 import { useLivestockTicks } from './useLivestockTicks';
 import type { UseGameClockReturn } from '../../clock/useGameClock';
 import { resolveUniqueFarmName, type WorldSupplierBuilding } from '../industrySupplyConfig';
@@ -38,9 +37,9 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
   clock,
   onUpdateState,
 }) => {
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'herd' | 'crew' | 'storage'>('pipeline');
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'herd' | 'crew' | 'energy'>('pipeline');
   const [speciesFeedback, setSpeciesFeedback] = useState<string | null>(null);
-  const [pendingSpeciesChange, setPendingSpeciesChange] = useState<'cattle' | 'sheep' | 'horses' | null>(null);
+  const [pendingSpeciesChange, setPendingSpeciesChange] = useState<'cattle' | 'sheep' | 'horses' | 'poultry' | null>(null);
 
   const rawState = buildingState.livestockState;
   const livestockState: LivestockCapitalismState =
@@ -149,7 +148,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
         },
       });
       setSpeciesFeedback('🐑 Zmieniono profil na Fermę Owiec! Cały dotychczasowy zapas produktów ze starego stada przepadł!');
-    } else {
+    } else if (pendingSpeciesChange === 'horses') {
       handleUpdateLivestock({
         activeSpecies: 'horses',
         storage: emptiedStorage,
@@ -166,6 +165,37 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
         },
       });
       setSpeciesFeedback('🐎 Zmieniono profil na Hodowlę Koni! Cały dotychczasowy zapas produktów ze starego stada przepadł!');
+    } else if (pendingSpeciesChange === 'poultry') {
+      handleUpdateLivestock({
+        activeSpecies: 'poultry',
+        storage: {
+          ...livestockState.storage,
+          beefKg: 0,
+          muttonKg: 0,
+          leatherPcs: 0,
+          milkLiters: 0,
+          woolKg: 0,
+          poultryMeatKg: 0,
+          feathersKg: 0,
+          eggsCount: 0,
+        },
+        herd: {
+          ...livestockState.herd,
+          milkingGroupCows: 0,
+          growingGroupCalves: 0,
+          sheepFlockCount: 0,
+          adultSheepCount: 0,
+          growingLambsCount: 0,
+          horsesFlockCount: 0,
+          adultDraftHorses: 0,
+          growingFoalsCount: 0,
+          poultryFlockCount: 20,
+          adultHensCount: 10,
+          growingChicksCount: 10,
+          poultryForSale: 0,
+        },
+      });
+      setSpeciesFeedback('🐔 Zmieniono profil na Hodowlę Drobiu! Cały dotychczasowy zapas produktów ze starego stada przepadł!');
     }
 
     setPendingSpeciesChange(null);
@@ -224,6 +254,20 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
             <span>🐎</span>
             <span>Konie</span>
           </button>
+
+          <button
+            onClick={() => {
+              if (currentSpecies !== 'poultry') setPendingSpeciesChange('poultry');
+            }}
+            className={`flex-1 sm:flex-none py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              currentSpecies === 'poultry'
+                ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
+                : 'bg-stone-900 border border-stone-800 text-stone-400 hover:text-stone-200'
+            }`}
+          >
+            <span>🐔</span>
+            <span>Drób</span>
+          </button>
         </div>
       </div>
 
@@ -241,6 +285,8 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
                 ? 'Fermę Bydła 🐄'
                 : pendingSpeciesChange === 'sheep'
                 ? 'Fermę Owiec 🐑'
+                : pendingSpeciesChange === 'poultry'
+                ? 'Hodowlę Drobiu 🐔'
                 : 'Hodowlę Koni 🐎'}
             </strong>?
             <br />
@@ -319,15 +365,15 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveTab('storage')}
+          onClick={() => setActiveTab('energy')}
           className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-            activeTab === 'storage'
+            activeTab === 'energy'
               ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
               : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
           }`}
         >
-          <span className="text-base">🏛️</span>
-          <span>Magazyn i Hałda</span>
+          <span className="text-base">⚡</span>
+          <span>Zakup Energii</span>
         </button>
       </div>
 
@@ -362,13 +408,19 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
         />
       )}
 
-      {activeTab === 'storage' && (
-        <LivestockStorageBins
-          state={livestockState}
+      {activeTab === 'energy' && (
+        <BusinessEnergySection
+          businessTitle={building?.name || 'Farma Hodowlana'}
+          energySource="konie"
+          energyScale={buildingState.businessEnergyScale || 'standard'}
+          hasGreenRelief={hasGreenRelief}
+          allowedSources={['konie']}
+          buildingState={buildingState}
           allWorldBuildings={allWorldBuildings}
           buildingsState={buildingsState}
           onSpendGold={onSpendGold}
-          onUpdateState={handleUpdateLivestock}
+          onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+          onUpdateState={onUpdateState}
         />
       )}
     </div>

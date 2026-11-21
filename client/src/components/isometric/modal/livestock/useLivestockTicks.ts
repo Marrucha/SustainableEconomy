@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { BuildingState } from '../../types';
+import type { BuildingState, ShipInterventionLogEntry } from '../../types';
+import { resolveTradeShipStateId } from '../TradeShipInterventionLogsTab';
 import type { UseGameClockReturn } from '../../clock/useGameClock';
 import { getContractMeta } from '../industryContracts';
 import { loadGameParameters } from '../../admin/gameParameters';
@@ -102,6 +103,29 @@ export function useLivestockTicks({
     }
 
     if (animalCount > 0) {
+      const isPoultry = livestockState.activeSpecies === 'poultry';
+      const nextPoultryIncubation =
+        isPoultry && livestockState.poultryStage === 'gestation_9m'
+          ? Math.min(21, (livestockState.poultryIncubationDays ?? 0) + 1)
+          : livestockState.poultryIncubationDays;
+      const dailyEggs =
+        isPoultry && (livestockState.selectedPoultryBranch || 'milking') === 'milking'
+          ? Math.max(0, Math.round((livestockState.herd.adultHensCount ?? 0) * 0.8))
+          : 0;
+      const poultryPatch: Partial<LivestockCapitalismState> = isPoultry
+        ? {
+            poultryIncubationDays: nextPoultryIncubation,
+            ...(dailyEggs > 0
+              ? {
+                  storage: {
+                    ...livestockState.storage,
+                    eggsCount: (livestockState.storage.eggsCount || 0) + dailyEggs,
+                  },
+                }
+              : {}),
+          }
+        : {};
+
       const dailyGain = Math.max(2, Math.round(animalCount * 1.5));
       const rawNext = Math.round(cur + dailyGain);
       if (rawNext >= cap) {
@@ -110,12 +134,13 @@ export function useLivestockTicks({
         onUpdateState({
           livestockState: {
             ...livestockState,
+            ...poultryPatch,
             herd: nextHerd,
             penManureKg: rawNext - cap,
             penManureCapacityKg: cap,
             supplies: { feedGrainKg: nextFeedGrainKg, strawBeddingKg: nextStrawBeddingKg },
             storage: {
-              ...livestockState.storage,
+              ...(poultryPatch.storage || livestockState.storage),
               manureKg: nextHeapManure,
             },
           },
@@ -124,6 +149,7 @@ export function useLivestockTicks({
         onUpdateState({
           livestockState: {
             ...livestockState,
+            ...poultryPatch,
             herd: nextHerd,
             penManureKg: rawNext,
             penManureCapacityKg: cap,
@@ -152,9 +178,68 @@ export function useLivestockTicks({
     let nextFeedOrder = livestockState.feedOrder;
     let nextStrawOrder = livestockState.strawOrder;
     let totalCost = 0;
+    const pendingShipLogs: ShipInterventionLogEntry[] = [];
 
     const fulfill = (order: typeof nextFeedOrder, kind: 'feed' | 'straw') => {
       if (!order) return order;
+      if (order.supplierId.startsWith('trade_ship')) {
+        const meta = getContractMeta(order.contractType);
+        const delivered = order.monthlyQuantityKg;
+        if (delivered > 0) {
+          if (kind === 'feed') nextFeed += delivered;
+          else nextStraw += delivered;
+          const basePer100 = kind === 'feed' ? 11 : 6.6;
+          totalCost += Number(((delivered / 100) * basePer100 * (1 - meta.discountPercent / 100)).toFixed(2));
+        }
+        if (meta.durationMonths > 0) {
+          const rem = order.monthsRemaining - 1;
+          return rem > 0 ? { ...order, monthsRemaining: rem } : undefined;
+        }
+        return order;
+      }
+      const millState = buildingsState[order.supplierId]?.millState;
+      if (kind === 'feed' && millState) {
+        const availBran = millState.branStockKg ?? 0;
+        const delivered = Math.min(order.monthlyQuantityKg, availBran);
+        const meta = getContractMeta(order.contractType);
+        if (delivered > 0) {
+          nextFeed += delivered;
+          const basePer100 = (millState.branPricePerKg ?? 0.45) * 100;
+          const orderCost = Number(((delivered / 100) * basePer100 * (1 - meta.discountPercent / 100)).toFixed(2));
+          totalCost += orderCost;
+          onUpdateAnyBuildingState?.(order.supplierId, {
+            millState: {
+              ...millState,
+              branStockKg: Math.max(0, availBran - delivered),
+              totalRevenue: millState.totalRevenue + orderCost,
+            },
+          });
+        }
+        const shortfallBran = Math.max(0, order.monthlyQuantityKg - delivered);
+        if (livestockState.interventionBuyEnabled && shortfallBran > 0) {
+          nextFeed += shortfallBran;
+          const shipPer100 = 11;
+          const intCost = Number(((shortfallBran / 100) * shipPer100 * 1.1).toFixed(2));
+          totalCost += intCost;
+          pendingShipLogs.push({
+            id: `ship_int_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            year: clock.date.year,
+            month: clock.date.month,
+            buyerId: 'livestock_farm',
+            buyerLabel: 'Ferma Hodowlana',
+            supplierId: order.supplierId,
+            productLabel: 'Otręby / Pasza (interwencyjnie)',
+            shortfallKg: shortfallBran,
+            costGbp: intCost,
+          });
+        }
+        if (meta.durationMonths > 0) {
+          const rem = order.monthsRemaining - 1;
+          return rem > 0 ? { ...order, monthsRemaining: rem } : undefined;
+        }
+        return order;
+      }
+
       const producerCap = buildingsState[order.supplierId]?.farmCapitalism;
       if (!producerCap) return order;
       const cropKey = producerCap.cropType || 'pszenica';
@@ -184,6 +269,25 @@ export function useLivestockTicks({
           },
         });
       }
+      const shortfallFarm = Math.max(0, order.monthlyQuantityKg - delivered);
+      if (livestockState.interventionBuyEnabled && shortfallFarm > 0) {
+        if (kind === 'feed') nextFeed += shortfallFarm;
+        else nextStraw += shortfallFarm;
+        const shipPer100 = kind === 'feed' ? 11 : 6.6;
+        const intCost = Number(((shortfallFarm / 100) * shipPer100 * 1.1).toFixed(2));
+        totalCost += intCost;
+        pendingShipLogs.push({
+          id: `ship_int_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          year: clock.date.year,
+          month: clock.date.month,
+          buyerId: 'livestock_farm',
+          buyerLabel: 'Ferma Hodowlana',
+          supplierId: order.supplierId,
+          productLabel: kind === 'feed' ? 'Pasza / Ziarno (interwencyjnie)' : 'Ściółka / Słoma (interwencyjnie)',
+          shortfallKg: shortfallFarm,
+          costGbp: intCost,
+        });
+      }
       if (meta.durationMonths > 0) {
         const rem = order.monthsRemaining - 1;
         return rem > 0 ? { ...order, monthsRemaining: rem } : undefined;
@@ -194,8 +298,23 @@ export function useLivestockTicks({
     const paramsForCap = loadGameParameters();
     const feedHeapCap = paramsForCap.grainSiloBaseCapacityKg || 10000;
     const strawHeapCap = paramsForCap.strawStackBaseCapacityKg || 20000;
-    nextFeedOrder = fulfill(nextFeedOrder, 'feed');
-    nextStrawOrder = fulfill(nextStrawOrder, 'straw');
+    const rawFeedOrders = livestockState.feedOrders ?? (nextFeedOrder ? [nextFeedOrder] : []);
+    const rawStrawOrders = livestockState.strawOrders ?? (nextStrawOrder ? [nextStrawOrder] : []);
+    const nextFeedOrders = rawFeedOrders
+      .map((o) => fulfill(o, 'feed'))
+      .filter((o): o is NonNullable<typeof o> => Boolean(o));
+    const nextStrawOrders = rawStrawOrders
+      .map((o) => fulfill(o, 'straw'))
+      .filter((o): o is NonNullable<typeof o> => Boolean(o));
+    if (pendingShipLogs.length > 0) {
+      const shipId = resolveTradeShipStateId(buildingsState);
+      const prevLogs = buildingsState[shipId]?.shipInterventionLogs || [];
+      onUpdateAnyBuildingState?.(shipId, {
+        shipInterventionLogs: [...pendingShipLogs, ...prevLogs].slice(0, 100),
+      });
+    }
+    nextFeedOrder = nextFeedOrders[0];
+    nextStrawOrder = nextStrawOrders[0];
     nextFeed = Math.min(feedHeapCap, nextFeed);
     nextStraw = Math.min(strawHeapCap, nextStraw);
 
@@ -203,6 +322,13 @@ export function useLivestockTicks({
     const nextHorseWait = Math.max(0, (livestockState.horseInseminationWaitMonths ?? 0) - 1);
     const nextCattleRecovery = Math.max(0, (livestockState.cattleRecoveryMonthsRemaining ?? 0) - 1);
     const nextSheepRecovery = Math.max(0, (livestockState.sheepRecoveryMonthsRemaining ?? 0) - 1);
+    const nextPoultryRecovery = Math.max(0, (livestockState.poultryRecoveryMonthsRemaining ?? 0) - 1);
+    const poultryTargetMaturity =
+      (livestockState.selectedPoultryBranch || 'milking') === 'milking' ? 12 : 6;
+    const nextPoultryChickAge =
+      livestockState.activeSpecies === 'poultry' && livestockState.poultryStage === 'calf_growth_2y'
+        ? Math.min(poultryTargetMaturity, (livestockState.poultryChickAgeMonths ?? 0) + 1)
+        : (livestockState.poultryChickAgeMonths ?? 0);
 
     // Niezależny miesięczny cykl rozrodu dla każdej klaczy z osobna
     let horsePatch: Partial<LivestockCapitalismState> = {};
@@ -351,21 +477,34 @@ export function useLivestockTicks({
       nextHorseWait !== (livestockState.horseInseminationWaitMonths ?? 0) ||
       nextCattleRecovery !== (livestockState.cattleRecoveryMonthsRemaining ?? 0) ||
       nextSheepRecovery !== (livestockState.sheepRecoveryMonthsRemaining ?? 0) ||
+      nextPoultryRecovery !== (livestockState.poultryRecoveryMonthsRemaining ?? 0) ||
+      nextPoultryChickAge !== (livestockState.poultryChickAgeMonths ?? 0) ||
       Object.keys(horsePatch).length > 0;
 
-    if (totalCost > 0 || nextFeedOrder !== livestockState.feedOrder || nextStrawOrder !== livestockState.strawOrder || recoveryChanged) {
+    if (
+      totalCost > 0 ||
+      nextFeedOrder !== livestockState.feedOrder ||
+      nextStrawOrder !== livestockState.strawOrder ||
+      nextFeedOrders.length !== (livestockState.feedOrders?.length ?? 0) ||
+      nextStrawOrders.length !== (livestockState.strawOrders?.length ?? 0) ||
+      recoveryChanged
+    ) {
       if (totalCost > 0) onSpendGold?.(totalCost);
       onUpdateState({
         livestockState: {
           ...livestockState,
           supplies: { feedGrainKg: nextFeed, strawBeddingKg: nextStraw },
           feedOrder: nextFeedOrder,
+          feedOrders: nextFeedOrders,
           strawOrder: nextStrawOrder,
+          strawOrders: nextStrawOrders,
           lastCycleCost: Number(((livestockState.lastCycleCost || 0) + totalCost).toFixed(2)),
           horseRecoveryMonthsRemaining: nextHorseRecovery,
           horseInseminationWaitMonths: nextHorseWait,
           cattleRecoveryMonthsRemaining: nextCattleRecovery,
           sheepRecoveryMonthsRemaining: nextSheepRecovery,
+          poultryRecoveryMonthsRemaining: nextPoultryRecovery,
+          poultryChickAgeMonths: nextPoultryChickAge,
           ...horsePatch,
         },
       });

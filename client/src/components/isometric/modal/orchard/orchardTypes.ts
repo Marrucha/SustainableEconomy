@@ -151,6 +151,7 @@ export const FRUITS_CONFIG: Record<FruitType, FruitInfo> = {
 };
 
 export interface OrchardCapitalismState {
+  workdayHours?: number;
   crew: OrchardCrewMember[];
   pomologist: PomologistSpecialist;
   fruitType?: FruitType; // Zasada: sad może w danym czasie uprawiać tylko 1 gatunek owocu

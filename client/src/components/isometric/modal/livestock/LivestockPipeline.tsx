@@ -3,6 +3,7 @@ import type { LivestockCapitalismState } from './livestockTypes';
 import { CattlePipeline } from './CattlePipeline';
 import { SheepPipeline } from './SheepPipeline';
 import { HorsePipeline } from './HorsePipeline';
+import { PoultryPipeline } from './PoultryPipeline';
 import { LivestockProgressBarsHeader } from './LivestockProgressBarsHeader';
 import type { UseGameClockReturn } from '../../clock/useGameClock';
 
@@ -35,6 +36,12 @@ export const LivestockPipeline: React.FC<LivestockPipelineProps> = ({
         />
       ) : activeSpecies === 'sheep' ? (
         <SheepPipeline
+          state={state}
+          onUpdateState={onUpdateState}
+          onGoToCrewTab={onGoToCrewTab}
+        />
+      ) : activeSpecies === 'poultry' ? (
+        <PoultryPipeline
           state={state}
           onUpdateState={onUpdateState}
           onGoToCrewTab={onGoToCrewTab}

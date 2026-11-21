@@ -32,16 +32,22 @@ export function useWorldMaps() {
   );
 
   // Stan mapy miejskiej (dynamiczny rozmiar siatki, powiększa się z 3 stron przy braku miejsca 3x3)
-  const [cityData, setCityData] = useState<WorldMapData>(() =>
-    loadPersistedState('cityData', {
+  const [cityData, setCityData] = useState<WorldMapData>(() => {
+    const loaded = loadPersistedState<WorldMapData>('cityData', {
       gridSizeX: CITY_GEOMETRY.gridSizeX,
       gridSizeY: CITY_GEOMETRY.gridSizeY,
       terrainTiles: createInitialCityTerrain(),
       roadOrientations: {},
       roadTypes: {},
       placedBuildings: INITIAL_CITY_BUILDINGS,
-    })
-  );
+    });
+    const hasShip = loaded.placedBuildings.some((b) => b.typeId === 'trade_ship');
+    if (hasShip) return loaded;
+    const ship = INITIAL_CITY_BUILDINGS.find((b) => b.typeId === 'trade_ship');
+    return ship
+      ? { ...loaded, placedBuildings: [ship, ...loaded.placedBuildings] }
+      : loaded;
+  });
 
   // Stan mapy wiejskiej (z usunięciem przestarzałej mniejszej plantacji kauczuku 4x4 z dawnych zapisów)
   const [ruralData, setRuralData] = useState<WorldMapData>(() => {

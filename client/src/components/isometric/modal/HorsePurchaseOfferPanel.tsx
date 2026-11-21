@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { BuildingState } from '../types';
 import { formatSupplierOrderLabel, type WorldSupplierBuilding } from './industrySupplyConfig';
+import { generateRandomEnglishName } from './englishNames';
 import type { HorseAnimal } from './livestock/livestockTypes';
 import { createDefaultLivestockState } from './livestock/livestockTypes';
 import { createDefaultHorsesList } from './livestock/HorseRosterSection';
@@ -24,11 +25,29 @@ export const HorsePurchaseOfferPanel: React.FC<HorsePurchaseOfferPanelProps> = (
   onUpdateState,
 }) => {
   const [feedback, setFeedback] = useState<string | null>(null);
-  const livestockFarms = allWorldBuildings.filter((b) => b.typeId === 'livestock_farm');
-  // Domyślnie puste okno — gracz sam wybiera fermę z listy
+  const shipSupplier: WorldSupplierBuilding = allWorldBuildings.find(
+    (b) => b.typeId === 'trade_ship'
+  ) || {
+    id: 'trade_ship_init',
+    typeId: 'trade_ship',
+    name: 'Statek Handlowy (Port Londyn)',
+    x: 0,
+    y: 0,
+    sizeX: 1,
+    sizeY: 2,
+    rotation: 0,
+    cost: 0,
+    mapType: 'city',
+  };
+  const livestockFarms = [
+    shipSupplier,
+    ...allWorldBuildings.filter((b) => b.typeId === 'livestock_farm'),
+  ];
+  // Domyślnie puste okno — gracz sam wybiera dostawcę z listy
   const [selectedFarmId, setSelectedFarmId] = useState<string>('');
 
   const activeFarmId = livestockFarms.some((f) => f.id === selectedFarmId) ? selectedFarmId : '';
+  const isShipSelected = activeFarmId.startsWith('trade_ship');
 
   const getHorsePrice = (ls: ReturnType<typeof createDefaultLivestockState>, ageYears: number): number => {
     const custom = ls.horsePricesByAge?.[ageYears];
@@ -47,7 +66,26 @@ export const HorsePurchaseOfferPanel: React.FC<HorsePurchaseOfferPanelProps> = (
     };
   };
 
-  const activeOffer = activeFarmId ? getFarmHorsesForSale(activeFarmId) : null;
+  const activeOffer = activeFarmId && !isShipSelected ? getFarmHorsesForSale(activeFarmId) : null;
+  const shipHorsePrice = Math.round(85 * 1.1);
+
+  const handleBuyShipHorse = () => {
+    const newHorse: HorseAnimal = {
+      id: `ship_horse_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      name: generateRandomEnglishName(),
+      sex: Math.random() > 0.5 ? 'male' : 'female',
+      ageYears: 4,
+      group: 'breeding',
+      postGrowthTarget: 'breeding',
+      vitalityPercent: 60,
+    };
+    onSpendGold?.(shipHorsePrice);
+    onUpdateState({
+      ownedHorses: [...ownedHorses, newHorse],
+    });
+    setFeedback(`🚢 Zakupiono ze statku konia ${newHorse.name} (4 lata, import) za £${shipHorsePrice}!`);
+    setTimeout(() => setFeedback(null), 3500);
+  };
 
   const handleBuyHorse = (horse: HorseAnimal) => {
     if (!activeFarmId || !activeOffer) return;
@@ -105,8 +143,15 @@ export const HorsePurchaseOfferPanel: React.FC<HorsePurchaseOfferPanelProps> = (
             onChange={(e) => setSelectedFarmId(e.target.value)}
             className="w-full bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-stone-200 cursor-pointer"
           >
-            <option value="">-- Wybierz fermę hodowlaną (Gracz • Miasto • Ferma) --</option>
+            <option value="">-- Wybierz dostawcę koni (Statek lub Ferma) --</option>
             {livestockFarms.map((f) => {
+              if (f.typeId === 'trade_ship') {
+                return (
+                  <option key={f.id} value={f.id}>
+                    🚢 Port Londyn • Statek Handlowy (Import 110% • £{shipHorsePrice}/szt.)
+                  </option>
+                );
+              }
               const info = getFarmHorsesForSale(f.id);
               return (
                 <option key={f.id} value={f.id}>
@@ -115,6 +160,24 @@ export const HorsePurchaseOfferPanel: React.FC<HorsePurchaseOfferPanelProps> = (
               );
             })}
           </select>
+
+          {isShipSelected && (
+            <div className="bg-stone-900 border border-sky-500/40 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-xs font-mono">
+              <div>
+                <div className="text-sky-200 font-bold">🚢 Koń Roboczy z Importu (4 lata)</div>
+                <div className="text-[10px] text-stone-400">
+                  Cena portowa 110%: £{shipHorsePrice} / szt.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleBuyShipHorse}
+                className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-stone-950 font-bold text-xs cursor-pointer"
+              >
+                Kup (£{shipHorsePrice})
+              </button>
+            </div>
+          )}
 
           {activeOffer && (
             activeOffer.horses.length === 0 ? (

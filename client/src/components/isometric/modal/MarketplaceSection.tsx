@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
-import type { BuildingState, MarketStallSlot, MarketStallSeller, MarketStallSupplySlot } from '../types';
+import type {
+  BuildingState,
+  MarketStallCrewMember,
+  MarketStallSeller,
+  MarketStallSlot,
+  MarketStallSupplySlot,
+} from '../types';
 import type { UseGameClockReturn } from '../clock/useGameClock';
 import type { WorldSupplierBuilding } from './industrySupplyConfig';
-import { MarketStallDetailPanel } from './MarketStallDetailPanel';
+import { MarketStallModal } from './MarketStallModal';
 
 interface MarketplaceSectionProps {
   buildingState: BuildingState;
@@ -45,6 +51,14 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
   onUpdateState,
 }) => {
   const currentYear = clock?.date.year ?? 1880;
+  const currentMonth = clock?.date.month ?? 1;
+  const currentDay = clock?.date.day ?? 1;
+  const currentTotalDays = currentYear * 360 + (currentMonth - 1) * 30 + currentDay;
+  const isStallRentedNow = (s: MarketStallSlot) =>
+    s.rentedUntilTotalDays !== undefined
+      ? s.rentedUntilTotalDays > currentTotalDays
+      : (s.rentedUntilYear ?? 0) >= currentYear;
+
   const stalls: MarketStallSlot[] =
     buildingState.marketStalls && buildingState.marketStalls.length === 8
       ? buildingState.marketStalls
@@ -55,10 +69,11 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
   const [activeStallSlot, setActiveStallSlot] = useState<number | null>(null);
   const [auctionMessage, setAuctionMessage] = useState<string | null>(null);
 
-  const alreadyAuctionedThisYear = buildingState.marketLastAuctionYear === currentYear;
+  const freeSlotsCount = stalls.filter((s) => !isStallRentedNow(s)).length;
+  const allSlotsOccupiedThisYear = freeSlotsCount === 0;
 
   const activePlayerStalls = stalls.filter(
-    (s) => s.tenantName === 'Gracz' && (s.rentedUntilYear ?? 0) >= currentYear
+    (s) => s.tenantName === 'Gracz' && isStallRentedNow(s)
   );
 
   const suppliersCount = buildingState.marketSuppliersCount ?? 0;
@@ -74,7 +89,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
   };
 
   const handlePlaceBatchBid = () => {
-    if (selectedAuctionSlots.length === 0 || alreadyAuctionedThisYear) return;
+    if (selectedAuctionSlots.length === 0) return;
 
     let wonCount = 0;
     let totalSpent = 0;
@@ -86,6 +101,8 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
         BASE_AUCTION_MIN_BID + ((s.slotIndex * 73 + currentYear * 17) % 250)
       );
       const won = bidPerSlot >= npcCompetingBid;
+      const untilTotalDays = currentTotalDays + 360;
+      const untilDateLabel = `${String(currentDay).padStart(2, '0')}.${String(currentMonth).padStart(2, '0')}.${currentYear + 1}`;
       if (won) {
         wonCount += 1;
         totalSpent += bidPerSlot;
@@ -94,7 +111,9 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
           ...s,
           tenantName: 'Gracz',
           annualRent: bidPerSlot,
-          rentedUntilYear: currentYear,
+          rentedUntilYear: currentYear + 1,
+          rentedUntilTotalDays: untilTotalDays,
+          rentedUntilDateLabel: untilDateLabel,
           sellers: s.sellers || [],
         };
       }
@@ -102,7 +121,9 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
         ...s,
         tenantName: 'Kupiec Miejski (NPC)',
         annualRent: npcCompetingBid,
-        rentedUntilYear: currentYear,
+        rentedUntilYear: currentYear + 1,
+        rentedUntilTotalDays: untilTotalDays,
+        rentedUntilDateLabel: untilDateLabel,
       };
     });
 
@@ -118,7 +139,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
     setAuctionMessage(
       wonCount > 0
         ? `🎉 Wygrano ${wonCount} z ${selectedAuctionSlots.length} licytowanych stoisk (${wonIndices.map((i) => `#${i}`).join(', ')}) za łącznie £${totalSpent}! Kliknij swoje stoisko, aby otworzyć slot produkcyjny.`
-        : `❌ Konkurencja przebiła oferty na wybrane stoiska. Kolejna licytacja w ${currentYear + 1} r.`
+        : `❌ Konkurencja przebiła oferty na wybrane stoiska — zajęte sloty będą ponownie dostępne w ${currentYear + 1} r.`
     );
     setSelectedAuctionSlots([]);
     if (wonIndices.length > 0) {
@@ -136,6 +157,25 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
   const handleUpdateStallSupply = (slotIndex: number, supplySlots: MarketStallSupplySlot[]) => {
     const updatedStalls = stalls.map((s) =>
       s.slotIndex === slotIndex ? { ...s, supplySlots } : s
+    );
+    onUpdateState({ marketStalls: updatedStalls });
+  };
+
+  const handleUpdateStallStageCrew = (
+    slotIndex: number,
+    stageKey: 'supply' | 'trader' | 'delivery',
+    members: MarketStallCrewMember[]
+  ) => {
+    const updatedStalls = stalls.map((s) =>
+      s.slotIndex === slotIndex
+        ? {
+            ...s,
+            stageCrew: {
+              ...(s.stageCrew || {}),
+              [stageKey]: members,
+            },
+          }
+        : s
     );
     onUpdateState({ marketStalls: updatedStalls });
   };
@@ -160,14 +200,14 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
         </div>
         <span
           className={`text-[10px] font-mono px-2.5 py-1 rounded-lg border ${
-            alreadyAuctionedThisYear
+            allSlotsOccupiedThisYear
               ? 'bg-stone-800 text-stone-300 border-stone-700'
               : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
           }`}
         >
-          {alreadyAuctionedThisYear
-            ? `Licytacja ${currentYear} zakończona (następna: ${currentYear + 1})`
-            : `Licytacja ${currentYear} OTWARTA (max 4 stoiska)`}
+          {allSlotsOccupiedThisYear
+            ? `Wszystkie sloty zajęte (kolejna licytacja: ${currentYear + 1})`
+            : `Licytacja ${currentYear} OTWARTA (wolne: ${freeSlotsCount})`}
         </span>
       </div>
 
@@ -181,7 +221,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {stalls.map((stall, idx) => {
           const theme = STALL_THEMES[idx];
-          const isRentedThisYear = (stall.rentedUntilYear ?? 0) >= currentYear;
+          const isRentedThisYear = isStallRentedNow(stall);
           const isMine = stall.tenantName === 'Gracz' && isRentedThisYear;
           const isOccupiedByNpc = Boolean(stall.tenantName) && !isMine && isRentedThisYear;
           const isAuctionSelected = selectedAuctionSlots.includes(stall.slotIndex);
@@ -192,7 +232,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
             <button
               key={stall.slotIndex}
               type="button"
-              disabled={isOccupiedByNpc || (!isMine && alreadyAuctionedThisYear)}
+              disabled={isOccupiedByNpc}
               onClick={() => {
                 if (isMine) {
                   setActiveStallSlot(isInspecting ? null : stall.slotIndex);
@@ -246,7 +286,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
       </div>
 
       {/* Panel licytacji do 4 stoisk naraz */}
-      {selectedAuctionSlots.length > 0 && !alreadyAuctionedThisYear && (
+      {selectedAuctionSlots.length > 0 && (
         <div className="p-4 rounded-2xl bg-stone-950/85 border border-amber-500/40 space-y-3">
           <div className="flex items-center justify-between">
             <h5 className="text-xs font-bold text-amber-300">
@@ -291,17 +331,24 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
         </div>
       )}
 
-      {/* Slot produkcyjny wylicytowanego stoiska (Zaopatrzeniowiec 1:4 + do 4 Sprzedawców) */}
+      {/* Osobna karta wylicytowanego stoiska (struktura jak karta piekarni) */}
       {inspectedStall && (
-        <MarketStallDetailPanel
+        <MarketStallModal
           stall={inspectedStall}
+          stallName={
+            STALL_THEMES[inspectedStall.slotIndex - 1]?.name ||
+            `Stoisko Targowe #${inspectedStall.slotIndex}`
+          }
           suppliersCount={suppliersCount}
           playerStallsCount={activePlayerStalls.length}
           allWorldBuildings={allWorldBuildings}
           buildingsState={buildingsState}
-          onUpdateSuppliersCount={(nextCount) => onUpdateState({ marketSuppliersCount: nextCount })}
+          onUpdateSuppliersCount={(nextCount) =>
+            onUpdateState({ marketSuppliersCount: nextCount })
+          }
           onUpdateStallSupply={handleUpdateStallSupply}
           onUpdateStallSellers={handleUpdateStallSellers}
+          onUpdateStallStageCrew={handleUpdateStallStageCrew}
           onClose={() => setActiveStallSlot(null)}
         />
       )}

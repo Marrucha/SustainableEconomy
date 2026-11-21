@@ -82,6 +82,11 @@ export function getWoodcutterStageForMonth(month: number): WoodcutterCycleStage 
 }
 
 export interface WoodcutterCrewStaff {
+  workdayHours?: number;
+  foresterWage?: number;
+  lumberjackWage?: number;
+  driverWage?: number;
+  guardWage?: number;
   foresterHired: boolean;   // Leśnik (Krok 1)
   lumberjackCount: number;  // Drwale (Krok 2, min. 1)
   teamsterHired: boolean;   // Woźnica (Krok 3)

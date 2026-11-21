@@ -1,5 +1,6 @@
 import React from 'react';
 import type { WoodcutterCrewStaff } from './woodcutterTypes';
+import { WorkdayHoursBar, WorkerDailyWageInput } from '../CrewControls';
 
 interface WoodcutterCrewTabProps {
   crew: WoodcutterCrewStaff;
@@ -22,6 +23,11 @@ export const WoodcutterCrewTab: React.FC<WoodcutterCrewTabProps> = ({
           </p>
         </div>
       </div>
+
+      <WorkdayHoursBar
+        workdayHours={crew.workdayHours ?? 10}
+        onChangeHours={(h) => onUpdateCrew({ ...crew, workdayHours: h })}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* 1. LEŚNIK (KROK 1: INWENTARYZACJA) */}
@@ -46,6 +52,16 @@ export const WoodcutterCrewTab: React.FC<WoodcutterCrewTabProps> = ({
           <p className="text-[11px] text-stone-400 leading-relaxed">
             Odpowiada za pomiar miąższości drzewostanu, wyznaczanie zrębów i cechowanie pni.
           </p>
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[10px] text-stone-400">Stawka dzienna:</span>
+            <WorkerDailyWageInput
+              wage={crew.foresterWage ?? 3}
+              min={1}
+              max={12}
+              step={0.5}
+              onChangeWage={(val) => onUpdateCrew({ ...crew, foresterWage: val })}
+            />
+          </div>
         </div>
 
         {/* 2. DRWALE (KROK 2: WYRĘB) */}
@@ -77,6 +93,16 @@ export const WoodcutterCrewTab: React.FC<WoodcutterCrewTabProps> = ({
           <p className="text-[11px] text-stone-400 leading-relaxed">
             Zimowa ścinka dorodnych pni piłami dwuręcznymi i siekierami w okresie bezsokowym.
           </p>
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[10px] text-stone-400">Stawka dzienna / os.:</span>
+            <WorkerDailyWageInput
+              wage={crew.lumberjackWage ?? 2}
+              min={0.5}
+              max={10}
+              step={0.5}
+              onChangeWage={(val) => onUpdateCrew({ ...crew, lumberjackWage: val })}
+            />
+          </div>
         </div>
 
         {/* 3. WOŹNICA I KONIE (KROK 3: ZWÓZKA) */}
@@ -108,6 +134,16 @@ export const WoodcutterCrewTab: React.FC<WoodcutterCrewTabProps> = ({
           <p className="text-[11px] text-stone-400 leading-relaxed">
             Zrywka dłużycy ciężkimi wozami kłonicowymi ze zrębu na składnicę przy drodze.
           </p>
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[10px] text-stone-400">Stawka dzienna:</span>
+            <WorkerDailyWageInput
+              wage={crew.driverWage ?? 2.5}
+              min={0.5}
+              max={10}
+              step={0.5}
+              onChangeWage={(val) => onUpdateCrew({ ...crew, driverWage: val })}
+            />
+          </div>
         </div>
 
         {/* 4. OCHRONIARZ (KROK 4: SUSZENIE) */}
@@ -132,6 +168,16 @@ export const WoodcutterCrewTab: React.FC<WoodcutterCrewTabProps> = ({
           <p className="text-[11px] text-stone-400 leading-relaxed">
             Dozór nad przewiewnymi sztaplami drewna w trakcie 8-miesięcznego sezonowania.
           </p>
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[10px] text-stone-400">Stawka dzienna:</span>
+            <WorkerDailyWageInput
+              wage={crew.guardWage ?? 2}
+              min={0.5}
+              max={10}
+              step={0.5}
+              onChangeWage={(val) => onUpdateCrew({ ...crew, guardWage: val })}
+            />
+          </div>
         </div>
       </div>
     </div>

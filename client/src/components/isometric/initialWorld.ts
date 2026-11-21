@@ -34,6 +34,17 @@ export function createInitialCityTerrain(): Record<string, TileDef['type']> {
 
 export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
   {
+    id: 'trade_ship_init',
+    typeId: 'trade_ship',
+    name: 'Statek Handlowy (Port Londyn)',
+    x: 0,
+    y: 0,
+    sizeX: 1,
+    sizeY: 2,
+    rotation: 0,
+    cost: 0,
+  },
+  {
     id: 'trade_school_init',
     typeId: 'trade_school',
     name: 'Szkoła Branżowa i Techniczna',
@@ -218,7 +229,7 @@ export const INITIAL_RURAL_BUILDINGS: PlacedBuilding[] = [
   {
     id: 'rural_farm_init',
     typeId: 'wheat_farm',
-    name: 'Wielka Farma Zbożowa',
+    name: 'Farma Zbożowa',
     x: 6,
     y: 2,
     sizeX: 6, // 3 * 2

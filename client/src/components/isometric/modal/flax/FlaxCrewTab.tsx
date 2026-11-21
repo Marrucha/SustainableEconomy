@@ -4,6 +4,7 @@ import { PROFESSION_LABELS } from '../farmGridTypes';
 import type { FlaxCapitalismState } from './flaxTypes';
 import { FLAX_STAGE_LABELS } from './flaxTypes';
 import { generateRandomEnglishName } from '../englishNames';
+import { WorkdayHoursBar, WorkerDailyWageInput } from '../CrewControls';
 
 interface FlaxCrewTabProps {
   state: FlaxCapitalismState;
@@ -96,6 +97,10 @@ export const FlaxCrewTab: React.FC<FlaxCrewTabProps> = ({ state, onUpdateState }
 
   return (
     <div className="space-y-5">
+      <WorkdayHoursBar
+        workdayHours={state.workdayHours ?? 10}
+        onChangeHours={(h) => onUpdateState({ workdayHours: h })}
+      />
       {/* 1. KADRA GOSPODARSTWA: WSPÓLNA PIONOWA LISTA KAFELKÓW NA PEŁNĄ SZEROKOŚĆ */}
       <div className="bg-stone-950/80 border border-stone-800 rounded-2xl p-4 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-800">
@@ -209,9 +214,15 @@ export const FlaxCrewTab: React.FC<FlaxCrewTabProps> = ({ state, onUpdateState }
               <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
                 <div className="text-right leading-[2.5]">
                   <span className="text-[10px] text-stone-400 block font-mono leading-[2.5]">Wynagrodzenie:</span>
-                  <span className="text-xs font-bold font-mono text-sky-300 leading-[2.5]">
-                    £ {agronomist.wageDaily.toFixed(1)} / dzień
-                  </span>
+                  <WorkerDailyWageInput
+                    wage={agronomist.wageDaily}
+                    min={1}
+                    max={15}
+                    step={0.5}
+                    onChangeWage={(val) =>
+                      onUpdateState({ agronomist: { ...agronomist, wageDaily: val } })
+                    }
+                  />
                 </div>
                 <button
                   onClick={handleToggleAgronomist}
@@ -297,11 +308,19 @@ export const FlaxCrewTab: React.FC<FlaxCrewTabProps> = ({ state, onUpdateState }
                   </div>
 
                   <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className="text-right leading-[2.5]">
-                      <span className="font-mono text-xs font-bold text-amber-300 block leading-[2.5]">
-                        £ {worker.wageDaily.toFixed(1)} / dzień
-                      </span>
-                    </div>
+                    <WorkerDailyWageInput
+                      wage={worker.wageDaily}
+                      min={0.5}
+                      max={12}
+                      step={0.5}
+                      onChangeWage={(val) =>
+                        onUpdateState({
+                          crew: crew.map((w) =>
+                            w.id === worker.id ? { ...w, wageDaily: val } : w
+                          ),
+                        })
+                      }
+                    />
                     <button
                       onClick={() => handleRemoveWorker(worker.id)}
                       className="px-3 py-1 rounded-lg text-xs font-bold text-rose-400 hover:text-rose-200 bg-rose-950/40 border border-rose-900/60 hover:bg-rose-900/40 cursor-pointer transition-all leading-[2.5]"

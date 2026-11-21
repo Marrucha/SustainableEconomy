@@ -1,4 +1,4 @@
-const ENGLISH_FIRST_NAMES = [
+export const ENGLISH_FIRST_NAMES = [
   'Arthur', 'Albert', 'Alfred', 'Charles', 'Edward', 'Frederick', 'George', 'Henry',
   'James', 'John', 'Oliver', 'Richard', 'Robert', 'Samuel', 'Thomas', 'Walter',
   'William', 'Benjamin', 'Edmund', 'Harold', 'Leonard', 'Percy', 'Reginald', 'Victor',
@@ -6,7 +6,7 @@ const ENGLISH_FIRST_NAMES = [
   'Harriet', 'Margaret', 'Mary', 'Violet',
 ];
 
-const ENGLISH_LAST_NAMES = [
+export const ENGLISH_LAST_NAMES = [
   'Ashworth', 'Aldridge', 'Baker', 'Beaumont', 'Blackwood', 'Bramwell', 'Carrington',
   'Cavendish', 'Chadwick', 'Cooper', 'Crompton', 'Finch', 'Fletcher', 'Hargreaves',
   'Hastings', 'Hawthorne', 'Holloway', 'Kensington', 'Kingsley', 'Lancaster', 'Palmer',

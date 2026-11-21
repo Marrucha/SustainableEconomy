@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { FarmCapitalismState, FarmCrewMember, FarmCycleStage, WorkerProfession } from './farmGridTypes';
 import { PROFESSION_LABELS, getStageAssignedWorkerIds, getWorkerStageRoleTitle } from './farmGridTypes';
 import { generateRandomEnglishName } from './englishNames';
+import { WorkdayHoursBar, WorkerDailyWageInput } from './CrewControls';
 
 interface FarmCrewTabProps {
   state: FarmCapitalismState;
@@ -113,6 +114,11 @@ export const FarmCrewTab: React.FC<FarmCrewTabProps> = ({ state, onUpdateState }
           </button>
         </div>
 
+        <WorkdayHoursBar
+          workdayHours={state.workdayHours ?? 10}
+          onChangeHours={(h) => onUpdateState({ workdayHours: h })}
+        />
+
         {/* FORMULARZ ZATRUDNIENIA */}
         {isAddingNew && (
           <div className="bg-stone-900 border border-amber-500/60 rounded-xl p-3 space-y-2.5 text-xs">
@@ -213,7 +219,15 @@ export const FarmCrewTab: React.FC<FarmCrewTabProps> = ({ state, onUpdateState }
           )}
 
           <div className="flex items-center gap-2.5 shrink-0">
-            <span className="font-mono font-bold text-sky-300">£{agronomist.wageDaily.toFixed(1)}/d</span>
+            <WorkerDailyWageInput
+              wage={agronomist.wageDaily}
+              min={1}
+              max={15}
+              step={0.5}
+              onChangeWage={(val) =>
+                onUpdateState({ agronomist: { ...agronomist, wageDaily: val } })
+              }
+            />
             <button
               type="button"
               onClick={handleToggleAgronomist}
@@ -299,7 +313,19 @@ export const FarmCrewTab: React.FC<FarmCrewTabProps> = ({ state, onUpdateState }
                       ⚡ Handel
                     </button>
                   )}
-                  <span className="font-mono font-bold text-amber-300">£{worker.wageDaily.toFixed(1)}/d</span>
+                  <WorkerDailyWageInput
+                    wage={worker.wageDaily}
+                    min={0.5}
+                    max={12}
+                    step={0.5}
+                    onChangeWage={(val) =>
+                      onUpdateState({
+                        crew: crew.map((w) =>
+                          w.id === worker.id ? { ...w, wageDaily: val } : w
+                        ),
+                      })
+                    }
+                  />
                   <button
                     type="button"
                     onClick={() => handleRemoveWorker(worker.id)}

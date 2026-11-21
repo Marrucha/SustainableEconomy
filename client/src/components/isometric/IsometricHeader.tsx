@@ -5,9 +5,14 @@ import { formatGameDate } from './clock/gameClockTypes';
 interface IsometricHeaderProps {
   gold: number;
   clock: UseGameClockReturn;
+  onRefreshGold?: () => void;
 }
 
-export const IsometricHeader: React.FC<IsometricHeaderProps> = ({ gold, clock }) => {
+export const IsometricHeader: React.FC<IsometricHeaderProps> = ({
+  gold,
+  clock,
+  onRefreshGold,
+}) => {
   const { date } = clock;
 
   return (
@@ -21,6 +26,16 @@ export const IsometricHeader: React.FC<IsometricHeaderProps> = ({ gold, clock })
       <span className="font-bold text-emerald-400 text-base sm:text-lg">
         £ {gold.toLocaleString('en-US')}
       </span>
+      {onRefreshGold && (
+        <button
+          type="button"
+          onClick={onRefreshGold}
+          title="Odśwież konto pieniężne (£ 350,000)"
+          className="px-2 py-0.5 rounded-lg bg-stone-900/90 hover:bg-stone-800 border border-emerald-500/40 text-xs font-bold text-emerald-300 cursor-pointer transition-colors"
+        >
+          ↻ Odśwież
+        </button>
+      )}
     </div>
   );
 };

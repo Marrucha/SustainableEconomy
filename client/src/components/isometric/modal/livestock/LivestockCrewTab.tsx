@@ -6,6 +6,7 @@ import type {
 } from './livestockTypes';
 import { LIVESTOCK_PROFESSIONS_CONFIG } from './livestockTypes';
 import { generateRandomEnglishName } from '../englishNames';
+import { WorkdayHoursBar, WorkerDailyWageInput } from '../CrewControls';
 
 interface LivestockCrewTabProps {
   state: LivestockCapitalismState;
@@ -103,6 +104,11 @@ export const LivestockCrewTab: React.FC<LivestockCrewTabProps> = ({
             ➕ Zatrudnij
           </button>
         </div>
+
+        <WorkdayHoursBar
+          workdayHours={state.workdayHours ?? 10}
+          onChangeHours={(h) => onUpdateState({ workdayHours: h })}
+        />
 
         {/* ZWARTY FORMULARZ ZATRUDNIENIA (SPÓJNY Z FARMĄ ZBOŻOWĄ) */}
         {isAddingNew && (
@@ -233,9 +239,19 @@ export const LivestockCrewTab: React.FC<LivestockCrewTabProps> = ({
                     ) : (
                       <span className="text-[10px] font-mono text-stone-500">Nieprzypisany</span>
                     )}
-                    <span className="font-mono font-bold text-amber-300">
-                      £{worker.wageDaily.toFixed(1)}/d
-                    </span>
+                    <WorkerDailyWageInput
+                      wage={worker.wageDaily}
+                      min={0.5}
+                      max={15}
+                      step={0.5}
+                      onChangeWage={(val) =>
+                        onUpdateState({
+                          crew: crew.map((w) =>
+                            w.id === worker.id ? { ...w, wageDaily: val } : w
+                          ),
+                        })
+                      }
+                    />
                     <button
                       type="button"
                       onClick={() => handleRemoveWorker(worker.id)}

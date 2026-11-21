@@ -41,6 +41,7 @@ export const HOP_VARIETIES: Record<HopVariety, HopVarietyInfo> = {
 };
 
 export interface HopCapitalismState {
+  workdayHours?: number;
   crew: FarmCrewMember[];
   agronomist: FarmAgronomist;
   variety: HopVariety;

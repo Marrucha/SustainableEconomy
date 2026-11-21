@@ -1,14 +1,21 @@
 import React from 'react';
-import type { BuildingState } from '../types';
+import type { BuildingState, PlacedBuilding } from '../types';
+import { getTenantsForBuilding } from './residentialResidents';
 
 interface ResidentialSectionProps {
+  building?: PlacedBuilding;
   buildingState: BuildingState;
+  allWorldBuildings?: PlacedBuilding[];
+  buildingsState?: Record<string, BuildingState>;
   residentialTab: 'rent' | 'energy';
   onUpdateState: (updates: Partial<BuildingState>) => void;
 }
 
 export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
+  building,
   buildingState,
+  allWorldBuildings = [],
+  buildingsState = {},
   residentialTab,
   onUpdateState,
 }) => {
@@ -44,9 +51,58 @@ export const ResidentialSection: React.FC<ResidentialSectionProps> = ({
   }
 
   const rent = buildingState.rentPerApartment ?? 18;
+  const occupancy = building
+    ? getTenantsForBuilding(building, allWorldBuildings, buildingsState)
+    : null;
 
   return (
     <div className="space-y-5">
+      {/* LOKATORZY KAMIENICY (Z IMIENIA I NAZWISKA) */}
+      {occupancy && (
+        <div className="bg-stone-900/90 p-4 rounded-2xl border border-sky-500/30 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="font-semibold text-xs text-sky-300 uppercase">
+                👥 Mieszkańcy budynku ({occupancy.classLabel})
+              </p>
+              <p className="text-[11px] text-stone-400">
+                Lista zameldowanych lokatorów z imienia i nazwiska
+              </p>
+            </div>
+            <span className="font-mono text-sm font-bold text-amber-300 bg-stone-950 px-2.5 py-1 rounded-lg border border-stone-800">
+              {occupancy.tenants.length} / {occupancy.capacity} rodzin •{' '}
+              <span className="text-emerald-300">{occupancy.totalPersons} osób</span>
+            </span>
+          </div>
+
+          {occupancy.tenants.length === 0 ? (
+            <p className="text-xs text-stone-400 italic">
+              Brak zameldowanych lokatorów — zatrudnij pracowników w mieście lub na wsi.
+            </p>
+          ) : (
+            <div className="max-h-56 overflow-y-auto grid grid-cols-1 gap-1.5 pr-1">
+              {occupancy.tenants.map((t) => (
+                <div
+                  key={t.id}
+                  className="bg-stone-950/80 border border-stone-800 rounded-lg px-2.5 py-1.5 text-[11px] flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0">
+                    <span className="font-bold text-white block truncate">👤 {t.fullName}</span>
+                    <span className="text-[10px] text-amber-300/90 block truncate">{t.roleLabel}</span>
+                    <span className="text-[10px] text-stone-400 block truncate">
+                      {t.familySummary} ({t.totalHouseholdPersons} os.)
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-sky-300 truncate shrink-0">
+                    {t.workplaceName}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* CZYNSZ ZA WYNAJEM */}
       <div className="bg-stone-800/40 p-4 rounded-2xl border border-stone-800 space-y-3">
         <div className="flex items-center justify-between">

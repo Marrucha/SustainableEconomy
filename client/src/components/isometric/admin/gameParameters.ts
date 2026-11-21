@@ -32,6 +32,10 @@ export interface GameParametersConfig {
   manureBinBaseCapacityKg: number;
   manurePerHa100Kg: number;
   farmBaseHectares: number;
+
+  // Młyn Parowy i Piekarnia Rzemieślnicza
+  millBaseDailyGrainKg: number;
+  bakeryBaseDailyFlourKg: number;
 }
 
 export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
@@ -65,6 +69,9 @@ export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
   manureBinBaseCapacityKg: 10000,
   manurePerHa100Kg: 10000,
   farmBaseHectares: 10,
+
+  millBaseDailyGrainKg: 200,
+  bakeryBaseDailyFlourKg: 120,
 };
 
 const STORAGE_KEY = 'sustainable_economy_admin_params_v1';

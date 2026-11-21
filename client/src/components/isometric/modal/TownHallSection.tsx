@@ -2,12 +2,17 @@ import React, { useState } from 'react';
 import { DecreesTab } from './townhall/DecreesTab';
 import { TaxesTab } from './townhall/TaxesTab';
 import { ReliefsTab } from './townhall/ReliefsTab';
+import { TownHallCrewTab } from './townhall/TownHallCrewTab';
+import { TownHallCityStatsTab } from './townhall/TownHallCityStatsTab';
 import type { CityHousingStatus } from '../cityAutoGrowth';
+import type { BuildingState, PlacedBuilding } from '../types';
 
 interface TownHallSectionProps {
   activeReliefs: Record<string, boolean>;
   onToggleRelief: (reliefId: string) => void;
   cityHousingStatus?: CityHousingStatus;
+  cityBuildings?: PlacedBuilding[];
+  buildingsState?: Record<string, BuildingState>;
   cityPlayersCount?: number;
   onAddNewCityPlayer?: () => void;
 }
@@ -16,10 +21,12 @@ export const TownHallSection: React.FC<TownHallSectionProps> = ({
   activeReliefs,
   onToggleRelief,
   cityHousingStatus,
+  cityBuildings = [],
+  buildingsState = {},
   cityPlayersCount = 1,
   onAddNewCityPlayer,
 }) => {
-  const [townHallTab, setTownHallTab] = useState<'decrees' | 'taxes' | 'reliefs'>('decrees');
+  const [townHallTab, setTownHallTab] = useState<'decrees' | 'taxes' | 'reliefs' | 'crew' | 'city'>('decrees');
   const activeReliefsCount = Object.values(activeReliefs).filter(Boolean).length;
 
   return (
@@ -44,13 +51,13 @@ export const TownHallSection: React.FC<TownHallSectionProps> = ({
             <div className="p-2 rounded-xl bg-stone-950/70 border border-stone-800">
               <p className="text-stone-400">Bloki Robotnicze (20/blok)</p>
               <p className="font-mono font-bold text-emerald-300 mt-0.5">
-                {cityHousingStatus.workersAndTradeCount} / {cityHousingStatus.workersCapacity} os. ({cityHousingStatus.workersBlocksCount} bl.)
+                {cityHousingStatus.workersAndTradeCount} / {cityHousingStatus.workersCapacity} rodzin ({cityHousingStatus.workersBlocksCount} bl.)
               </p>
             </div>
             <div className="p-2 rounded-xl bg-stone-950/70 border border-stone-800">
-              <p className="text-stone-400">Bloki Mieszczańskie (5/blok)</p>
+              <p className="text-stone-400">Bloki Mieszczańskie (10/blok)</p>
               <p className="font-mono font-bold text-sky-300 mt-0.5">
-                {cityHousingStatus.managersCount} / {cityHousingStatus.managersCapacity} zarz. ({cityHousingStatus.middleBlocksCount} bl.)
+                {cityHousingStatus.managersCount} / {cityHousingStatus.managersCapacity} rodzin ({cityHousingStatus.middleBlocksCount} bl.)
               </p>
             </div>
             <div className="p-2 rounded-xl bg-stone-950/70 border border-stone-800">
@@ -105,6 +112,30 @@ export const TownHallSection: React.FC<TownHallSectionProps> = ({
             </span>
           )}
         </button>
+
+        <button
+          onClick={() => setTownHallTab('crew')}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-sm md:text-base font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            townHallTab === 'crew'
+              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+              : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+          }`}
+        >
+          <span className="text-base">👥</span>
+          <span>4. Załoga (28)</span>
+        </button>
+
+        <button
+          onClick={() => setTownHallTab('city')}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-sm md:text-base font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            townHallTab === 'city'
+              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+              : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+          }`}
+        >
+          <span className="text-base">🏙️</span>
+          <span>5. Miasto</span>
+        </button>
       </div>
 
       {/* LINIA ODDZIELAJĄCA ZAKŁADKI OD TREŚCI */}
@@ -117,6 +148,13 @@ export const TownHallSection: React.FC<TownHallSectionProps> = ({
           activeReliefs={activeReliefs}
           activeReliefsCount={activeReliefsCount}
           onToggleRelief={onToggleRelief}
+        />
+      )}
+      {townHallTab === 'crew' && <TownHallCrewTab />}
+      {townHallTab === 'city' && (
+        <TownHallCityStatsTab
+          cityBuildings={cityBuildings}
+          buildingsState={buildingsState}
         />
       )}
     </div>

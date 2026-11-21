@@ -57,7 +57,7 @@ export const IndustrySection: React.FC<IndustrySectionProps> = ({
     return (
       <BusinessEnergySection
         businessTitle={building.name}
-        energySource={buildingState.businessEnergySource || (isSteamPowered ? 'wegiel' : 'elektrownia')}
+        energySource={buildingState.businessEnergySource}
         energyScale={buildingState.businessEnergyScale || 'standard'}
         hasGreenRelief={hasGreenRelief}
         buildingState={buildingState}

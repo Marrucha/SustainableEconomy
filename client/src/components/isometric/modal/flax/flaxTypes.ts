@@ -47,6 +47,7 @@ export const FLAX_VARIETIES: Record<FlaxVariety, FlaxVarietyInfo> = {
 };
 
 export interface FlaxCapitalismState {
+  workdayHours?: number;
   crew: FarmCrewMember[];
   agronomist: FarmAgronomist;
   variety: FlaxVariety;

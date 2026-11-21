@@ -1,11 +1,17 @@
 import type { BuildingState, PlacedBuilding, TileDef } from './types';
+import {
+  ELITE_PER_VILLA,
+  getCityHousingPools,
+  MANAGERS_PER_MIDDLE_TENEMENT,
+  WORKERS_PER_TENEMENT,
+} from './modal/residentialResidents';
 
-export const WORKERS_PER_TENEMENT = 20;
-export const MANAGERS_PER_MIDDLE_TENEMENT = 5;
+export { WORKERS_PER_TENEMENT, MANAGERS_PER_MIDDLE_TENEMENT, ELITE_PER_VILLA };
 
 export interface CityHousingStatus {
   workersAndTradeCount: number;
   managersCount: number;
+  eliteCount: number;
   workersBlocksCount: number;
   middleBlocksCount: number;
   eliteVillasCount: number;
@@ -13,33 +19,17 @@ export interface CityHousingStatus {
   managersCapacity: number;
   missingWorkersBlocks: number;
   missingMiddleBlocks: number;
+  missingEliteVillas: number;
 }
 
 export function computeCityHousingStatus(
   cityBuildings: PlacedBuilding[],
   buildingsState: Record<string, BuildingState>
 ): CityHousingStatus {
-  let workersAndTradeCount = 0;
-  let managersCount = 0;
-
-  for (const st of Object.values(buildingsState)) {
-    const workers = st.factoryWorkersCount ?? 0;
-    const warehousemen =
-      st.warehousemanRoleMode === 'worker' ? 0 : st.factoryWarehousemenCount ?? 0;
-    const merchant =
-      st.merchantHired && st.merchantRoleMode !== 'worker' ? 1 : 0;
-    const seller =
-      st.factorySellerHired && st.sellerRoleMode !== 'worker' ? 1 : 0;
-    const marketSuppliers = st.marketSuppliersCount ?? 0;
-    const marketSellers = (st.marketStalls || []).reduce(
-      (sum, slot) => sum + (slot.sellers?.length ?? 0),
-      0
-    );
-
-    workersAndTradeCount +=
-      workers + warehousemen + merchant + seller + marketSuppliers + marketSellers;
-    managersCount += st.factoryManagersCount ?? 0;
-  }
+  const pools = getCityHousingPools(cityBuildings, buildingsState);
+  const workersAndTradeCount = pools.workers.length;
+  const managersCount = pools.middle.length;
+  const eliteCount = pools.elite.length;
 
   const workersBlocksCount = cityBuildings.filter((b) => b.typeId === 'tenement_workers').length;
   const middleBlocksCount = cityBuildings.filter((b) => b.typeId === 'tenement_middle').length;
@@ -47,6 +37,7 @@ export function computeCityHousingStatus(
 
   const workersCapacity = workersBlocksCount * WORKERS_PER_TENEMENT;
   const managersCapacity = middleBlocksCount * MANAGERS_PER_MIDDLE_TENEMENT;
+  const eliteCapacity = eliteVillasCount * ELITE_PER_VILLA;
 
   const missingWorkersBlocks =
     workersAndTradeCount > workersCapacity
@@ -56,10 +47,15 @@ export function computeCityHousingStatus(
     managersCount > managersCapacity
       ? Math.ceil((managersCount - managersCapacity) / MANAGERS_PER_MIDDLE_TENEMENT)
       : 0;
+  const missingEliteVillas =
+    eliteCount > eliteCapacity
+      ? Math.ceil((eliteCount - eliteCapacity) / ELITE_PER_VILLA)
+      : 0;
 
   return {
     workersAndTradeCount,
     managersCount,
+    eliteCount,
     workersBlocksCount,
     middleBlocksCount,
     eliteVillasCount,
@@ -67,6 +63,7 @@ export function computeCityHousingStatus(
     managersCapacity,
     missingWorkersBlocks,
     missingMiddleBlocks,
+    missingEliteVillas,
   };
 }
 

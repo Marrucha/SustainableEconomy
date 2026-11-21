@@ -5,11 +5,11 @@ import type {
 } from './farmGridTypes';
 import {
   CROPS_CONFIG,
-  GRAIN_SILO_MAX_LEVEL,
   canWorkerHandleStage,
   getGrainSiloCapacityKg,
   getGrainSiloDailyCostPence,
   getGrainSiloUpgradeCostGbp,
+  getMaxGrainSiloLevel,
   getStageAssignedWorkerIds,
 } from './farmGridTypes';
 import type { BuildingState } from '../types';
@@ -47,12 +47,10 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
   const rawGrains = state.grainStockKg;
   const isLegacyDummy =
     (state.cropType || 'pszenica') === 'pszenica' &&
-    rawGrains?.zyto === 120 &&
-    rawGrains?.owies === 80;
+    rawGrains?.zyto === 120;
   const grainStock: Record<CropType, number> = {
     pszenica: rawGrains?.pszenica ?? state.wheatStockKg ?? 450,
     zyto: isLegacyDummy ? 0 : (rawGrains?.zyto ?? 0),
-    owies: isLegacyDummy ? 0 : (rawGrains?.owies ?? 0),
     jeczmien: rawGrains?.jeczmien ?? 0,
   };
 
@@ -170,8 +168,9 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
           const isOccupiedByPreviousCrop = displayedCropId !== activeCropId;
           const crop = CROPS_CONFIG[displayedCropId];
           const stock = grainStock[displayedCropId];
-          const siloLevel = Math.min(GRAIN_SILO_MAX_LEVEL, Math.max(1, state.siloLevel ?? 1));
-          const siloCapacityKg = getGrainSiloCapacityKg(siloLevel);
+          const maxSiloLevel = getMaxGrainSiloLevel(attachedFieldsCount);
+          const siloLevel = Math.min(maxSiloLevel, Math.max(1, state.siloLevel ?? 1));
+          const siloCapacityKg = getGrainSiloCapacityKg(siloLevel, attachedFieldsCount);
           const dailyPence = getGrainSiloDailyCostPence(siloLevel);
           const upgradeCost = getGrainSiloUpgradeCostGbp(siloLevel);
           const grainQuality = Math.min(100, Math.max(0, state.grainQualityPercent ?? 100));
@@ -190,7 +189,7 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
           const isOfferVisible = Boolean(sellingMerchant && sellableKg > 0);
 
           const handleUpgradeSilo = () => {
-            if (siloLevel >= GRAIN_SILO_MAX_LEVEL) return;
+            if (siloLevel >= maxSiloLevel) return;
             if (onSpendGold) onSpendGold(upgradeCost);
             onUpdateState({ siloLevel: siloLevel + 1 });
             showFeedback(`🏛️ Rozbudowano spichlerz do poziomu ${siloLevel + 1} (${(siloLevel + 1) * 10} t) za £${upgradeCost}!`);
@@ -229,7 +228,7 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
                   <div className="flex-1 flex flex-col justify-between space-y-2.5">
                     <div>
                       <div className="flex justify-between items-center text-xs mb-1">
-                        <span className="text-stone-400 font-mono text-[11px]">Zapas (Poz. {siloLevel}/{GRAIN_SILO_MAX_LEVEL}):</span>
+                        <span className="text-stone-400 font-mono text-[11px]">Zapas (Poz. {siloLevel}/{maxSiloLevel}):</span>
                         <span className="font-bold font-mono text-amber-300">
                           {stock} kg <span className="text-stone-500 font-normal">/ {siloCapacityKg / 1000} t</span>
                         </span>
@@ -324,7 +323,7 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
               </div>
 
               <div className="space-y-2 pt-2 border-t border-stone-800/60">
-                {siloLevel < GRAIN_SILO_MAX_LEVEL ? (
+                {siloLevel < maxSiloLevel ? (
                   <button
                     type="button"
                     onClick={handleUpgradeSilo}
@@ -334,7 +333,7 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
                   </button>
                 ) : (
                   <div className="w-full py-1.5 px-3 rounded-xl text-[11px] font-mono font-bold bg-emerald-950/40 text-emerald-300 border border-emerald-700/50 text-center">
-                    ✅ Maksymalna rozbudowa spichlerza (40 t)
+                    ✅ Maksymalna rozbudowa spichlerza ({maxSiloLevel * 10} t)
                   </div>
                 )}
                 <div

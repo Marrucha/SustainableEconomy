@@ -1,5 +1,6 @@
 import React from 'react';
 import type { BuildingState, PlacedBuilding } from '../types';
+import { countAttachedWheatFields } from '../pastureTopology';
 import type { WorldSupplierBuilding } from './industrySupplyConfig';
 import {
   createDefaultFarmCapitalismState,
@@ -111,7 +112,8 @@ export const FarmLivestockProductsTab: React.FC<FarmLivestockProductsTabProps> =
     const activeCropId = farm.cropType || 'pszenica';
     const activeCrop = CROPS_CONFIG[activeCropId];
 
-    const siloCapKg = getGrainSiloCapacityKg(farm.siloLevel);
+    const attachedFields = countAttachedWheatFields(building, allWorldBuildings);
+    const siloCapKg = getGrainSiloCapacityKg(farm.siloLevel, attachedFields);
     const strawCapKg = getStrawStackCapacityKg(farm.strawLevel);
     const manureCapKg = getManureBinCapacityKg(farm.manureLevel);
 
@@ -134,7 +136,7 @@ export const FarmLivestockProductsTab: React.FC<FarmLivestockProductsTabProps> =
     const getGrainQty = (cropId: CropType): number =>
       farm.grainStockKg?.[cropId] ?? (cropId === 'pszenica' ? farm.wheatStockKg ?? 0 : 0);
 
-    const producedRows: ProductRow[] = (['pszenica', 'zyto', 'owies', 'jeczmien'] as CropType[]).map((cropId) => {
+    const producedRows: ProductRow[] = (['pszenica', 'zyto', 'jeczmien'] as CropType[]).map((cropId) => {
       const cfg = CROPS_CONFIG[cropId];
       const qty = getGrainQty(cropId);
       const price =

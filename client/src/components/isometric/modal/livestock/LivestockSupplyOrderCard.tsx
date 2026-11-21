@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { BuildingState } from '../../types';
+import { CROPS_CONFIG } from '../farmGridTypes';
 import { formatSupplierOrderLabel, type WorldSupplierBuilding } from '../industrySupplyConfig';
 import {
   CONTRACT_OPTIONS,
@@ -14,9 +15,10 @@ interface LivestockSupplyOrderCardProps {
   producers: WorldSupplierBuilding[];
   buildingsState: Record<string, BuildingState>;
   activeOrder?: LivestockSupplyContract;
+  activeOrders?: LivestockSupplyContract[];
   onSpendGold?: (amount: number) => void;
   onSaveOrder: (order: LivestockSupplyContract) => void;
-  onCancelOrder: () => void;
+  onCancelOrder: (supplierId?: string) => void;
 }
 
 export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> = ({
@@ -24,47 +26,67 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
   producers,
   buildingsState,
   activeOrder,
+  activeOrders,
   onSpendGold,
   onSaveOrder,
   onCancelOrder,
 }) => {
+  const ordersList: LivestockSupplyContract[] = Array.isArray(activeOrders)
+    ? activeOrders
+    : activeOrder
+    ? [activeOrder]
+    : [];
+
   const [selectedProducerId, setSelectedProducerId] = useState<string>(
-    activeOrder?.supplierId || producers[0]?.id || ''
+    ordersList[0]?.supplierId || producers[0]?.id || ''
   );
-  const [qtyKg, setQtyKg] = useState<number>(activeOrder?.monthlyQuantityKg || 200);
+  const [qtyKg, setQtyKg] = useState<number>(ordersList[0]?.monthlyQuantityKg || 200);
   const [contractType, setContractType] = useState<ContractType>(
-    activeOrder?.contractType || 'pay_as_you_go'
+    ordersList[0]?.contractType || 'pay_as_you_go'
   );
 
   const validProducerId = producers.some((p) => p.id === selectedProducerId)
     ? selectedProducerId
     : (producers[0]?.id || '');
 
+  const currentSupplierOrder = ordersList.find((o) => o.supplierId === validProducerId);
+
+  const selectedProducer = producers.find((p) => p.id === validProducerId);
   const meta = getContractMeta(contractType);
-  const basePricePer100Kg = kind === 'feed' ? 10 : 6;
+  const basePricePer100Kg =
+    selectedProducer?.typeId === 'trade_ship'
+      ? kind === 'feed'
+        ? 11
+        : 6.6
+      : kind === 'feed'
+      ? selectedProducer?.typeId === 'mill'
+        ? Number(((buildingsState[validProducerId]?.millState?.branPricePerKg ?? 0.45) * 100).toFixed(2))
+        : 10
+      : 6;
   const monthlyPrice = Number(
     ((qtyKg / 100) * basePricePer100Kg * (1 - meta.discountPercent / 100)).toFixed(2)
   );
 
-  const activeMeta = activeOrder ? getContractMeta(activeOrder.contractType) : null;
+  const activeMeta = currentSupplierOrder ? getContractMeta(currentSupplierOrder.contractType) : null;
   const isLockedTerm = Boolean(
-    activeOrder && activeMeta && activeMeta.durationMonths > 0 && activeOrder.monthsRemaining > 0
+    currentSupplierOrder &&
+      activeMeta &&
+      activeMeta.durationMonths > 0 &&
+      currentSupplierOrder.monthsRemaining > 0
   );
-  const breakPenalty = activeOrder
+  const breakPenalty = currentSupplierOrder
     ? computeSupplyContractPenalty(
-        activeOrder.monthlyQuantityKg,
+        currentSupplierOrder.monthlyQuantityKg,
         basePricePer100Kg,
-        activeOrder.contractType,
-        activeOrder.monthsRemaining
+        currentSupplierOrder.contractType,
+        currentSupplierOrder.monthsRemaining
       )
     : 0;
 
   const isReducingLocked = Boolean(
     isLockedTerm &&
-      activeOrder &&
-      (qtyKg < activeOrder.monthlyQuantityKg ||
-        contractType !== activeOrder.contractType ||
-        validProducerId !== activeOrder.supplierId)
+      currentSupplierOrder &&
+      (qtyKg < currentSupplierOrder.monthlyQuantityKg || contractType !== currentSupplierOrder.contractType)
   );
 
   if (producers.length === 0) {
@@ -87,14 +109,32 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
           className="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1.5 text-xs text-stone-200 cursor-pointer"
         >
           {producers.map((p) => {
+            if (p.typeId === 'trade_ship') {
+              return (
+                <option key={p.id} value={p.id}>
+                  🚢 Port Londyn • Statek Handlowy • {kind === 'feed' ? 'Pasza (Import 110%)' : 'Słoma (Import 110%)'}
+                </option>
+              );
+            }
+            if (p.typeId === 'mill') {
+              const branAvail = buildingsState[p.id]?.millState?.branStockKg ?? 0;
+              return (
+                <option key={p.id} value={p.id}>
+                  🥣 {formatSupplierOrderLabel(p, buildingsState, producers)} • Otręby Paszowe ({branAvail} kg)
+                </option>
+              );
+            }
             const cap = buildingsState[p.id]?.farmCapitalism;
+            const cropKey = cap?.cropType || 'pszenica';
+            const productName =
+              kind === 'straw' ? 'Słoma / Ściółka' : (CROPS_CONFIG[cropKey]?.name || 'Pszenica Złocista');
             const totalGrain = cap?.grainStockKg
               ? Object.values(cap.grainStockKg).reduce((s, v) => s + v, 0)
               : (cap?.wheatStockKg ?? 0);
             const avail = kind === 'feed' ? totalGrain : (cap?.strawStockKg ?? 0);
             return (
               <option key={p.id} value={p.id}>
-                🌾 {formatSupplierOrderLabel(p)} (stan: {avail} kg)
+                🌾 {formatSupplierOrderLabel(p, buildingsState, producers)} • {productName} ({avail} kg)
               </option>
             );
           })}
@@ -147,29 +187,6 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
         </select>
       </div>
 
-      {activeOrder && activeMeta && (
-        <div className="bg-emerald-950/50 border border-emerald-500/40 rounded-lg p-2 flex items-center justify-between gap-2">
-          <span className="text-[10px] font-mono text-emerald-200">
-            ✓ {activeOrder.monthlyQuantityKg} kg/msc • {activeMeta.label}
-            {activeMeta.durationMonths > 0
-              ? ` (${activeOrder.monthsRemaining}/${activeMeta.durationMonths} msc, -${activeMeta.discountPercent}%)`
-              : ' (od kolejnego msc)'}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              if (isLockedTerm && breakPenalty > 0) {
-                onSpendGold?.(breakPenalty);
-              }
-              onCancelOrder();
-            }}
-            className="text-[10px] text-rose-300 hover:text-rose-200 underline cursor-pointer shrink-0"
-          >
-            {isLockedTerm ? `Zerwij (-£${breakPenalty})` : 'Anuluj'}
-          </button>
-        </div>
-      )}
-
       <button
         type="button"
         onClick={() => {
@@ -181,8 +198,8 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
             monthlyQuantityKg: qtyKg,
             contractType,
             monthsRemaining:
-              isLockedTerm && !isReducingLocked && activeOrder
-                ? activeOrder.monthsRemaining
+              isLockedTerm && !isReducingLocked && currentSupplierOrder
+                ? currentSupplierOrder.monthsRemaining
                 : meta.durationMonths,
           });
         }}
@@ -198,6 +215,87 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
           ? `📜 Podpisz ${meta.label} (-${meta.discountPercent}% • £${monthlyPrice}/msc)`
           : `📦 Ustaw PAYG (£${monthlyPrice}/msc • od kolejnego msc)`}
       </button>
+
+      {ordersList.length > 0 && (
+        <div className="space-y-1 pt-1.5 border-t border-stone-800/80">
+          <div className="text-[10px] font-mono text-stone-400">
+            Aktywne kontrakty ({ordersList.length}):
+          </div>
+          {ordersList.map((ord) => {
+            const ordMeta = getContractMeta(ord.contractType);
+            const supObj = producers.find((p) => p.id === ord.supplierId);
+            const ordBasePer100 =
+              kind === 'feed'
+                ? supObj?.typeId === 'mill'
+                  ? Number(((buildingsState[ord.supplierId]?.millState?.branPricePerKg ?? 0.45) * 100).toFixed(2))
+                  : 10
+                : 6;
+            const ordLocked = ordMeta.durationMonths > 0 && ord.monthsRemaining > 0;
+            const ordPenalty = computeSupplyContractPenalty(
+              ord.monthlyQuantityKg,
+              ordBasePer100,
+              ord.contractType,
+              ord.monthsRemaining
+            );
+            const isShip = ord.supplierId.startsWith('trade_ship');
+            const owner = buildingsState[ord.supplierId]?.ownerName || supObj?.playerName;
+            const isOurs = !isShip && (!owner || owner === 'Gracz');
+            const farmCropKey = buildingsState[ord.supplierId]?.farmCapitalism?.cropType || 'pszenica';
+            const productLabel =
+              kind === 'straw'
+                ? 'Słoma / Ściółka'
+                : isShip
+                ? 'Pasza (Import)'
+                : supObj?.typeId === 'mill'
+                ? 'Otręby Paszowe'
+                : CROPS_CONFIG[farmCropKey]?.name || 'Pszenica Złocista';
+            return (
+              <div
+                key={ord.supplierId}
+                className="bg-emerald-950/50 border border-emerald-500/40 rounded-lg p-1.5 flex items-center justify-between gap-2"
+              >
+                <span className="text-[10px] font-mono text-emerald-200 truncate">
+                  ✓ <span className="text-white font-bold">{productLabel}</span> •{' '}
+                  <span
+                    className={
+                      isOurs
+                        ? 'text-sky-300 font-bold'
+                        : 'text-blue-200 bg-blue-950/80 px-1 py-0.5 rounded font-bold'
+                    }
+                  >
+                    {isShip
+                      ? '🚢 Statek Handlowy'
+                      : supObj
+                      ? formatSupplierOrderLabel(supObj, buildingsState, producers)
+                      : 'Dostawca'}
+                  </span>{' '}
+                  •{' '}
+                  <span className="font-bold text-yellow-300">
+                    {ord.monthlyQuantityKg} kg/msc
+                  </span>{' '}
+                  • {ordMeta.label}
+                  {ordMeta.durationMonths > 0
+                    ? ` (${ord.monthsRemaining}/${ordMeta.durationMonths} msc, -${ordMeta.discountPercent}%)`
+                    : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (ordLocked && ordPenalty > 0) {
+                      onSpendGold?.(ordPenalty);
+                    }
+                    onCancelOrder(ord.supplierId);
+                  }}
+                  title={ordLocked ? `Zerwij kontrakt z karą (-£${ordPenalty})` : 'Usuń kontrakt'}
+                  className="px-1.5 py-0.5 rounded bg-rose-950/80 hover:bg-rose-800 border border-rose-500/40 text-[10px] text-rose-200 font-bold cursor-pointer shrink-0"
+                >
+                  ✕{ordLocked && ordPenalty > 0 ? ` -£${ordPenalty}` : ''}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

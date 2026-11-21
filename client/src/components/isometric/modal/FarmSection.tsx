@@ -39,7 +39,8 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
   clock,
   onUpdateState,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'snake' | 'crew' | 'grain'>('snake');
+  const [activeSubTab, setActiveSubTab] = useState<'snake' | 'crew' | 'grain' | 'energy'>('snake');
+  const hasEnergy = (buildingState.ownedHorses?.length ?? 0) >= 1;
 
   const rawCap = buildingState.farmCapitalism;
   const farmCap: FarmCapitalismState =
@@ -56,7 +57,7 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
         (w) => w.profession === 'farmer' || w.profession === 'all_rounder'
       );
       if (!hadFarmer && firstFarmer) {
-        const uniqueName = resolveUniqueFarmName('Farma', firstFarmer.name, allWorldBuildings, building.id);
+        const uniqueName = resolveUniqueFarmName('Farma zbożowa', firstFarmer.name, allWorldBuildings, building.id);
         onRenameBuilding(building.id, uniqueName);
       }
     }
@@ -181,6 +182,26 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
           <span className="text-sm">🌾</span>
           <span>Spichlerz i Magazyn (Przegródki)</span>
         </button>
+
+        <button
+          onClick={() => setActiveSubTab('energy')}
+          className={`flex-1 py-1 px-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+            activeSubTab === 'energy'
+              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-sm'
+              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
+          }`}
+        >
+          <span className="text-sm">⚡</span>
+          <span>Zakup Energii</span>
+          {hasEnergy && (
+            <span
+              className="w-4 h-4 rounded-full bg-emerald-500 text-stone-950 flex items-center justify-center text-[10px] font-black shrink-0 shadow-sm"
+              title="Energia (konie robocze) zapewniona"
+            >
+              ✓
+            </span>
+          )}
+        </button>
       </div>
 
       {/* 1. WIDOK: POWIĘKSZONY WĄŻ CYKLU PRODUKCJI */}
@@ -213,6 +234,23 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
           onSpendGold={onSpendGold}
           onUpdateAnyBuildingState={onUpdateAnyBuildingState}
           onUpdateState={handleUpdateFarmCap}
+        />
+      )}
+
+      {/* 4. WIDOK: ZAKUP ENERGII */}
+      {activeSubTab === 'energy' && (
+        <BusinessEnergySection
+          businessTitle={building?.name || 'Farma Zbożowa'}
+          energySource="konie"
+          energyScale={buildingState.businessEnergyScale || 'standard'}
+          hasGreenRelief={hasGreenRelief}
+          allowedSources={['konie']}
+          buildingState={buildingState}
+          allWorldBuildings={allWorldBuildings}
+          buildingsState={buildingsState}
+          onSpendGold={onSpendGold}
+          onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+          onUpdateState={onUpdateState}
         />
       )}
     </div>

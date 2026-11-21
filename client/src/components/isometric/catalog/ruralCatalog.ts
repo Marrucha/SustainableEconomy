@@ -4,7 +4,7 @@ import type { BuildingCatalogItem } from '../types';
 export const RURAL_CATALOG: BuildingCatalogItem[] = [
   {
     typeId: 'wheat_farm',
-    name: 'Wielka Farma Zbożowa',
+    name: 'Farma Zbożowa',
     category: 'Budynki rolnicze',
     defaultSizeX: 3,
     defaultSizeY: 4,

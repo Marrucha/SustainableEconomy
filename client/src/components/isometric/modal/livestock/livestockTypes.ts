@@ -77,6 +77,9 @@ export interface LivestockStorageBinsData {
   milkLiters: number;   // 4. Mleko (litry)
   woolKg: number;       // 5. Wełna owcza (kg)
   manureKg: number;     // 6. Nawóz (obornik bydło i owce) (kg)
+  poultryMeatKg?: number; // 7. Mięso drobiowe (kg)
+  feathersKg?: number;    // 8. Pierze i puch (kg)
+  eggsCount?: number;     // 9. Jaja kurze (szt.)
 }
 
 // Konfiguracja cen i opisów 6 produktów magazynowych
@@ -145,6 +148,33 @@ export const LIVESTOCK_PRODUCTS: Record<keyof LivestockStorageBinsData, Livestoc
     batchSize: 100,
     desc: 'Cenny obornik bydlęcy kupowany przez farmy zbożowe jako nawóz polowy (generowany wyłącznie przez stado mleczne).',
   },
+  poultryMeatKg: {
+    id: 'poultryMeatKg',
+    name: 'Mięso Drobiowe',
+    icon: '🍗',
+    unit: 'kg',
+    pricePerBatch: 18,
+    batchSize: 10,
+    desc: 'Świeże tuszki drobiowe z uboju kur i kogutów.',
+  },
+  feathersKg: {
+    id: 'feathersKg',
+    name: 'Pierze i Puch',
+    icon: '🪶',
+    unit: 'kg',
+    pricePerBatch: 14,
+    batchSize: 10,
+    desc: 'Pierze i puch z uboju drobiu na poduszki, pierzyny i dla tapicerów.',
+  },
+  eggsCount: {
+    id: 'eggsCount',
+    name: 'Jaja Kurze',
+    icon: '🥚',
+    unit: 'szt.',
+    pricePerBatch: 6,
+    batchSize: 30,
+    desc: 'Świeże jaja od kur niosek (sprzedawane po pół kopy = 30 szt.).',
+  },
 };
 
 export interface HorseAnimal {
@@ -178,9 +208,14 @@ export interface LivestockHerdData {
   growingFoalsCount?: number; // Dorastające źrebaki (odchów 36 miesięcy / 3 lata)
   horsesForSale?: number;     // Konie przeznaczone na sprzedaż
   horses?: HorseAnimal[];     // Indywidualna ewidencja koni (imię, wiek w latach, status)
+  // Drób (kury nioski i rzeźne)
+  poultryFlockCount?: number;
+  adultHensCount?: number;
+  growingChicksCount?: number;
+  poultryForSale?: number;
 }
 
-export type LivestockSpecies = 'cattle' | 'sheep' | 'horses';
+export type LivestockSpecies = 'cattle' | 'sheep' | 'horses' | 'poultry';
 
 import type { ContractType } from '../industryContracts';
 
@@ -199,6 +234,7 @@ export interface LivestockSuppliesData {
 
 // Główny stan fermy hodowlanej
 export interface LivestockCapitalismState {
+  workdayHours?: number;
   crew: LivestockWorker[];
   stageAssignments: Partial<Record<LivestockStage, string>>;
   currentStage: LivestockStage;
@@ -232,6 +268,16 @@ export interface LivestockCapitalismState {
   cattleRecoveryMonthsRemaining?: number; // Odczekanie po porodzie (krowa: 3 msc)
   sheepRecoveryMonthsRemaining?: number;  // Odczekanie po porodzie (owca: 2 msc)
   selectedHorseBranch?: LivestockChoiceBranch;
+
+  // Czas biologiczny drobiu (wylęg 21 dni, zapłodnienie 100%, 10 kurcząt/kura, regeneracja 2 msc)
+  poultryStage?: LivestockStage;
+  poultryProgress?: number;
+  poultryIncubationDays?: number;         // 0..21 dni (rzeczywista inkubacja jaja kurzego)
+  poultryChickAgeMonths?: number;         // 0..6 msc (ubój/sprzedaż) lub 0..12 msc (nioska)
+  poultryRecoveryMonthsRemaining?: number;// Regeneracja kury: 2 miesiące
+  selectedPoultryBranch?: LivestockChoiceBranch; // 'sale' | 'slaughter' (mięso+pierze) | 'milking' (jaja)
+  poultrySalePrice?: number;              // Cena sprzedaży sztuki drobiu (£/szt.)
+  totalChicksHatched?: number;
   horseSalePrice?: number;        // Domyślna cena sprzedaży konia (£/szt.)
   horsePricesByAge?: Record<number, number>; // Cennik koni wg wieku w latach (0..14)
   cattleSalePrice?: number;       // Cena sprzedaży bydła (£/szt.)
@@ -244,9 +290,12 @@ export interface LivestockCapitalismState {
   penManureKg?: number;           // 0..200 kg w zagrodzie
   penManureCapacityKg?: number;   // domyślnie 200 kg (= 100%)
 
-  // Zamówienia miesięczne i kontrakty terminowe u producentów
+  // Zamówienia miesięczne i kontrakty terminowe u producentów (wiele źródeł)
   feedOrder?: LivestockSupplyContract;
+  feedOrders?: LivestockSupplyContract[];
   strawOrder?: LivestockSupplyContract;
+  strawOrders?: LivestockSupplyContract[];
+  interventionBuyEnabled?: boolean;
 
   // Stado i Magazyn
   herd: LivestockHerdData;
@@ -382,6 +431,14 @@ export function createDefaultLivestockState(): LivestockCapitalismState {
     foalAgeMonths: 0,
     horseRecoveryMonthsRemaining: 3,
     selectedHorseBranch: 'sale',
+    poultryStage: 'insemination',
+    poultryProgress: 0,
+    poultryIncubationDays: 0,
+    poultryChickAgeMonths: 0,
+    poultryRecoveryMonthsRemaining: 0,
+    selectedPoultryBranch: 'milking',
+    poultrySalePrice: 3,
+    totalChicksHatched: 0,
     supplies: {
       strawBeddingKg: 400,
       feedGrainKg: 10800, // Zapas zboża na 1 rok dla 3 koni (3 * 10 kg/dzień * 360 dni)

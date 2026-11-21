@@ -4,6 +4,7 @@ import { formatSupplierOrderLabel, type WorldSupplierBuilding } from './industry
 import { createDefaultFarmCapitalismState, CROPS_CONFIG, getGrainSiloDailyCostPence } from './farmGridTypes';
 import { computeFarmYieldSummary } from './farmYieldMath';
 import { getContractMeta } from './industryContracts';
+import { getMillGrainOrders } from './mill/millTypes';
 
 export interface FinanceContractLine {
   id: string;
@@ -145,34 +146,61 @@ export const FarmFinanceSummary: React.FC<FarmFinanceSummaryProps> = ({
     .filter((b) => b.typeId === 'livestock_farm')
     .forEach((b) => {
       const ls = buildingsState[b.id]?.livestockState;
-      if (ls?.feedOrder?.supplierId === building.id) {
-        const meta = getContractMeta(ls.feedOrder.contractType);
+      const feedOrders = ls?.feedOrders ?? (ls?.feedOrder ? [ls.feedOrder] : []);
+      feedOrders.forEach((ord) => {
+        if (ord.supplierId !== building.id) return;
+        const meta = getContractMeta(ord.contractType);
         const rev = Number(
-          ((ls.feedOrder.monthlyQuantityKg / 1000) * grainPricePerTon * (1 - meta.discountPercent / 100)).toFixed(2)
+          ((ord.monthlyQuantityKg / 1000) * grainPricePerTon * (1 - meta.discountPercent / 100)).toFixed(2)
         );
         salesLines.push({
           id: `feed_${b.id}`,
-          counterpartyName: formatSupplierOrderLabel(b),
+          counterpartyName: formatSupplierOrderLabel(b, buildingsState),
           goodsLabel: 'Pasza zbożowa',
-          amountLabel: `${ls.feedOrder.monthlyQuantityKg} kg/msc`,
+          amountLabel: `${ord.monthlyQuantityKg} kg/msc`,
           contractLabel: meta.label,
           monthlyValueGbp: rev,
         });
-      }
-      if (ls?.strawOrder?.supplierId === building.id) {
-        const meta = getContractMeta(ls.strawOrder.contractType);
+      });
+
+      const strawOrders = ls?.strawOrders ?? (ls?.strawOrder ? [ls.strawOrder] : []);
+      strawOrders.forEach((ord) => {
+        if (ord.supplierId !== building.id) return;
+        const meta = getContractMeta(ord.contractType);
         const rev = Number(
-          ((ls.strawOrder.monthlyQuantityKg / 1000) * strawPricePerTon * (1 - meta.discountPercent / 100)).toFixed(2)
+          ((ord.monthlyQuantityKg / 1000) * strawPricePerTon * (1 - meta.discountPercent / 100)).toFixed(2)
         );
         salesLines.push({
           id: `straw_${b.id}`,
-          counterpartyName: formatSupplierOrderLabel(b),
+          counterpartyName: formatSupplierOrderLabel(b, buildingsState),
           goodsLabel: 'Ściółka (słoma)',
-          amountLabel: `${ls.strawOrder.monthlyQuantityKg} kg/msc`,
+          amountLabel: `${ord.monthlyQuantityKg} kg/msc`,
           contractLabel: meta.label,
           monthlyValueGbp: rev,
         });
-      }
+      });
+    });
+
+  allWorldBuildings
+    .filter((b) => b.typeId === 'mill')
+    .forEach((b) => {
+      const ms = buildingsState[b.id]?.millState;
+      if (!ms) return;
+      getMillGrainOrders(ms).forEach((ord) => {
+        if (ord.supplierId !== building.id) return;
+        const meta = getContractMeta(ord.contractType);
+        const rev = Number(
+          (ord.monthlyKg * 0.35 * (1 - meta.discountPercent / 100)).toFixed(2)
+        );
+        salesLines.push({
+          id: `mill_${b.id}`,
+          counterpartyName: formatSupplierOrderLabel(b, buildingsState),
+          goodsLabel: 'Ziarno na przemiał',
+          amountLabel: `${ord.monthlyKg} kg/msc`,
+          contractLabel: meta.label,
+          monthlyValueGbp: rev,
+        });
+      });
     });
 
   const totalSalesRevenue = Number(salesLines.reduce((s, l) => s + l.monthlyValueGbp, 0).toFixed(2));
