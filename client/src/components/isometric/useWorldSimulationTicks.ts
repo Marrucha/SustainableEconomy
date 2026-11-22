@@ -16,7 +16,15 @@ interface UseWorldSimulationTicksParams {
   buildingsState: Record<string, BuildingState>;
   setBuildingsState: React.Dispatch<React.SetStateAction<Record<string, BuildingState>>>;
   setGold: React.Dispatch<React.SetStateAction<number>>;
-  autoPlaceCityBuildings: (specs: { typeId: string; name: string; sizeX: number; sizeY: number; cost: number }[]) => void;
+  autoPlaceCityBuildings: (specs: {
+    typeId: string;
+    name: string;
+    sizeX: number;
+    sizeY: number;
+    cost: number;
+    maxTotalOfType?: number;
+  }[]) => void;
+  removeCityBuildingsByIds?: (ids: string[]) => void;
 }
 
 /**
@@ -30,6 +38,7 @@ export function useWorldSimulationTicks({
   setBuildingsState,
   setGold,
   autoPlaceCityBuildings,
+  removeCityBuildingsByIds,
 }: UseWorldSimulationTicksParams) {
   useMineMonthlyTick({ clockDate, placedBuildings, buildingsState, setBuildingsState, setGold });
   useWoodcutterMonthlyTick({ clockDate, placedBuildings, buildingsState, setBuildingsState });
@@ -43,5 +52,5 @@ export function useWorldSimulationTicks({
     setBuildingsState,
     setGold,
   });
-  useCityHousingGrowth({ cityBuildings, buildingsState, setBuildingsState, autoPlaceCityBuildings });
+  useCityHousingGrowth({ cityBuildings, buildingsState, setBuildingsState, autoPlaceCityBuildings, removeCityBuildingsByIds });
 }

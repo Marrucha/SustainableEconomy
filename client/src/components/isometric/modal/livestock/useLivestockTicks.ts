@@ -6,6 +6,7 @@ import { getContractMeta } from '../industryContracts';
 import { loadGameParameters } from '../../admin/gameParameters';
 import { createDefaultHorsesList } from './HorseRosterSection';
 import {
+  computeLivestockHorseRequirement,
   getInseminationSuccessPercent,
   type HorseAnimal,
   type LivestockCapitalismState,
@@ -14,6 +15,7 @@ import {
 interface UseLivestockTicksParams {
   clock?: UseGameClockReturn;
   livestockState: LivestockCapitalismState;
+  ownedHorsesCount?: number;
   buildingsState: Record<string, BuildingState>;
   onSpendGold?: (amount: number) => void;
   onUpdateAnyBuildingState?: (buildingId: string, newState: Partial<BuildingState>) => void;
@@ -23,6 +25,7 @@ interface UseLivestockTicksParams {
 export function useLivestockTicks({
   clock,
   livestockState,
+  ownedHorsesCount = 0,
   buildingsState,
   onSpendGold,
   onUpdateAnyBuildingState,
@@ -30,6 +33,8 @@ export function useLivestockTicks({
 }: UseLivestockTicksParams) {
   // 1. Codzienny przyrost obornika i zużycie paszy
   const lastClockKeyRef = useRef<string>('');
+  const lastDeliveryMonthRef = useRef<string>('');
+  const pendingDailyPatchRef = useRef<Partial<LivestockCapitalismState> | null>(null);
   useEffect(() => {
     if (!clock) return;
     const key = `${clock.date.year}-${clock.date.month}-${clock.date.day}`;
@@ -103,13 +108,14 @@ export function useLivestockTicks({
     }
 
     if (animalCount > 0) {
+      const horseReq = computeLivestockHorseRequirement(livestockState, ownedHorsesCount);
       const isPoultry = livestockState.activeSpecies === 'poultry';
       const nextPoultryIncubation =
-        isPoultry && livestockState.poultryStage === 'gestation_9m'
+        isPoultry && horseReq.isSatisfied && livestockState.poultryStage === 'gestation_9m'
           ? Math.min(21, (livestockState.poultryIncubationDays ?? 0) + 1)
           : livestockState.poultryIncubationDays;
       const dailyEggs =
-        isPoultry && (livestockState.selectedPoultryBranch || 'milking') === 'milking'
+        isPoultry && horseReq.isSatisfied && (livestockState.selectedPoultryBranch || 'milking') === 'milking'
           ? Math.max(0, Math.round((livestockState.herd.adultHensCount ?? 0) * 0.8))
           : 0;
       const poultryPatch: Partial<LivestockCapitalismState> = isPoultry
@@ -128,32 +134,36 @@ export function useLivestockTicks({
 
       const dailyGain = Math.max(2, Math.round(animalCount * 1.5));
       const rawNext = Math.round(cur + dailyGain);
-      if (rawNext >= cap) {
-        // Obornik, który nie mieści się na hałdę, przepada
-        const nextHeapManure = Math.min(manureHeapCap, (livestockState.storage.manureKg || 0) + cap);
-        onUpdateState({
-          livestockState: {
-            ...livestockState,
-            ...poultryPatch,
-            herd: nextHerd,
-            penManureKg: rawNext - cap,
-            penManureCapacityKg: cap,
-            supplies: { feedGrainKg: nextFeedGrainKg, strawBeddingKg: nextStrawBeddingKg },
-            storage: {
-              ...(poultryPatch.storage || livestockState.storage),
-              manureKg: nextHeapManure,
-            },
-          },
-        });
+      const dailyPatch: Partial<LivestockCapitalismState> =
+        rawNext >= cap
+          ? {
+              ...poultryPatch,
+              herd: nextHerd,
+              penManureKg: rawNext - cap,
+              penManureCapacityKg: cap,
+              supplies: { feedGrainKg: nextFeedGrainKg, strawBeddingKg: nextStrawBeddingKg },
+              storage: {
+                ...(poultryPatch.storage || livestockState.storage),
+                manureKg: Math.min(manureHeapCap, (livestockState.storage.manureKg || 0) + cap),
+              },
+            }
+          : {
+              ...poultryPatch,
+              herd: nextHerd,
+              penManureKg: rawNext,
+              penManureCapacityKg: cap,
+              supplies: { feedGrainKg: nextFeedGrainKg, strawBeddingKg: nextStrawBeddingKg },
+            };
+
+      const mKey = `${clock.date.year}-${clock.date.month}`;
+      const willRunMonthly = Boolean(lastDeliveryMonthRef.current && lastDeliveryMonthRef.current !== mKey);
+      if (willRunMonthly) {
+        pendingDailyPatchRef.current = dailyPatch;
       } else {
         onUpdateState({
           livestockState: {
             ...livestockState,
-            ...poultryPatch,
-            herd: nextHerd,
-            penManureKg: rawNext,
-            penManureCapacityKg: cap,
-            supplies: { feedGrainKg: nextFeedGrainKg, strawBeddingKg: nextStrawBeddingKg },
+            ...dailyPatch,
           },
         });
       }
@@ -161,7 +171,6 @@ export function useLivestockTicks({
   }, [clock?.date.year, clock?.date.month, clock?.date.day]);
 
   // 2. Miesięczne dostawy paszy/ściółki oraz odliczanie regeneracji po porodzie
-  const lastDeliveryMonthRef = useRef<string>('');
   useEffect(() => {
     if (!clock) return;
     const mKey = `${clock.date.year}-${clock.date.month}`;
@@ -172,11 +181,17 @@ export function useLivestockTicks({
     if (lastDeliveryMonthRef.current === mKey) return;
     lastDeliveryMonthRef.current = mKey;
 
-    const supplies = livestockState.supplies || { strawBeddingKg: 400, feedGrainKg: 350 };
+    const dailyPatch = pendingDailyPatchRef.current;
+    pendingDailyPatchRef.current = null;
+    const baseState: LivestockCapitalismState = dailyPatch
+      ? { ...livestockState, ...dailyPatch }
+      : livestockState;
+
+    const supplies = baseState.supplies || { strawBeddingKg: 400, feedGrainKg: 350 };
     let nextFeed = supplies.feedGrainKg;
     let nextStraw = supplies.strawBeddingKg;
-    let nextFeedOrder = livestockState.feedOrder;
-    let nextStrawOrder = livestockState.strawOrder;
+    let nextFeedOrder = baseState.feedOrder;
+    let nextStrawOrder = baseState.strawOrder;
     let totalCost = 0;
     const pendingShipLogs: ShipInterventionLogEntry[] = [];
 
@@ -306,6 +321,37 @@ export function useLivestockTicks({
     const nextStrawOrders = rawStrawOrders
       .map((o) => fulfill(o, 'straw'))
       .filter((o): o is NonNullable<typeof o> => Boolean(o));
+    nextFeedOrder = nextFeedOrders[0];
+    nextStrawOrder = nextStrawOrders[0];
+    nextFeed = Math.min(feedHeapCap, nextFeed);
+    nextStraw = Math.min(strawHeapCap, nextStraw);
+
+    // Jeśli włączony jest zakup interwencyjny ze statku, a stado urosło ponad kontrakt, uzupełnij paszę do miesięcznego zapotrzebowania
+    if (livestockState.interventionBuyEnabled && livestockState.activeSpecies === 'horses') {
+      const aliveHorses = (livestockState.herd.horses || []).filter((h) => !h.isDeceased).length;
+      const dailyPerHorse = paramsForCap.horseDailyFeedKg || 10;
+      const monthlyNeed = Math.round(aliveHorses * dailyPerHorse * 30);
+      if (aliveHorses > 0 && nextFeed < monthlyNeed) {
+        const extraShortfall = Math.min(feedHeapCap - nextFeed, monthlyNeed - nextFeed);
+        if (extraShortfall > 0) {
+          nextFeed += extraShortfall;
+          const extraCost = Number(((extraShortfall / 100) * 11 * 1.1).toFixed(2));
+          totalCost += extraCost;
+          pendingShipLogs.push({
+            id: `ship_int_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            year: clock.date.year,
+            month: clock.date.month,
+            buyerId: 'livestock_farm',
+            buyerLabel: 'Ferma Hodowlana',
+            supplierId: 'trade_ship',
+            productLabel: 'Pasza dla stada koni (interwencyjnie)',
+            shortfallKg: extraShortfall,
+            costGbp: extraCost,
+          });
+        }
+      }
+    }
+
     if (pendingShipLogs.length > 0) {
       const shipId = resolveTradeShipStateId(buildingsState);
       const prevLogs = buildingsState[shipId]?.shipInterventionLogs || [];
@@ -313,10 +359,6 @@ export function useLivestockTicks({
         shipInterventionLogs: [...pendingShipLogs, ...prevLogs].slice(0, 100),
       });
     }
-    nextFeedOrder = nextFeedOrders[0];
-    nextStrawOrder = nextStrawOrders[0];
-    nextFeed = Math.min(feedHeapCap, nextFeed);
-    nextStraw = Math.min(strawHeapCap, nextStraw);
 
     const nextHorseRecovery = Math.max(0, (livestockState.horseRecoveryMonthsRemaining ?? 0) - 1);
     const nextHorseWait = Math.max(0, (livestockState.horseInseminationWaitMonths ?? 0) - 1);
@@ -453,6 +495,7 @@ export function useLivestockTicks({
           breedingStatus: 'failed_wait',
           breedingWaitMonths: retryMonths,
           pregnancyMonths: 0,
+          failedInseminationCount: (h.failedInseminationCount ?? 0) + 1,
         };
       });
 
@@ -482,6 +525,7 @@ export function useLivestockTicks({
       Object.keys(horsePatch).length > 0;
 
     if (
+      dailyPatch ||
       totalCost > 0 ||
       nextFeedOrder !== livestockState.feedOrder ||
       nextStrawOrder !== livestockState.strawOrder ||
@@ -492,7 +536,7 @@ export function useLivestockTicks({
       if (totalCost > 0) onSpendGold?.(totalCost);
       onUpdateState({
         livestockState: {
-          ...livestockState,
+          ...baseState,
           supplies: { feedGrainKg: nextFeed, strawBeddingKg: nextStraw },
           feedOrder: nextFeedOrder,
           feedOrders: nextFeedOrders,

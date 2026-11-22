@@ -13,7 +13,6 @@ import {
 } from './modal/farmGridTypes';
 import { computeFarmYieldSummary } from './modal/farmYieldMath';
 import { countAttachedWheatFields } from './pastureTopology';
-import { loadGameParameters } from './admin/gameParameters';
 
 interface UseFarmAnnualTickParams {
   clockDate: GameDate;
@@ -78,20 +77,6 @@ export function useFarmAnnualTick({
           patch.harvestWeather = rollHarvestWeather();
         }
 
-        // Dzienne zużycie paszy zbożowej przez konie robocze na farmie (ze zboża w spichlerzu)
-        if (ownedHorsesCount > 0) {
-          const dailyFeedPerHorse = loadGameParameters().horseDailyFeedKg;
-          const totalHorseFeedKg = ownedHorsesCount * dailyFeedPerHorse;
-          const activeCrop: CropType = farmCap.cropType || 'pszenica';
-          const curGrainMap = farmCap.grainStockKg || { pszenica: farmCap.wheatStockKg ?? 0, zyto: 0, jeczmien: 0 };
-          const curStock = curGrainMap[activeCrop] ?? farmCap.wheatStockKg ?? 0;
-          if (curStock > 0) {
-            const nextStock = Math.max(0, Number((curStock - totalHorseFeedKg).toFixed(2)));
-            patch.grainStockKg = { ...curGrainMap, [activeCrop]: nextStock };
-            patch.wheatStockKg = nextStock;
-          }
-        }
-
         const readyCheck = checkIsProductionReady(farmCap, ownedHorsesCount);
         if (!readyCheck.isReady) {
           if (Object.keys(patch).length > 0) {
@@ -102,7 +87,7 @@ export function useFarmAnnualTick({
         }
 
         const extraFields = countAttachedWheatFields(farm, placedRef.current);
-        const yieldSummary = computeFarmYieldSummary(farmCap, extraFields, false, ownedHorsesCount);
+        const yieldSummary = computeFarmYieldSummary(farmCap, extraFields, false, ownedHorsesCount, bState?.ownedHorses);
 
         let scheduledStage = getStageForMonth(clockDate.month);
         if (

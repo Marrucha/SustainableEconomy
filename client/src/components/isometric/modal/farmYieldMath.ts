@@ -7,6 +7,8 @@ import {
   type FarmWeatherType,
 } from './farmGridTypes';
 import { loadGameParameters } from '../admin/gameParameters';
+import type { HorseAnimal } from './livestock/livestockTypes';
+import { getHorseEffectiveCapacityHa } from './horseEnergyMath';
 
 export function getGrowthWeatherPercent(weather?: FarmWeatherType, hasIrrigation = false): number {
   if (!weather) return 100;
@@ -26,6 +28,7 @@ export function getHarvestWeatherPercent(weather?: FarmWeatherType): number {
 
 export interface FarmYieldSummary {
   totalHectares: number;
+  cultivatedHectares: number;
   fieldFarmersCount: number;
   farmerCapacityHa: number;
   ownedHorsesCount: number;
@@ -65,18 +68,50 @@ export function computeFarmYieldSummary(
   state: FarmCapitalismState,
   attachedFieldsCount = 0,
   isDrought = false,
-  ownedHorsesCount?: number
+  ownedHorsesCount?: number,
+  ownedHorses?: HorseAnimal[]
 ): FarmYieldSummary {
   const extraFields = Math.max(0, attachedFieldsCount);
-  const baseHa = loadGameParameters().farmBaseHectares || 10;
+  const params = loadGameParameters();
+  const baseHa = params.farmBaseHectares || 10;
   const totalHectares = Number((baseHa + extraFields * 5).toFixed(2));
   const selectedCrop = CROPS_CONFIG[state.cropType || 'pszenica'];
 
-  const seedRequiredKg = Math.round(300 * totalHectares);
-  const baseYieldKg = Math.round((selectedCrop?.baseYield ?? 3000) * totalHectares);
-
   const crew = state.crew || [];
   const assignments = state.stageAssignments || {};
+
+  // 1 rolnik polowy obsługuje bazowo 10 ha, a 1 koń roboczy 5 ha (proporcjonalnie do kondycji)
+  const fieldFarmersCount = crew.filter(
+    (w) => w.profession === 'farmer' || w.profession === 'all_rounder'
+  ).length;
+  const farmerCapPerWorker = params.farmerWorkCapacityHa || 10;
+  const farmerCapacityHa = fieldFarmersCount * farmerCapPerWorker;
+  const horseCapPerHorse = params.horseWorkCapacityHa || 5;
+  const activeOwnedHorses = ownedHorses ? ownedHorses.filter((h) => !h.isDeceased) : undefined;
+  const horsesCount = activeOwnedHorses
+    ? activeOwnedHorses.length
+    : typeof ownedHorsesCount === 'number'
+    ? ownedHorsesCount
+    : 2;
+  const horseCapacityHa = activeOwnedHorses
+    ? getHorseEffectiveCapacityHa(activeOwnedHorses, horseCapPerHorse)
+    : Number((horsesCount * horseCapPerHorse).toFixed(2));
+  const requiredHorsesCount = Math.ceil(totalHectares / horseCapPerHorse);
+  const effectiveCapacityHa = Math.min(farmerCapacityHa, horseCapacityHa);
+  const cultivatedHectares = Number(Math.min(totalHectares, Math.max(0, effectiveCapacityHa)).toFixed(2));
+  const coverageRatio =
+    fieldFarmersCount === 0 || horsesCount === 0 || effectiveCapacityHa <= 0
+      ? 0
+      : totalHectares <= effectiveCapacityHa
+      ? 1
+      : effectiveCapacityHa / totalHectares;
+  const acreageYieldFactor = coverageRatio >= 1 ? 1 : coverageRatio;
+  const acreageEfficiencyPct = Math.round(acreageYieldFactor * 100);
+  const harvestQualityPercent =
+    coverageRatio >= 1 ? 100 : Math.round(Math.max(40, 100 * (0.4 + 0.6 * coverageRatio)));
+
+  const seedRequiredKg = Math.round(300 * cultivatedHectares);
+  const baseYieldKg = Math.round((selectedCrop?.baseYield ?? 3000) * totalHectares);
 
   const fertIds = getStageAssignedWorkerIds(assignments, 'fertilizing');
   const hasFertWorker = fertIds.some((id) =>
@@ -142,34 +177,11 @@ export function computeFarmYieldSummary(
 
   const netMultiplier = Math.max(0.1, 1 + (totalBonusPct - droughtPenaltyPct) / 100);
 
-  // Formalnie 1 rolnik polowy obsługuje do 2 ha, a 1 koń pociągowy obrabia domyślnie 0.5 ha (na 1 ha potrzeba 2 koni)
-  const fieldFarmersCount = crew.filter(
-    (w) => w.profession === 'farmer' || w.profession === 'all_rounder'
-  ).length;
-  const params = loadGameParameters();
-  const farmerCapPerWorker = params.farmerWorkCapacityHa || 10;
-  const farmerCapacityHa = fieldFarmersCount * farmerCapPerWorker;
-  const horseCapPerHorse = params.horseWorkCapacityHa || 5;
-  const horsesCount = typeof ownedHorsesCount === 'number' ? ownedHorsesCount : 2;
-  const horseCapacityHa = Number((horsesCount * horseCapPerHorse).toFixed(2));
-  const requiredHorsesCount = Math.ceil(totalHectares / horseCapPerHorse);
-  const effectiveCapacityHa = Math.min(farmerCapacityHa, horseCapacityHa);
-  const coverageRatio =
-    fieldFarmersCount === 0 || horsesCount === 0
-      ? 0
-      : totalHectares <= effectiveCapacityHa
-      ? 1
-      : effectiveCapacityHa / totalHectares;
-  const acreageYieldFactor =
-    coverageRatio >= 1 ? 1 : Math.max(0.5, 0.7 + 0.3 * coverageRatio);
-  const acreageEfficiencyPct = Math.round(acreageYieldFactor * 100);
-  const harvestQualityPercent =
-    coverageRatio >= 1 ? 100 : Math.round(Math.max(40, 100 * (0.4 + 0.6 * coverageRatio)));
-
   const totalYieldKg = Math.round(baseYieldKg * netMultiplier * acreageYieldFactor * combinedWeatherFactor);
 
   return {
     totalHectares,
+    cultivatedHectares,
     fieldFarmersCount,
     farmerCapacityHa,
     ownedHorsesCount: horsesCount,

@@ -34,7 +34,7 @@ export const Isometric1880: React.FC = () => {
   const {
     currentMap, setCurrentMap, activeGeometry,
     terrainTiles, setTerrainTiles, roadOrientations, setRoadOrientations,
-    roadTypes, setRoadTypes, placedBuildings, setPlacedBuildings, cityBuildings, allWorldBuildings, autoPlaceCityBuildings, cityPlayersCount, addNewCityPlayer,
+    roadTypes, setRoadTypes, placedBuildings, setPlacedBuildings, cityBuildings, allWorldBuildings, autoPlaceCityBuildings, removeCityBuildingsByIds, cityPlayersCount, addNewCityPlayer,
   } = useWorldMaps();
 
   // Budowanie i tryb wyburzania
@@ -61,7 +61,7 @@ export const Isometric1880: React.FC = () => {
   buildingsStateRef.current = buildingsState;
 
   // Globalne cykle symulacji (kopalnie, wyrąb, farmy zbożowe, rozwój miasta)
-  useWorldSimulationTicks({ clockDate: gameClock.date, placedBuildings, cityBuildings, buildingsState, setBuildingsState, setGold, autoPlaceCityBuildings });
+  useWorldSimulationTicks({ clockDate: gameClock.date, placedBuildings, cityBuildings, buildingsState, setBuildingsState, setGold, autoPlaceCityBuildings, removeCityBuildingsByIds });
 
   // Zunifikowane akcje modyfikacji miasta
   const {

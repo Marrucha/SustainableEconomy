@@ -16,9 +16,16 @@ import {
   type BakeryCapitalismState,
   type BakeryExtraSupplyOrder,
   type BakeryIngredientId,
+  type BakeryProductTarget,
 } from './bakeryTypes';
 
 type UnifiedIngredientId = 'flour' | BakeryIngredientId;
+
+const RECIPE_EXTRA_INGREDIENTS: Record<BakeryProductTarget, Set<BakeryIngredientId>> = {
+  chleb_pszenny: new Set(['salt', 'yeast']),
+  chleb_zytni: new Set(['salt']),
+  wypieki_cukiernicze: new Set(['butter', 'sugar', 'yeast']),
+};
 
 interface BakeryExtraOrdersCardProps {
   state: BakeryCapitalismState;
@@ -58,6 +65,7 @@ export const BakeryExtraOrdersCard: React.FC<BakeryExtraOrdersCardProps> = ({
     BAKERY_PRODUCTS_CONFIG[state.productTarget] || BAKERY_PRODUCTS_CONFIG.chleb_pszenny;
   const flourDemandKg = (loadGameParameters().bakeryBaseDailyFlourKg ?? 120) * 30;
 
+  const [isOrderOpen, setIsOrderOpen] = useState<boolean>(false);
   const [ingredient, setIngredient] = useState<UnifiedIngredientId>('flour');
   const [monthlyKg, setMonthlyKg] = useState<number>(800);
   const [contractType, setContractType] = useState<ContractType>('pay_as_you_go');
@@ -226,30 +234,45 @@ export const BakeryExtraOrdersCard: React.FC<BakeryExtraOrdersCardProps> = ({
 
           {(Object.keys(EXTRA_META) as BakeryIngredientId[]).map((ingId) => {
             const meta = EXTRA_META[ingId];
+            const isUsedInRecipe = (RECIPE_EXTRA_INGREDIENTS[state.productTarget] || RECIPE_EXTRA_INGREDIENTS.chleb_pszenny).has(ingId);
+            const demandKg = isUsedInRecipe ? meta.monthlyNeedKg : 0;
             const stock = Number(state[meta.stockKey] ?? 0);
             const cap = Number(state[meta.capKey] ?? 500);
             const pct = Math.min(100, Math.round((stock / Math.max(1, cap)) * 100));
             return (
               <div
                 key={ingId}
-                className="bg-stone-900/90 rounded-xl p-2 border border-stone-800 space-y-1"
+                className={`rounded-xl p-2 border space-y-1 transition-opacity ${
+                  isUsedInRecipe
+                    ? 'bg-stone-900/90 border-stone-800'
+                    : 'bg-stone-950/60 border-stone-800/60 opacity-45 grayscale'
+                }`}
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-bold text-white truncate">
+                  <span className={`text-[10px] font-bold truncate ${isUsedInRecipe ? 'text-white' : 'text-stone-400'}`}>
                     {meta.icon} {meta.label}
                   </span>
-                  <span className="px-1 py-0.5 rounded bg-stone-950 border border-amber-500/40 text-amber-300 font-mono text-[9px] font-bold shrink-0">
-                    {meta.monthlyNeedKg} kg/msc
+                  <span
+                    className={`px-1 py-0.5 rounded bg-stone-950 border font-mono text-[9px] font-bold shrink-0 ${
+                      isUsedInRecipe
+                        ? 'border-amber-500/40 text-amber-300'
+                        : 'border-stone-700 text-stone-500'
+                    }`}
+                  >
+                    {demandKg} kg/msc
                   </span>
                 </div>
                 <div className="text-[11px] font-mono font-bold text-stone-100">
-                  <span className={stock <= 0 ? 'text-rose-400' : 'text-emerald-300'}>
+                  <span className={!isUsedInRecipe ? 'text-stone-400' : stock <= 0 ? 'text-rose-400' : 'text-emerald-300'}>
                     {stock.toLocaleString('pl-PL')}
                   </span>{' '}
                   <span className="text-[9px] text-stone-400">/ {cap} kg</span>
                 </div>
                 <div className="w-full h-1 bg-stone-950 rounded-full overflow-hidden border border-stone-800">
-                  <div className="h-full bg-amber-400" style={{ width: `${pct}%` }} />
+                  <div
+                    className={`h-full ${isUsedInRecipe ? 'bg-amber-400' : 'bg-stone-600'}`}
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
               </div>
             );
@@ -258,13 +281,21 @@ export const BakeryExtraOrdersCard: React.FC<BakeryExtraOrdersCardProps> = ({
 
         {/* Formatka zamówienia na dole */}
         <div className="bg-stone-900/90 rounded-xl p-2.5 border border-amber-500/30 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
-              🛒 Nowy Kontrakt Zakupu
-            </h4>
-            {feedback && <span className="text-[10px] text-emerald-300 font-semibold">{feedback}</span>}
-          </div>
-
+          <button
+            type="button"
+            onClick={() => setIsOrderOpen((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-amber-950/55 hover:bg-amber-900/65 border border-amber-500/50 text-left text-[11px] font-bold uppercase tracking-wider text-amber-200 cursor-pointer transition-colors"
+          >
+            <span>🛒 Nowy Kontrakt Zakupu</span>
+            <span className="flex items-center gap-2">
+              {feedback && <span className="text-[10px] text-emerald-300 font-semibold normal-case">{feedback}</span>}
+              <span className="text-xs px-1.5 py-0.5 rounded bg-stone-950 border border-stone-700 text-stone-300">
+                {isOrderOpen ? '▲' : '▼'}
+              </span>
+            </span>
+          </button>
+          {isOrderOpen && (
+          <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             <div>
               <label className="block text-[9px] font-bold uppercase text-stone-400 mb-0.5">
@@ -280,11 +311,15 @@ export const BakeryExtraOrdersCard: React.FC<BakeryExtraOrdersCardProps> = ({
                 className="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 text-[11px] text-stone-100 cursor-pointer"
               >
                 <option value="flour">🌾 {productCfg.requiredFlourLabel}</option>
-                {(Object.keys(EXTRA_META) as BakeryIngredientId[]).map((id) => (
-                  <option key={id} value={id}>
-                    {EXTRA_META[id].icon} {EXTRA_META[id].label}
-                  </option>
-                ))}
+                {(Object.keys(EXTRA_META) as BakeryIngredientId[])
+                  .filter((id) =>
+                    (RECIPE_EXTRA_INGREDIENTS[state.productTarget] || RECIPE_EXTRA_INGREDIENTS.chleb_pszenny).has(id)
+                  )
+                  .map((id) => (
+                    <option key={id} value={id}>
+                      {EXTRA_META[id].icon} {EXTRA_META[id].label}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -322,32 +357,50 @@ export const BakeryExtraOrdersCard: React.FC<BakeryExtraOrdersCardProps> = ({
               </select>
             </div>
 
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-[9px] font-bold uppercase text-stone-400 mb-0.5">
                 Ilość miesięczna
               </label>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setMonthlyKg((v) => Math.max(10, v - (ingredient === 'flour' ? 100 : 10)))}
-                  className="px-2 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-[11px] font-bold text-stone-200 cursor-pointer"
-                >
-                  -{ingredient === 'flour' ? 100 : 10}
-                </button>
-                <span className="flex-1 text-center font-mono text-[11px] font-bold text-amber-200 bg-stone-950 border border-stone-800 rounded-lg py-1">
+              <div className="flex flex-wrap items-center gap-1">
+                {[
+                  { delta: 10000, label: '-10t' },
+                  { delta: 1000, label: '-1t' },
+                  { delta: 100, label: '-100' },
+                  { delta: 10, label: '-10' },
+                  { delta: 1, label: '-1' },
+                ].map((btn) => (
+                  <button
+                    key={btn.label}
+                    type="button"
+                    onClick={() => setMonthlyKg((v) => Math.max(1, v - btn.delta))}
+                    className="px-1.5 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-500/40 text-[10px] font-mono font-bold text-rose-200 cursor-pointer"
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+                <span className="flex-1 min-w-[84px] text-center font-mono text-[11px] font-bold text-amber-200 bg-stone-950 border border-stone-800 rounded-lg py-1 px-2">
                   {monthlyKg.toLocaleString('pl-PL')} kg/msc
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setMonthlyKg((v) => v + (ingredient === 'flour' ? 100 : 10))}
-                  className="px-2 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-[11px] font-bold text-stone-200 cursor-pointer"
-                >
-                  +{ingredient === 'flour' ? 100 : 10}
-                </button>
+                {[
+                  { delta: 1, label: '+1' },
+                  { delta: 10, label: '+10' },
+                  { delta: 100, label: '+100' },
+                  { delta: 1000, label: '+1t' },
+                  { delta: 10000, label: '+10t' },
+                ].map((btn) => (
+                  <button
+                    key={btn.label}
+                    type="button"
+                    onClick={() => setMonthlyKg((v) => v + btn.delta)}
+                    className="px-1.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-300 cursor-pointer"
+                  >
+                    {btn.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-[9px] font-bold uppercase text-stone-400 mb-0.5">
                 Kontrakt terminowy
               </label>
@@ -372,6 +425,8 @@ export const BakeryExtraOrdersCard: React.FC<BakeryExtraOrdersCardProps> = ({
           >
             + Dodaj kontrakt zakupu
           </button>
+          </>
+          )}
         </div>
       </div>
 

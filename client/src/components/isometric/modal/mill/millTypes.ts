@@ -363,6 +363,12 @@ export function checkIsMillProductionReady(
     missingReasons.push('Brak wybranego źródła energii w zakładce ⚡ Energia');
   } else if (energySource === 'konie' && (buildingState.ownedHorses?.length ?? 0) < 1) {
     missingReasons.push('Brak koni roboczych w zakładce ⚡ Energia');
+  } else if (
+    energySource === 'konie' &&
+    (buildingState.horseFeedStockKg ?? 0) <= 0 &&
+    !buildingState.horseFeedOrder
+  ) {
+    missingReasons.push('Brak rezerwy paszy lub kontraktu na paszę dla koni w zakładce ⚡ Energia');
   } else if (energySource === 'wegiel' && (buildingState.coalStockTons ?? 0) <= 0) {
     missingReasons.push('Brak węgla w zakładce ⚡ Energia');
   }

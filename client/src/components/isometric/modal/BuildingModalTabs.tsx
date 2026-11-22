@@ -1,5 +1,5 @@
 import React from 'react';
-export type BusinessTabType = 'production' | 'products' | 'trade' | 'finance';
+export type BusinessTabType = 'summary' | 'production' | 'products' | 'trade' | 'finance';
 export type ResidentialTabType = 'rent' | 'energy';
 
 interface BuildingModalTabsProps {
@@ -10,6 +10,7 @@ interface BuildingModalTabsProps {
   isMill: boolean;
   isBakery?: boolean;
   isMine?: boolean;
+  checklistOk?: boolean;
   businessTab: BusinessTabType;
   residentialTab: ResidentialTabType;
   onSelectBusinessTab: (tab: BusinessTabType) => void;
@@ -24,6 +25,7 @@ export const BuildingModalTabs: React.FC<BuildingModalTabsProps> = ({
   isMill,
   isBakery = false,
   isMine = false,
+  checklistOk,
   businessTab,
   residentialTab,
   onSelectBusinessTab,
@@ -37,6 +39,25 @@ export const BuildingModalTabs: React.FC<BuildingModalTabsProps> = ({
       {isBusiness && (
         <div className="mt-1 mb-0 flex-shrink-0">
           <div className="bg-stone-950/80 p-0.5 rounded-xl border border-stone-800 shadow-inner flex gap-1">
+            <button
+              onClick={() => onSelectBusinessTab('summary')}
+              className={`flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                businessTab === 'summary'
+                  ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50 shadow-sm'
+                  : 'bg-stone-900/60 border border-stone-800 text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+              }`}
+            >
+              <span className="text-sm">📋</span>
+              <span className="tracking-wide">Podsumowanie</span>
+              {typeof checklistOk === 'boolean' && (
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    checklistOk ? 'bg-emerald-400' : 'bg-rose-500'
+                  }`}
+                />
+              )}
+            </button>
+
             <button
               onClick={() => onSelectBusinessTab('production')}
               className={`flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
@@ -61,7 +82,7 @@ export const BuildingModalTabs: React.FC<BuildingModalTabsProps> = ({
               <span className="tracking-wide">Produkty</span>
             </button>
 
-            {(isMill || isBakery || isMine || isLivestock) && (
+            {(isFarm || isMill || isBakery || isMine || isLivestock) && (
               <button
                 onClick={() => onSelectBusinessTab('trade')}
                 className={`flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${

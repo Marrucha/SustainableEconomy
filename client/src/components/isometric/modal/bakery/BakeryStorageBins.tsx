@@ -7,6 +7,13 @@ import {
 } from '../industrySupplyConfig';
 import { BAKERY_PRODUCTS_CONFIG, type BakeryCapitalismState } from './bakeryTypes';
 import { BakeryExtraOrdersCard } from './BakeryExtraOrdersCard';
+import {
+  BASE_BAKERY_BREAD_CAP_KG,
+  BASE_BAKERY_RUSKS_CAP_KG,
+  computeExtraStorageDailyCostGbp,
+  STORAGE_UPGRADE_COST_GBP,
+  STORAGE_UPGRADE_STEP_KG,
+} from '../storageExpansion';
 
 interface BakeryStorageBinsProps {
   buildingId?: string;
@@ -104,17 +111,34 @@ export const BakeryStorageBins: React.FC<BakeryStorageBinsProps> = ({
                   <strong className="text-amber-300">£{state.breadPricePerKg.toFixed(2)}/szt.</strong>
                 </span>
               </div>
-              <div className="text-xs font-mono font-bold text-stone-100">
-                <span className={state.breadStockKg <= 0 ? 'text-rose-400' : 'text-emerald-300'}>
-                  {state.breadStockKg.toLocaleString('pl-PL')}
-                </span>{' '}
-                <span className="text-[10px] text-stone-400">
-                  / {state.breadCapacityKg.toLocaleString('pl-PL')} szt.
-                </span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-mono font-bold text-stone-100">
+                  <span className={state.breadStockKg <= 0 ? 'text-rose-400' : 'text-emerald-300'}>
+                    {state.breadStockKg.toLocaleString('pl-PL')}
+                  </span>{' '}
+                  <span className="text-[10px] text-stone-400">
+                    / {state.breadCapacityKg.toLocaleString('pl-PL')} szt.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSpendGold?.(STORAGE_UPGRADE_COST_GBP);
+                    onUpdate({ breadCapacityKg: state.breadCapacityKg + STORAGE_UPGRADE_STEP_KG });
+                  }}
+                  className="text-[10px] font-mono font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer"
+                >
+                  ⬆️ +5 t (£{STORAGE_UPGRADE_COST_GBP})
+                </button>
               </div>
               <div className="w-full h-1.5 bg-stone-950 rounded-full overflow-hidden border border-stone-800">
                 <div className="h-full bg-emerald-400" style={{ width: `${breadPct}%` }} />
               </div>
+              {state.breadCapacityKg > BASE_BAKERY_BREAD_CAP_KG && (
+                <div className="text-[10px] font-mono text-stone-400">
+                  Dodatkowy magazyn: 1p/10 kg/d (obecnie £{computeExtraStorageDailyCostGbp(state.breadStockKg, BASE_BAKERY_BREAD_CAP_KG).toFixed(2)}/d)
+                </div>
+              )}
             </div>
 
             <div className="bg-stone-900/90 rounded-xl p-2.5 border border-stone-800 space-y-1">
@@ -131,17 +155,34 @@ export const BakeryStorageBins: React.FC<BakeryStorageBinsProps> = ({
                   <strong className="text-amber-300">£{state.rusksPricePerKg.toFixed(2)}/kg</strong>
                 </span>
               </div>
-              <div className="text-xs font-mono font-bold text-stone-100">
-                <span className={state.rusksStockKg <= 0 ? 'text-rose-400' : 'text-emerald-300'}>
-                  {state.rusksStockKg.toLocaleString('pl-PL')}
-                </span>{' '}
-                <span className="text-[10px] text-stone-400">
-                  / {state.rusksCapacityKg.toLocaleString('pl-PL')} kg
-                </span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-mono font-bold text-stone-100">
+                  <span className={state.rusksStockKg <= 0 ? 'text-rose-400' : 'text-emerald-300'}>
+                    {state.rusksStockKg.toLocaleString('pl-PL')}
+                  </span>{' '}
+                  <span className="text-[10px] text-stone-400">
+                    / {state.rusksCapacityKg.toLocaleString('pl-PL')} kg
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSpendGold?.(STORAGE_UPGRADE_COST_GBP);
+                    onUpdate({ rusksCapacityKg: state.rusksCapacityKg + STORAGE_UPGRADE_STEP_KG });
+                  }}
+                  className="text-[10px] font-mono font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer"
+                >
+                  ⬆️ +5 t (£{STORAGE_UPGRADE_COST_GBP})
+                </button>
               </div>
               <div className="w-full h-1.5 bg-stone-950 rounded-full overflow-hidden border border-stone-800">
                 <div className="h-full bg-orange-400" style={{ width: `${rusksPct}%` }} />
               </div>
+              {state.rusksCapacityKg > BASE_BAKERY_RUSKS_CAP_KG && (
+                <div className="text-[10px] font-mono text-stone-400">
+                  Dodatkowy magazyn: 1p/10 kg/d (obecnie £{computeExtraStorageDailyCostGbp(state.rusksStockKg, BASE_BAKERY_RUSKS_CAP_KG).toFixed(2)}/d)
+                </div>
+              )}
             </div>
           </div>
 

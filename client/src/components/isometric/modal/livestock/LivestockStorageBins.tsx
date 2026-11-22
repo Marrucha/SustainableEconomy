@@ -4,9 +4,13 @@ import type { WorldSupplierBuilding } from '../industrySupplyConfig';
 import type { LivestockCapitalismState } from './livestockTypes';
 import { LIVESTOCK_PRODUCTS } from './livestockTypes';
 import { LivestockSupplyOrderCard } from './LivestockSupplyOrderCard';
+import { IncomingSalesContractsCard } from '../IncomingSalesContractsCard';
 import { loadGameParameters } from '../../admin/gameParameters';
+import { computeSupplyContractPenalty, getContractMeta } from '../industryContracts';
+import { formatSupplierOrderLabel } from '../industrySupplyConfig';
 
 interface LivestockStorageBinsProps {
+  buildingId?: string;
   state: LivestockCapitalismState;
   allWorldBuildings?: WorldSupplierBuilding[];
   buildingsState?: Record<string, BuildingState>;
@@ -21,6 +25,7 @@ interface LivestockStorageBinsProps {
   const MAX_BIN_CAPACITY = feedCapKg;
 
 export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
+  buildingId,
   state,
   allWorldBuildings = [],
   buildingsState = {},
@@ -28,6 +33,7 @@ export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
   onUpdateState,
 }) => {
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [subTab, setSubTab] = useState<'buy' | 'sell'>('buy');
 
   const storage = state.storage;
   const species = state.activeSpecies || 'cattle';
@@ -142,24 +148,36 @@ export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
         </div>
       )}
 
-      <label className="flex items-center gap-2 bg-stone-900/90 border border-amber-500/30 rounded-xl px-3 py-1.5 text-[11px] text-amber-200 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={!!state.interventionBuyEnabled}
-          onChange={(e) => onUpdateState({ interventionBuyEnabled: e.target.checked })}
-          className="accent-amber-500 cursor-pointer"
-        />
-        <span className="font-semibold">🛟 Zakup interwencyjny ze statku (+10% do ceny statku)</span>
-        <span
-          title="Gdy dostawca paszy lub ściółki nie zrealizuje kontraktu w pełni lub w części w danym miesiącu, brakująca ilość zostanie dokupiona na Statku Handlowym po cenie statku + 10%."
-          className="text-stone-400 hover:text-amber-300 cursor-help ml-auto"
+      {/* 2 PODZAKŁADKI JAK W MŁYNIE PAROWYM: ZAKUPY / SPRZEDAŻ */}
+      <div className="flex gap-1.5 bg-stone-950/80 p-1 rounded-xl border border-stone-800">
+        <button
+          type="button"
+          onClick={() => setSubTab('buy')}
+          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+            subTab === 'buy'
+              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50'
+              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
+          }`}
         >
-          ℹ
-        </span>
-      </label>
+          🛒 Zakupy (Surowce)
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('sell')}
+          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+            subTab === 'sell'
+              ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-500/50'
+              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
+          }`}
+        >
+          🤝 Sprzedaż (Wyroby)
+        </button>
+      </div>
 
-      {/* MAGAZYNY FERMY: PASZA, ŚCIÓŁKA, HAŁDA OBORNIKA + PRODUKTY (TYLKO BYDŁO/OWCE) */}
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${isHorses ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-3.5`}>
+      {subTab === 'buy' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start">
+          {/* LEWA KOLUMNA: MAGAZYN PASZY I ŚCIÓŁKI + FORMATKI */}
+          <div className="space-y-3.5">
         {/* 1. MAGAZYN PASZY */}
         <div className="bg-stone-900/90 border border-amber-500/40 rounded-2xl p-4 flex flex-col justify-between space-y-3 shadow-md">
           <div className="space-y-2.5">
@@ -237,7 +255,107 @@ export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
             }}
           />
         </div>
+          </div>
 
+          {/* PRAWA KOLUMNA: ZAWARTE KONTRAKTY ZAKUPU */}
+          {(() => {
+            const feedOrders = state.feedOrders ?? (state.feedOrder ? [state.feedOrder] : []);
+            const strawOrders = state.strawOrders ?? (state.strawOrder ? [state.strawOrder] : []);
+            const allBuyOrders = [
+              ...feedOrders.map((o) => ({ ...o, kind: 'feed' as const })),
+              ...strawOrders.map((o) => ({ ...o, kind: 'straw' as const })),
+            ];
+            return (
+              <div className="bg-stone-900/90 rounded-2xl p-3 border border-emerald-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+                    📜 Zawarte Kontrakty Zakupu
+                  </h4>
+                  <span className="text-[10px] font-mono text-stone-400">
+                    Aktywne: <strong className="text-emerald-300">{allBuyOrders.length}</strong>
+                  </span>
+                </div>
+                <label className="flex items-center gap-2 bg-stone-950/70 border border-amber-500/30 rounded-lg px-2 py-1 text-[10px] text-amber-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!state.interventionBuyEnabled}
+                    onChange={(e) => onUpdateState({ interventionBuyEnabled: e.target.checked })}
+                    className="accent-amber-500 cursor-pointer"
+                  />
+                  <span className="font-semibold">🛟 Zakup interwencyjny ze statku (+10% do ceny statku)</span>
+                  <span
+                    title="Gdy dostawca paszy lub ściółki nie zrealizuje kontraktu w pełni lub w części w danym miesiącu, brakująca ilość zostanie dokupiona na Statku Handlowym po cenie statku + 10%."
+                    className="text-stone-400 hover:text-amber-300 cursor-help ml-auto"
+                  >
+                    ℹ
+                  </span>
+                </label>
+                {allBuyOrders.length === 0 ? (
+                  <p className="text-[11px] text-stone-400 italic">Brak aktywnych kontraktów zakupu.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {allBuyOrders.map((ord) => {
+                      const ordMeta = getContractMeta(ord.contractType);
+                      const isShip = ord.supplierId.startsWith('trade_ship');
+                      const supObj = allWorldBuildings.find((b) => b.id === ord.supplierId);
+                      const owner = buildingsState[ord.supplierId]?.ownerName || supObj?.playerName;
+                      const isOurs = !isShip && (!owner || owner === 'Gracz');
+                      const penalty = computeSupplyContractPenalty(
+                        ord.monthlyQuantityKg,
+                        ord.kind === 'feed' ? 10 : 6,
+                        ord.contractType,
+                        ord.monthsRemaining
+                      );
+                      return (
+                        <div
+                          key={`${ord.kind}_${ord.supplierId}`}
+                          className="flex flex-wrap items-center justify-between gap-2 bg-emerald-500/15 border border-emerald-500/40 rounded-xl px-2.5 py-1.5 text-[11px]"
+                        >
+                          <div className="text-emerald-200 font-semibold">
+                            ✓ <span className="text-white font-bold">{ord.kind === 'feed' ? 'Pasza' : 'Ściółka (Słoma)'}</span> •{' '}
+                            <span className={isOurs ? 'text-sky-300 font-bold' : 'text-blue-200 bg-blue-950/80 px-1.5 py-0.5 rounded font-bold'}>
+                              {isShip
+                                ? '🚢 Statek Handlowy'
+                                : supObj
+                                ? formatSupplierOrderLabel(supObj, buildingsState, allWorldBuildings)
+                                : 'Dostawca'}
+                            </span>{' '}
+                            •{' '}
+                            <span className="font-mono font-bold text-yellow-300">
+                              {ord.monthlyQuantityKg.toLocaleString('pl-PL')} kg/msc
+                            </span>{' '}
+                            • {ordMeta.label}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (penalty > 0 && onSpendGold) onSpendGold(penalty);
+                              if (ord.kind === 'feed') {
+                                const next = feedOrders.filter((o) => o.supplierId !== ord.supplierId);
+                                onUpdateState({ feedOrders: next, feedOrder: next[0] });
+                              } else {
+                                const next = strawOrders.filter((o) => o.supplierId !== ord.supplierId);
+                                onUpdateState({ strawOrders: next, strawOrder: next[0] });
+                              }
+                              notify('✕ Usunięto kontrakt.');
+                            }}
+                            className="px-2 py-0.5 rounded-lg bg-rose-950/80 hover:bg-rose-800 border border-rose-500/50 text-rose-200 font-bold cursor-pointer"
+                          >
+                            ✕{penalty > 0 ? ` (£${penalty})` : ''}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start">
+          {/* LEWA KOLUMNA: MAGAZYNY WYROBÓW (OBORNIK + PRODUKTY) */}
+          <div className="space-y-3.5">
         {/* 3. HAŁDA OBORNIKA */}
         <div className="bg-stone-900/90 border border-emerald-500/40 rounded-2xl p-4 flex flex-col justify-between space-y-3 shadow-md">
           <div className="space-y-2.5">
@@ -311,7 +429,16 @@ export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
             </div>
           );
         })}
-      </div>
+          </div>
+
+          {/* PRAWA KOLUMNA: ZAWARTE KONTRAKTY SPRZEDAŻY */}
+          <IncomingSalesContractsCard
+            buildingId={buildingId}
+            allWorldBuildings={allWorldBuildings}
+            buildingsState={buildingsState}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -183,18 +183,26 @@ export const FarmStageCard: React.FC<FarmStageCardProps> = ({
                 className="accent-emerald-500 w-3.5 h-3.5 cursor-pointer"
               />
             )}
-            {((stage.id === 'growing' && agronomist.hired) || (stage.id !== 'growing' && !isOptionalAndDisabled && assignedWorkers.length > 0)) && (
+            {(stage.id === 'growing' || !isOptionalAndDisabled) && (
               <button
                 type="button"
                 onClick={() => setShowStaffModal(true)}
                 title={
                   stage.id === 'growing'
-                    ? `${agronomist.name} — kliknij, aby zobaczyć pensję`
-                    : `${assignedWorkers.map((w) => w.name).join(', ')} — kliknij, aby zarządzać obsadą`
+                    ? agronomist.hired
+                      ? `${agronomist.name} — kliknij, aby zobaczyć pensję`
+                      : 'Brak agronoma — kliknij, aby zatrudnić'
+                    : assignedWorkers.length > 0
+                    ? `${assignedWorkers.map((w) => w.name).join(', ')} — kliknij, aby zarządzać obsadą`
+                    : 'Brak obsady — kliknij, aby przypisać lub zatrudnić pracownika'
                 }
                 className={`relative w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110 shadow-sm border ${
                   stage.id === 'growing'
-                    ? 'bg-sky-950/90 hover:bg-sky-900 border-sky-400 text-sky-300'
+                    ? agronomist.hired
+                      ? 'bg-sky-950/90 hover:bg-sky-900 border-sky-400 text-sky-300'
+                      : 'bg-rose-950/90 hover:bg-rose-900 border-rose-400 text-rose-300'
+                    : assignedWorkers.length === 0
+                    ? 'bg-rose-950/90 hover:bg-rose-900 border-rose-400 text-rose-300'
                     : 'bg-emerald-950/90 hover:bg-emerald-900 border-emerald-400 text-emerald-400'
                 }`}
               >
@@ -202,7 +210,7 @@ export const FarmStageCard: React.FC<FarmStageCardProps> = ({
                   <path d="M12 12c2.7 0 4.5-1.8 4.5-4.5S14.7 3 12 3 7.5 4.8 7.5 7.5 9.3 12 12 12zm0 2c-3.3 0-8 1.7-8 5v2h16v-2c0-3.3-4.7-5-8-5z" />
                 </svg>
                 <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-stone-950 border border-white/80 text-white text-[8px] font-mono font-bold flex items-center justify-center leading-none shadow-sm">
-                  {stage.id === 'growing' ? 1 : assignedWorkers.length}
+                  {stage.id === 'growing' ? (agronomist.hired ? 1 : 0) : assignedWorkers.length}
                 </span>
               </button>
             )}
@@ -393,35 +401,12 @@ export const FarmStageCard: React.FC<FarmStageCardProps> = ({
         );
       })()}
 
-      {/* 3. PRZYCISK OBSADA (TYLKO GDY BRAK PRACOWNIKA LUB ETAP WYŁĄCZONY) */}
-      {((stage.id === 'growing' && !agronomist.hired) ||
-        (stage.id !== 'growing' && (isOptionalAndDisabled || !assignedWorker))) && (
+      {/* 3. INFORMACJA O WYŁĄCZONYM ETAPIE OPCJONALNYM (OBSADA PRZEZ IKONKĘ LUDZIKA W NAGŁÓWKU) */}
+      {stage.id !== 'growing' && isOptionalAndDisabled && (
         <div className="mt-0.5 pt-1 border-t border-stone-300">
-          {stage.id === 'growing' ? (
-            <button
-              type="button"
-              onClick={() => setShowStaffModal(true)}
-              className="w-full py-0.5 px-2 rounded-md bg-sky-200 hover:bg-sky-300 border border-sky-500 text-sky-950 font-bold text-[11px] cursor-pointer transition-all"
-            >
-              👥 Obsada
-            </button>
-          ) : isOptionalAndDisabled ? (
-            <div className="w-full py-0.5 px-2 rounded-md bg-stone-300 border border-stone-400 text-stone-700 text-[10px] text-center font-medium">
-              ⚪ Wyłączony
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowStaffModal(true)}
-              className={`w-full py-0.5 px-2 rounded-md font-bold text-[11px] cursor-pointer transition-all border ${
-                isMissing
-                  ? 'bg-rose-200 hover:bg-rose-300 border-rose-500 text-rose-950'
-                  : 'bg-amber-200 hover:bg-amber-300 border-amber-500 text-amber-950'
-              }`}
-            >
-              👥 Obsada
-            </button>
-          )}
+          <div className="w-full py-0.5 px-2 rounded-md bg-stone-300 border border-stone-400 text-stone-700 text-[10px] text-center font-medium">
+            ⚪ Wyłączony
+          </div>
         </div>
       )}
     </div>

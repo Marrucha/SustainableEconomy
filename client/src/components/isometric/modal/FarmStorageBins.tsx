@@ -18,6 +18,8 @@ import { getContractMeta } from './industryContracts';
 import { FarmOfferBars } from './FarmOfferBars';
 import { FarmManureBinCard } from './FarmManureBinCard';
 import { FarmStrawBinCard } from './FarmStrawBinCard';
+import { IncomingSalesContractsCard } from './IncomingSalesContractsCard';
+import { computeSupplyContractPenalty } from './industryContracts';
 
 interface FarmStorageBinsProps {
   currentBuildingId?: string;
@@ -41,6 +43,7 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
   onUpdateState,
 }) => {
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const [subTab, setSubTab] = useState<'buy' | 'sell'>('buy');
   const livestockFarms = allWorldBuildings.filter((b) => b.typeId === 'livestock_farm');
   const [selectedLivestockId, setSelectedLivestockId] = useState<string>(livestockFarms[0]?.id || '');
 
@@ -155,8 +158,107 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
         )}
       </div>
 
-      {/* SIATKA 3 RÓWNORZĘDNYCH KOMÓR MAGAZYNOWYCH (ZBOŻE, OBORNIK, SŁOMA) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* 2 PODZAKŁADKI JAK W MŁYNIE PAROWYM: ZAKUPY / SPRZEDAŻ */}
+      <div className="flex gap-1.5 bg-stone-950/80 p-1 rounded-xl border border-stone-800">
+        <button
+          type="button"
+          onClick={() => setSubTab('buy')}
+          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+            subTab === 'buy'
+              ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50'
+              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
+          }`}
+        >
+          🛒 Zakupy (Surowce)
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('sell')}
+          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+            subTab === 'sell'
+              ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-500/50'
+              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
+          }`}
+        >
+          🤝 Sprzedaż (Wyroby)
+        </button>
+      </div>
+
+      {subTab === 'buy' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start">
+          {/* LEWA KOLUMNA: NAWÓZ NATURALNY I FORMATKA ZAMÓWIENIA */}
+          <FarmManureBinCard
+            state={state}
+            attachedFieldsCount={attachedFieldsCount}
+            manureStock={manureStock}
+            livestockFarms={livestockFarms}
+            buildingsState={buildingsState}
+            activeLivestockId={activeLivestockId}
+            selectedFarmManureKg={selectedFarmManureKg}
+            onSelectLivestock={setSelectedLivestockId}
+            onBuyManure={handleBuyManure}
+            onSpendGold={onSpendGold}
+            onUpdateState={onUpdateState}
+            showFeedback={showFeedback}
+          />
+
+          {/* PRAWA KOLUMNA: ZAWARTE KONTRAKTY ZAKUPU */}
+          <div className="bg-stone-900/90 rounded-2xl p-3 border border-emerald-500/30 space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+                📜 Zawarte Kontrakty Zakupu
+              </h4>
+              <span className="text-[10px] font-mono text-stone-400">
+                Aktywne: <strong className="text-emerald-300">{state.manureOrder ? 1 : 0}</strong>
+              </span>
+            </div>
+            {!state.manureOrder ? (
+              <p className="text-[11px] text-stone-400 italic">Brak aktywnych kontraktów zakupu.</p>
+            ) : (() => {
+              const ord = state.manureOrder;
+              const ordMeta = getContractMeta(ord.contractType);
+              const supObj = livestockFarms.find((f) => f.id === ord.supplierId);
+              const owner = buildingsState[ord.supplierId]?.ownerName || supObj?.playerName;
+              const isOurs = !owner || owner === 'Gracz';
+              const penalty = computeSupplyContractPenalty(
+                ord.monthlyQuantityKg,
+                state.manurePricePer100Kg ?? 12,
+                ord.contractType,
+                ord.monthsRemaining
+              );
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-emerald-500/15 border border-emerald-500/40 rounded-xl px-2.5 py-1.5 text-[11px]">
+                  <div className="text-emerald-200 font-semibold">
+                    ✓ <span className="text-white font-bold">Obornik Naturalny</span> •{' '}
+                    <span className={isOurs ? 'text-sky-300 font-bold' : 'text-blue-200 bg-blue-950/80 px-1.5 py-0.5 rounded font-bold'}>
+                      {supObj ? formatSupplierOrderLabel(supObj, buildingsState, allWorldBuildings) : 'Ferma Hodowlana'}
+                    </span>{' '}
+                    •{' '}
+                    <span className="font-mono font-bold text-yellow-300">
+                      {ord.monthlyQuantityKg.toLocaleString('pl-PL')} kg/msc
+                    </span>{' '}
+                    • {ordMeta.label}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (penalty > 0 && onSpendGold) onSpendGold(penalty);
+                      onUpdateState({ manureOrder: undefined });
+                      showFeedback(penalty > 0 ? `Zerwano kontrakt na obornik (kara: £${penalty}).` : 'Anulowano zamówienie na obornik.');
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-rose-950/80 hover:bg-rose-800 border border-rose-500/50 text-rose-200 font-bold cursor-pointer"
+                  >
+                    ✕{penalty > 0 ? ` (£${penalty})` : ''}
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start">
+          {/* LEWA KOLUMNA: MAGAZYNY WYROBÓW (ZBOŻE + SŁOMA) */}
+          <div className="space-y-3.5">
         {/* 1. KAFELEK: ZBOŻE W SPICHLERZU */}
         {(() => {
           const activeCropId = state.cropType || 'pszenica';
@@ -354,21 +456,6 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
           );
         })()}
 
-        {/* 2. KAFELEK: NAWÓZ NATURALNY */}
-        <FarmManureBinCard
-          state={state}
-          manureStock={manureStock}
-          livestockFarms={livestockFarms}
-          buildingsState={buildingsState}
-          activeLivestockId={activeLivestockId}
-          selectedFarmManureKg={selectedFarmManureKg}
-          onSelectLivestock={setSelectedLivestockId}
-          onBuyManure={handleBuyManure}
-          onSpendGold={onSpendGold}
-          onUpdateState={onUpdateState}
-          showFeedback={showFeedback}
-        />
-
         {/* 3. KAFELEK: STÓG SŁOMY ZBOŻOWEJ */}
         <FarmStrawBinCard
           state={state}
@@ -378,7 +465,16 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
           onUpdateState={onUpdateState}
           showFeedback={showFeedback}
         />
-      </div>
+          </div>
+
+          {/* PRAWA KOLUMNA: ZAWARTE KONTRAKTY SPRZEDAŻY */}
+          <IncomingSalesContractsCard
+            buildingId={currentBuildingId}
+            allWorldBuildings={allWorldBuildings}
+            buildingsState={buildingsState}
+          />
+        </div>
+      )}
     </div>
   );
 };

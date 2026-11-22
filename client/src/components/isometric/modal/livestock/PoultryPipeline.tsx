@@ -6,7 +6,10 @@ import type {
   LivestockStage,
   LivestockWorker,
 } from './livestockTypes';
-import { LIVESTOCK_PROFESSIONS_CONFIG } from './livestockTypes';
+import {
+  computeLivestockHorseRequirement,
+  LIVESTOCK_PROFESSIONS_CONFIG,
+} from './livestockTypes';
 import { generateRandomEnglishName } from '../englishNames';
 import { FarmPipelineArrow } from '../FarmPipelineArrow';
 import { LivestockStageCard } from './LivestockStageCard';
@@ -14,12 +17,14 @@ import { LivestockSaleBranchCard } from './LivestockSaleBranchCard';
 
 interface PoultryPipelineProps {
   state: LivestockCapitalismState;
+  ownedHorsesCount?: number;
   onUpdateState: (patch: Partial<LivestockCapitalismState>) => void;
   onGoToCrewTab: () => void;
 }
 
 export const PoultryPipeline: React.FC<PoultryPipelineProps> = ({
   state,
+  ownedHorsesCount = 0,
   onUpdateState,
   onGoToCrewTab,
 }) => {
@@ -76,6 +81,13 @@ export const PoultryPipeline: React.FC<PoultryPipelineProps> = ({
   };
 
   const handleAdvanceStep = () => {
+    const horseReq = computeLivestockHorseRequirement(state, ownedHorsesCount);
+    if (!horseReq.isSatisfied) {
+      notify(
+        `⛔ Brak wymaganych koni roboczych w zakładce ⚡ Energia (${horseReq.ownedHorsesCount}/${horseReq.requiredHorses} — 1 koń na 500 kurczaków) do przewozu paszy i wywozu obornika!`
+      );
+      return;
+    }
     const curWorker = getWorkerForStage(poultryStage);
     if (!curWorker) {
       notify('⚠️ Przypisz pracownika do bieżącego etapu cyklu drobiu!');

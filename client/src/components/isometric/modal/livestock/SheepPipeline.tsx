@@ -6,7 +6,12 @@ import type {
   LivestockWorker,
   LivestockProfession,
 } from './livestockTypes';
-import { calculateFailureRisk, getInseminationSuccessPercent, LIVESTOCK_PROFESSIONS_CONFIG } from './livestockTypes';
+import {
+  calculateFailureRisk,
+  computeLivestockHorseRequirement,
+  getInseminationSuccessPercent,
+  LIVESTOCK_PROFESSIONS_CONFIG,
+} from './livestockTypes';
 import { generateRandomEnglishName } from '../englishNames';
 import { FarmPipelineArrow } from '../FarmPipelineArrow';
 import { LivestockStageCard } from './LivestockStageCard';
@@ -14,12 +19,14 @@ import { LivestockSaleBranchCard } from './LivestockSaleBranchCard';
 
 interface SheepPipelineProps {
   state: LivestockCapitalismState;
+  ownedHorsesCount?: number;
   onUpdateState: (patch: Partial<LivestockCapitalismState>) => void;
   onGoToCrewTab: () => void;
 }
 
 export const SheepPipeline: React.FC<SheepPipelineProps> = ({
   state,
+  ownedHorsesCount = 0,
   onUpdateState,
   onGoToCrewTab,
 }) => {
@@ -74,6 +81,13 @@ export const SheepPipeline: React.FC<SheepPipelineProps> = ({
 
   // Obsługa postępu cyklu hodowlanego owiec
   const handleAdvanceStep = () => {
+    const horseReq = computeLivestockHorseRequirement(state, ownedHorsesCount);
+    if (!horseReq.isSatisfied) {
+      notify(
+        `⛔ Brak wymaganych koni roboczych w zakładce ⚡ Energia (${horseReq.ownedHorsesCount}/${horseReq.requiredHorses} — 1 koń na 50 owiec) do przewozu paszy i wywozu obornika!`
+      );
+      return;
+    }
     const cur = state.sheepStage || 'insemination';
 
     if (cur === 'insemination') {

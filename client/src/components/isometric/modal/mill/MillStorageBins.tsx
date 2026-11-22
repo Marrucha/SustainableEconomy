@@ -15,6 +15,13 @@ import {
 } from '../industrySupplyConfig';
 import { CROPS_CONFIG } from '../farmGridTypes';
 import { getMillGrainOrders, MILL_PRODUCTS_CONFIG, type MillCapitalismState } from './millTypes';
+import {
+  BASE_MILL_BRAN_CAP_KG,
+  BASE_MILL_FLOUR_CAP_KG,
+  computeExtraStorageDailyCostGbp,
+  STORAGE_UPGRADE_COST_GBP,
+  STORAGE_UPGRADE_STEP_KG,
+} from '../storageExpansion';
 
 interface MillStorageBinsProps {
   buildingId?: string;
@@ -57,6 +64,7 @@ export const MillStorageBins: React.FC<MillStorageBinsProps> = ({
   ];
   const activeOrders = getMillGrainOrders(state);
 
+  const [isOrderOpen, setIsOrderOpen] = useState<boolean>(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>(
     activeOrders[0]?.supplierId || wheatFarms[0]?.id || ''
   );
@@ -189,9 +197,18 @@ export const MillStorageBins: React.FC<MillStorageBinsProps> = ({
             </div>
 
             <div className="bg-stone-900/90 rounded-xl p-2.5 border border-amber-500/30 space-y-2">
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
-                🛒 Nowy Kontrakt Ziarna
-              </h4>
+              <button
+                type="button"
+                onClick={() => setIsOrderOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-amber-950/55 hover:bg-amber-900/65 border border-amber-500/50 text-left text-[11px] font-bold uppercase tracking-wider text-amber-200 cursor-pointer transition-colors"
+              >
+                <span>🛒 Nowy Kontrakt Ziarna</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-stone-950 border border-stone-700 text-stone-300">
+                  {isOrderOpen ? '▲' : '▼'}
+                </span>
+              </button>
+              {isOrderOpen && (
+              <>
               <div className="space-y-1.5">
                 <div>
                   <label className="block text-[9px] font-bold uppercase text-stone-400 mb-0.5">
@@ -230,6 +247,13 @@ export const MillStorageBins: React.FC<MillStorageBinsProps> = ({
                       Ilość miesięczna
                     </label>
                     <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setMonthlyKg((v) => Math.max(100, v - 1000))}
+                        className="px-2 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-[11px] font-bold text-rose-300 cursor-pointer"
+                      >
+                        --1t
+                      </button>
                       <button
                         type="button"
                         onClick={() => setMonthlyKg((v) => Math.max(100, v - 100))}
@@ -283,6 +307,8 @@ export const MillStorageBins: React.FC<MillStorageBinsProps> = ({
               >
                 {existingForSelected ? 'Aktualizuj kontrakt' : '+ Dodaj kontrakt zakupu'}
               </button>
+              </>
+              )}
             </div>
           </div>
 
@@ -385,12 +411,30 @@ export const MillStorageBins: React.FC<MillStorageBinsProps> = ({
                   <strong className="text-amber-300">£{state.flourPricePerKg.toFixed(2)}/kg</strong>
                 </span>
               </div>
-              <div className="text-xs font-mono font-bold text-stone-100">
-                {state.flourStockKg.toLocaleString('pl-PL')} / {state.flourCapacityKg.toLocaleString('pl-PL')} kg
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-mono font-bold text-stone-100">
+                  {state.flourStockKg.toLocaleString('pl-PL')} / {state.flourCapacityKg.toLocaleString('pl-PL')} kg
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSpendGold?.(STORAGE_UPGRADE_COST_GBP);
+                    onUpdate({ flourCapacityKg: state.flourCapacityKg + STORAGE_UPGRADE_STEP_KG });
+                    setFeedback(`🏛️ Powiększono magazyn mąki o +5 t za £${STORAGE_UPGRADE_COST_GBP} (1p/10 kg/d ponad bazę).`);
+                  }}
+                  className="text-[10px] font-mono font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer"
+                >
+                  ⬆️ +5 t (£{STORAGE_UPGRADE_COST_GBP})
+                </button>
               </div>
               <div className="w-full h-1.5 bg-stone-950 rounded-full overflow-hidden border border-stone-800">
                 <div className="h-full bg-emerald-400" style={{ width: `${flourPct}%` }} />
               </div>
+              {state.flourCapacityKg > BASE_MILL_FLOUR_CAP_KG && (
+                <div className="text-[10px] font-mono text-stone-400">
+                  Dodatkowy magazyn: 1p/10 kg/d (obecnie £{computeExtraStorageDailyCostGbp(state.flourStockKg, BASE_MILL_FLOUR_CAP_KG).toFixed(2)}/d)
+                </div>
+              )}
             </div>
 
             <div className="bg-stone-900/90 rounded-xl p-2.5 border border-stone-800 space-y-1">
@@ -401,12 +445,30 @@ export const MillStorageBins: React.FC<MillStorageBinsProps> = ({
                   <strong className="text-amber-300">£{state.branPricePerKg.toFixed(2)}/kg</strong>
                 </span>
               </div>
-              <div className="text-xs font-mono font-bold text-stone-100">
-                {state.branStockKg.toLocaleString('pl-PL')} / {state.branCapacityKg.toLocaleString('pl-PL')} kg
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-mono font-bold text-stone-100">
+                  {state.branStockKg.toLocaleString('pl-PL')} / {state.branCapacityKg.toLocaleString('pl-PL')} kg
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSpendGold?.(STORAGE_UPGRADE_COST_GBP);
+                    onUpdate({ branCapacityKg: state.branCapacityKg + STORAGE_UPGRADE_STEP_KG });
+                    setFeedback(`🏛️ Powiększono magazyn otrąb o +5 t za £${STORAGE_UPGRADE_COST_GBP} (1p/10 kg/d ponad bazę).`);
+                  }}
+                  className="text-[10px] font-mono font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer"
+                >
+                  ⬆️ +5 t (£{STORAGE_UPGRADE_COST_GBP})
+                </button>
               </div>
               <div className="w-full h-1.5 bg-stone-950 rounded-full overflow-hidden border border-stone-800">
                 <div className="h-full bg-orange-400" style={{ width: `${branPct}%` }} />
               </div>
+              {state.branCapacityKg > BASE_MILL_BRAN_CAP_KG && (
+                <div className="text-[10px] font-mono text-stone-400">
+                  Dodatkowy magazyn: 1p/10 kg/d (obecnie £{computeExtraStorageDailyCostGbp(state.branStockKg, BASE_MILL_BRAN_CAP_KG).toFixed(2)}/d)
+                </div>
+              )}
             </div>
           </div>
 

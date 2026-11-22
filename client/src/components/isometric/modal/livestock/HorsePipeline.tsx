@@ -23,7 +23,40 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
 }) => {
   const crew = state.crew || [];
   const assignments = state.stageAssignments || {};
-  const curStage = state.horseStage || 'insemination';
+
+  const horses = (state.herd?.horses || []).filter((h) => !h.isDeceased);
+  const breedingMares = horses.filter((h) => h.group === 'breeding' && h.sex !== 'male');
+  const insemMares = breedingMares.filter(
+    (h) => h.breedingStatus !== 'pregnant' && (h.breedingWaitMonths ?? 0) === 0
+  );
+  const restMares = breedingMares.filter(
+    (h) => h.breedingStatus === 'failed_wait' || (h.breedingWaitMonths ?? 0) > 0
+  );
+  const pregnantMares = breedingMares.filter((h) => h.breedingStatus === 'pregnant');
+  const growingFoals = horses.filter((h) => h.group === 'growth');
+
+  const avgPregnancyMonths =
+    pregnantMares.length > 0
+      ? (
+          pregnantMares.reduce((sum, h) => sum + (h.pregnancyMonths ?? 0), 0) /
+          pregnantMares.length
+        ).toFixed(1)
+      : '0.0';
+  const avgFoalAgeMonths =
+    growingFoals.length > 0
+      ? (
+          growingFoals.reduce((sum, h) => sum + (h.ageMonths ?? 0), 0) / growingFoals.length
+        ).toFixed(1)
+      : '0.0';
+  const totalFailedInseminations = breedingMares.reduce(
+    (sum, h) => sum + (h.failedInseminationCount ?? (h.breedingStatus === 'failed_wait' ? 1 : 0)),
+    0
+  );
+  const avgFailedPerMare =
+    breedingMares.length > 0
+      ? (totalFailedInseminations / breedingMares.length).toFixed(1)
+      : '0.0';
+  const dueForBirthCount = pregnantMares.filter((h) => (h.pregnancyMonths ?? 0) >= 11).length;
 
   const getWorkerForStage = (stage: LivestockStage): LivestockWorker | undefined => {
     const workerId = assignments[stage];
@@ -71,7 +104,7 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-base">🐎</span>
             <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-              Rurociąg Hodowli Koni (4 Etapy)
+              Cykl Hodowli Koni (Zapłodnienie ⇄ Odpoczynek + Odchów)
             </h3>
           </div>
 
@@ -85,15 +118,17 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_32px_1fr_32px_1fr_32px_1fr] items-stretch gap-2">
+        {/* Rząd 1: Inseminacja -> Ciąża -> Wyźrebienie -> Odchów źrebaka */}
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)_28px_minmax(0,1fr)_28px_minmax(0,1fr)] items-stretch gap-1.5">
           <LivestockStageCard
             stepNum={1}
             icon="🧬"
-            title="Stanówka Klaczy"
-            tooltipDesc="Krycie klaczy przez Weterynarza (50% skuteczności) lub Hodowcę (30% skuteczności; +10% za każdego kolejnego ogiera)."
+            title="Zapłodnienie"
+            tooltipDesc="Zapłodnienie klaczy przez Weterynarza (50% skuteczności) lub Hodowcę (30% skuteczności; +10% za każdego kolejnego ogiera)."
             requiredProfessionLabel="Weterynarz / Hodowca"
             badgeText={`Skut. ${getInseminationSuccessPercent(insemWorker?.profession)}%`}
-            isCurrent={curStage === 'insemination'}
+            statusLine={`${insemMares.length} klaczy · nieud.: ${avgFailedPerMare}/kl.`}
+            isCurrent={false}
             assignedWorker={insemWorker || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder')}
             selectPlaceholder="⚠️ [Wybierz kadrę]"
@@ -111,13 +146,13 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
           <LivestockStageCard
             stepNum={2}
             icon="🐎"
-            title="Źrebność (11 msc)"
+            title="Ciąża (11 msc)"
             tooltipDesc="Ciąża klaczy trwa dokładnie 11 miesięcy pod stałą opieką hodowcy."
             requiredProfessionLabel="Hodowca"
             badgeText="11 Msc"
             badgeVariant="sky"
-            statusLine={`Ciąża: ${state.horsePregnancyMonths || 0}/11 msc`}
-            isCurrent={curStage === 'gestation_9m'}
+            statusLine={`${pregnantMares.length} klaczy · śr. ${avgPregnancyMonths}/11 msc`}
+            isCurrent={false}
             assignedWorker={getWorkerForStage('gestation_9m') || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'breeder')}
             selectPlaceholder="⚠️ [Wybierz hodowcę]"
@@ -134,10 +169,11 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
             stepNum={3}
             icon="🐴"
             title="Wyźrebienie"
-            tooltipDesc="Odbiór porodu źrebaka przez Weterynarza (1-10%) lub Hodowcę (10-30%)."
+            tooltipDesc="Odbiór porodu źrebaka przez Weterynarza (1-10%) lub Hodowcę (10-30%). Źrebak idzie do Odchowu, a klacz schodzi na Odpoczynek."
             requiredProfessionLabel="Weterynarz / Hodowca"
             badgeText={`${birthRisk.avg}% Ryz.`}
-            isCurrent={curStage === 'birth'}
+            statusLine={`${dueForBirthCount} klaczy`}
+            isCurrent={false}
             assignedWorker={birthWorker || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'vet' || w.profession === 'breeder')}
             selectPlaceholder="⚠️ [Wybierz kadrę]"
@@ -155,13 +191,13 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
           <LivestockStageCard
             stepNum={4}
             icon="🏇"
-            title="Odchów (3 lata)"
-            tooltipDesc="Wychów i ujeżdżanie źrebaka trwa 36 miesięcy (3 lata) pod opieką hodowcy."
+            title="Odchów źrebaka (3 lata)"
+            tooltipDesc="Równoległy wychów i ujeżdżanie źrebaka trwa 36 miesięcy (3 lata) pod opieką hodowcy."
             requiredProfessionLabel="Hodowca"
             badgeText="36 Msc"
             badgeVariant="emerald"
-            statusLine={`Wiek: ${state.foalAgeMonths || 0}/36 msc (${((state.foalAgeMonths || 0) / 12).toFixed(1)} r.)`}
-            isCurrent={curStage === 'calf_growth_2y'}
+            statusLine={`${growingFoals.length} szt. · śr. ${avgFoalAgeMonths}/36 msc`}
+            isCurrent={false}
             assignedWorker={getWorkerForStage('calf_growth_2y') || null}
             eligibleWorkers={crew.filter((w) => w.profession === 'breeder')}
             selectPlaceholder="⚠️ [Wybierz hodowcę]"
@@ -169,6 +205,71 @@ export const HorsePipeline: React.FC<HorsePipelineProps> = ({
             onAssign={(id) => handleAssign('calf_growth_2y', id)}
             onHireAndAssign={() => handleHireAndAssign('calf_growth_2y', 'breeder')}
           />
+        </div>
+
+        {/* Połączenia bez krzyżowania: Wyźrebienie ↘ Odpoczynek (dół) oraz Odpoczynek → Inseminacja (góra) */}
+        <div className="hidden md:block relative h-10 w-full -my-1 pointer-events-none select-none">
+          <svg
+            viewBox="0 0 1000 44"
+            preserveAspectRatio="none"
+            className="w-full h-full overflow-visible"
+          >
+            <defs>
+              <marker
+                id="horse-loop-arrow"
+                viewBox="0 0 10 10"
+                refX="5"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
+              </marker>
+            </defs>
+            {/* Strzałka skośna z prawego dolnego narożnika 3. Wyźrebienia -> lewy górny narożnik 5. Odpoczynku */}
+            <path
+              d="M 740 0 L 768 42"
+              fill="none"
+              stroke={birthWorker ? '#10b981' : '#f43f5e'}
+              strokeWidth="2.5"
+              vectorEffect="non-scaling-stroke"
+              markerEnd="url(#horse-loop-arrow)"
+            />
+            {/* Strzałka zwrotna bez krzyżowania: lewa strona 5. Odpoczynek (Rząd 2) -> lewo -> góra do 1. Zapłodnienie */}
+            <path
+              d="M 768 92 L 115 92 L 115 6"
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="2.5"
+              vectorEffect="non-scaling-stroke"
+              strokeLinejoin="round"
+              markerEnd="url(#horse-loop-arrow)"
+            />
+          </svg>
+        </div>
+
+        {/* Rząd 2: 5. Odpoczynek (3 msc) dokładnie pod 4. Odchowem */}
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)_28px_minmax(0,1fr)_28px_minmax(0,1fr)] items-stretch gap-1.5">
+          <div className="md:col-start-7">
+            <LivestockStageCard
+              stepNum={5}
+              icon="⏸️"
+              title="Odpoczynek (3 msc)"
+              tooltipDesc="Regeneracja klaczy po wyźrebieniu (3 msc) lub przerwa po nieudanym zapłodnieniu. Po zakończeniu klacz wraca strzałką do Zapłodnienia."
+              requiredProfessionLabel="Hodowca"
+              badgeText="1–3 Msc"
+              badgeVariant="amber"
+              statusLine={`${restMares.length} klaczy`}
+              isCurrent={false}
+              assignedWorker={getWorkerForStage('rest') || getWorkerForStage('gestation_9m') || null}
+              eligibleWorkers={crew.filter((w) => w.profession === 'breeder')}
+              selectPlaceholder="⚠️ [Wybierz hodowcę]"
+              hireButtonLabel="➕ Zatrudnij hodowcę"
+              onAssign={(id) => handleAssign('rest', id)}
+              onHireAndAssign={() => handleHireAndAssign('rest', 'breeder')}
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -1,12 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import type { BuildingState, PlacedBuilding } from '../types';
 import type { FarmCapitalismState } from './farmGridTypes';
-import { createDefaultFarmCapitalismState, getManureBinCapacityKg } from './farmGridTypes';
-import { getContractMeta } from './industryContracts';
+import { createDefaultFarmCapitalismState } from './farmGridTypes';
 import { BusinessEnergySection } from './BusinessEnergySection';
 import { FarmCycleSnake } from './FarmCycleSnake';
 import { FarmCrewTab } from './FarmCrewTab';
-import { FarmStorageBins } from './FarmStorageBins';
 import type { UseGameClockReturn } from '../clock/useGameClock';
 import { resolveUniqueFarmName, type WorldSupplierBuilding } from './industrySupplyConfig';
 
@@ -39,7 +37,7 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
   clock,
   onUpdateState,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'snake' | 'crew' | 'grain' | 'energy'>('snake');
+  const [activeSubTab, setActiveSubTab] = useState<'snake' | 'crew' | 'energy'>('snake');
   const hasEnergy = (buildingState.ownedHorses?.length ?? 0) >= 1;
 
   const rawCap = buildingState.farmCapitalism;
@@ -71,63 +69,10 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
     });
   };
 
-  // Miesięczne dostawy zakontraktowanego obornika z wybranej fermy zwierzęcej
-  const lastManureMonthRef = useRef<string>('');
-  useEffect(() => {
-    if (!clock || !farmCap.manureOrder) return;
-    const mKey = `${clock.date.year}-${clock.date.month}`;
-    if (!lastManureMonthRef.current) {
-      lastManureMonthRef.current = mKey;
-      return;
-    }
-    if (lastManureMonthRef.current === mKey) return;
-    lastManureMonthRef.current = mKey;
-
-    const order = farmCap.manureOrder;
-    const supplierState = buildingsState[order.supplierId]?.livestockState;
-    if (!supplierState) return;
-
-    const capKg = getManureBinCapacityKg(farmCap.manureLevel ?? 1);
-    const spaceLeft = Math.max(0, capKg - (farmCap.manureStockKg || 0));
-    const avail = supplierState.storage?.manureKg ?? 0;
-    const delivered = Math.min(order.monthlyQuantityKg, avail, spaceLeft);
-    const meta = getContractMeta(order.contractType);
-    const pricePer100 = farmCap.manurePricePer100Kg ?? 12;
-    const cost = delivered > 0 ? Number(((delivered / 100) * pricePer100 * (1 - meta.discountPercent / 100)).toFixed(2)) : 0;
-
-    if (delivered > 0) {
-      if (cost > 0) onSpendGold?.(cost);
-      onUpdateAnyBuildingState?.(order.supplierId, {
-        livestockState: {
-          ...supplierState,
-          storage: {
-            ...supplierState.storage,
-            manureKg: Math.max(0, avail - delivered),
-          },
-          lastCycleRevenue: Number(((supplierState.lastCycleRevenue || 0) + cost).toFixed(2)),
-        },
-      });
-    }
-
-    const nextOrder =
-      meta.durationMonths > 0
-        ? order.monthsRemaining - 1 > 0
-          ? { ...order, monthsRemaining: order.monthsRemaining - 1 }
-          : undefined
-        : order;
-
-    if (delivered > 0 || nextOrder !== order) {
-      handleUpdateFarmCap({
-        manureStockKg: (farmCap.manureStockKg || 0) + delivered,
-        manureOrder: nextOrder,
-        lastCycleCost: Number(((farmCap.lastCycleCost || 0) + cost).toFixed(2)),
-      });
-    }
-  }, [clock?.date.year, clock?.date.month]);
-
   if (businessTab === 'energy') {
     return (
       <BusinessEnergySection
+        buildingId={building?.id}
         businessTitle="Farma Zbożowa"
         energySource="konie"
         energyScale={buildingState.businessEnergyScale || 'standard'}
@@ -172,18 +117,6 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveSubTab('grain')}
-          className={`flex-1 py-1 px-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-            activeSubTab === 'grain'
-              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-sm'
-              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
-          }`}
-        >
-          <span className="text-sm">🌾</span>
-          <span>Spichlerz i Magazyn (Przegródki)</span>
-        </button>
-
-        <button
           onClick={() => setActiveSubTab('energy')}
           className={`flex-1 py-1 px-2.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
             activeSubTab === 'energy'
@@ -209,7 +142,8 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
         <FarmCycleSnake
           state={farmCap}
           attachedFieldsCount={attachedFieldsCount}
-          ownedHorsesCount={buildingState.ownedHorses?.length ?? 0}
+          ownedHorsesCount={(buildingState.ownedHorses || []).filter((h) => !h.isDeceased).length}
+          ownedHorses={buildingState.ownedHorses}
           clock={clock}
           onUpdate={handleUpdateFarmCap}
         />
@@ -223,21 +157,7 @@ export const FarmSection: React.FC<FarmSectionProps> = ({
         />
       )}
 
-      {/* 3. WIDOK: SPICHLERZ, GRAFICZNE PRZEGRÓDKI I ZAPASY (1880 r.) */}
-      {activeSubTab === 'grain' && (
-        <FarmStorageBins
-          currentBuildingId={building?.id}
-          state={farmCap}
-          attachedFieldsCount={attachedFieldsCount}
-          allWorldBuildings={allWorldBuildings}
-          buildingsState={buildingsState}
-          onSpendGold={onSpendGold}
-          onUpdateAnyBuildingState={onUpdateAnyBuildingState}
-          onUpdateState={handleUpdateFarmCap}
-        />
-      )}
-
-      {/* 4. WIDOK: ZAKUP ENERGII */}
+      {/* 3. WIDOK: ZAKUP ENERGII */}
       {activeSubTab === 'energy' && (
         <BusinessEnergySection
           businessTitle={building?.name || 'Farma Zbożowa'}

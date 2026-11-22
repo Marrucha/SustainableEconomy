@@ -32,10 +32,18 @@
 Każda karta budynku otwiera się w spójnym ciemnym kontenerze (`bg-stone-900/95`, obramowanie `border-amber-500/50`, `rounded-3xl`) o **stałym zakotwiczeniu na ekranie** (`items-start pt-[3vh]` + `h-[92vh]` dla szerokich kart), dzięki czemu karta nie skacze przy przełączaniu zakładek.
 
 ### Nagłówek karty
-- **Lewa strona:** plakietka epoki i daty (`Epoka 1 • {formatGameDate(clock.date)}`) + nazwa budynku (`h2` w `font-serif text-amber-100`).
+- **Lewa strona:** plakietka epoki i daty (`Epoka 1 • {formatGameDate(clock.date)}`), nazwa budynku (`h2` w `font-serif text-amber-100`) oraz **ikona statusu checklisty produkcji obok nazwy**:
+  - **Zielony ptaszek `✓`** — gdy wszystkie 4 warunki produkcji są spełnione,
+  - **Czerwony krzyżyk `✕`** (klikalny przycisk) — gdy którykolwiek warunek jest niespełniony; kliknięcie otwiera modal (`ProductionChecklistModal`) pokazujący dokładnie brakujące warunki i przycisk przejścia do `📋 Podsumowanie`.
 - **Prawa strona:** szybkie sterowanie zegarem (`⏸️/▶️`, `1x`, `2x`, `5x`), przycisk zmiany nazwy / wyburzenia oraz przycisk zamknięcia (`✕`).
 
 ### Główne zakładki budynku (`businessTab`)
+0. **`📋 Podsumowanie`** (`BusinessSummaryTab.tsx`, `productionChecklist.ts`) — **zawsze pierwsza zakładka przed `🏭 Produkcja`** (wdrożona dla Młyna, Piekarni, Farmy Zbożowej, Farmy Hodowlanej, Kopalni i zakładów przemysłowych):
+   - Checklista 4 warunków uruchomienia produkcji (jeśli choć jeden nie jest spełniony, **produkcja zostaje zatrzymana** w ticku symulacji, a na lejku wyświetla się status wstrzymania):
+     1. `⚡ Energia` — aktywne źródło energii/paliwa/koni oraz `max produkcji ≤ max energii`,
+     2. `👷 Załoga` — pełna obsada lejka produkcyjnego i wymaganego zarządcy/agronoma,
+     3. `📦 Surowce` — dostępne surowce wsadowe (ziarno, mąka, pasza/ziarno siewne),
+     4. `🏛️ Magazyn wyrobów` — magazyn produktów gotowych nie jest przepełniony (`stock < capacity`).
 1. **`🏭 Produkcja`** (uniwersalna nazwa w każdym budynku) — na jednym poziomie podzakładek (jedna linia):
    - *Cykl* (`Cykl Przemiału` / `Wąż Cyklu Produkcji` / `Cykl Rozrodu`),
    - *Stado / Pola* (opcjonalnie, jeśli budynek posiada),
@@ -83,11 +91,14 @@ Wzorzec: `FarmCycleSnake.tsx` + `FarmStageCard.tsx` oraz `HorsePipeline.tsx` / `
     3. Przycisk **`ℹ`** (`w-4 h-4 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white text-[10px]`) umieszczony **bezpośrednio obok tytułu** (w lewej grupie, nie przy prawej krawędzi).
   - **Prawa grupa (`flex items-center gap-1 leading-tight shrink-0`):**
     - Pulsująca plakietka `⚡` gdy etap jest aktywny (`isCurrent`), ewentualny checkbox włączenia etapu opcjonalnego (`w-3.5 h-3.5 accent-emerald-500`),
-    - **Ikona obsady jak na Farmie (zawsze w prawym górnym rogu zamiast przycisku `👥 Obsada` na dole):** brak długich imion, list `<select>` ani emoji `👤` na kafelku! Gdy etap opcjonalny jest włączony (lub dla każdego etapu wymaganego), wyświetlaj okrągły przycisk **`w-6 h-6 rounded-full`** z wektorową sylwetką SVG (`<svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">`):
-      - brak obsady (`0`): `bg-rose-950/90 hover:bg-rose-900 border border-rose-400 text-rose-300` (lub `bg-amber-950/90 border-amber-400 text-amber-300` dla etapu opcjonalnego),
-      - kolor standardowej załogi (`>= 1`): `bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-400 text-emerald-400`,
-      - kolor nadzoru specjalisty (np. Agronom / Mistrz Młynarski): `bg-sky-950/90 hover:bg-sky-900 border border-sky-400 text-sky-300`,
-      - w prawym dolnym rogu przycisku (`-bottom-1 -right-1`) okrągła czarna plakietka `w-3.5 h-3.5 rounded-full bg-stone-950 border border-white/80 text-white text-[8px] font-mono font-bold` z liczbą przypisanych pracowników (`0`, `1`, `2`, ...).
+    - **BEZWZGLĘDNA ZASADA IKONY OBSADY (ZERO PRZYCISKU `👥 Obsada` NA DOLE KAFELKA):**
+      - **NIGDY nie umieszczaj przycisku `👥 Obsada` na dole kafelka** (ani dla braku pracownika, ani dla obsadzonego etapu).
+      - **ZAWSZE** (również gdy liczba przypisanych wynosi `0`) w prawym górnym rogu kafelka wyświetlaj okrągły przycisk **`w-6 h-6 rounded-full`** z wektorową sylwetką człowieka SVG (`<svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">`), bez długich imion, list `<select>` ani emoji `👤`:
+        - brak obsady (`0`): `bg-rose-950/90 hover:bg-rose-900 border border-rose-400 text-rose-300` (lub `bg-amber-950/90 border-amber-400 text-amber-300` dla etapu opcjonalnego),
+        - kolor standardowej załogi (`>= 1`): `bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-400 text-emerald-400`,
+        - kolor nadzoru specjalisty (np. Agronom / Mistrz Młynarski): `bg-sky-950/90 hover:bg-sky-900 border border-sky-400 text-sky-300`,
+        - w prawym dolnym rogu przycisku (`-bottom-1 -right-1`) okrągła czarna plakietka `w-3.5 h-3.5 rounded-full bg-stone-950 border border-white/80 text-white text-[8px] font-mono font-bold` z liczbą przypisanych pracowników (`0`, `1`, `2`, ...).
+      - Po kliknięciu tej okrągłej ikonki otwiera się okno modalne obsady w jednolitym stylu Piekarni (`PRZYPISANI DO TEGO KROKU (N)`, zielone wiersze z przyciskiem `Odepnij` oraz pomarańczowy przycisk `➕ Zatrudnij i przypisz (<Zawód> • £X/d)`).
 - **Środkowy obszar kafelka (parametry etapu):**
   - Zamiast białych ramek używaj zwartych wierszy `my-0.5 flex items-center justify-between text-[11px] leading-tight` z etykietą `text-stone-700` po lewej i kamienną plakietką/przełącznikiem `px-2 py-0.5 rounded-md bg-stone-300 border border-stone-400 text-stone-900 font-bold text-[10px] font-mono` po prawej.
 - **Dolny obszar kafelka i okno modalne obsady:**
@@ -118,11 +129,12 @@ Wzorzec: `FarmCycleSnake.tsx` + `FarmStageCard.tsx` oraz `HorsePipeline.tsx` / `
 
 ## 5. Magazyny, Zamawianie Surowców i Sprzedaż (`*StorageBins.tsx`, `LivestockSupplyOrderCard.tsx`)
 
-### Wygląd zbiorników / magazynów i układ `🛒 Zakup/Sprzedaż` (Template)
+### Wygląd zbiorników / magazynów i układ `🛒 Zakup/Sprzedaż` (Obowiązkowy Template dla każdego budynku)
+- **Zasada ogólna:** Każda zakładka `🛒 Zakup/Sprzedaż` w każdym budynku (Młyn, Piekarnia, Farma Zbożowa, Ferma Hodowlana, Kopalnia, Stoisko Targowe itd.) **musi** mieć dokładnie tę samą organizację:
 - **Podział na 2 podzakładki:** `🛒 Zakupy (Surowce)` oraz `🤝 Sprzedaż (Wyroby)`.
 - **Układ 2 kolumn (`grid-cols-1 lg:grid-cols-2`) w obu podzakładkach:**
-  - **Lewa kolumna — Kontrolki:** na górze **wymogi i stany magazynów** (z ramką zapotrzebowania miesięcznego `X kg/msc` w prawym górnym rogu), a na dole **formatka zamówienia**.
-  - **Prawa kolumna — Zawarte kontrakty:** lista aktywnych umów zakupu lub sprzedaży.
+  - **Lewa kolumna — Produkty, magazyny i formatki:** na górze **wymogi i stany magazynów** (z ramką zapotrzebowania miesięcznego `X kg/msc` w prawym górnym rogu), a poniżej **formatki zamówień** / karty produktów.
+  - **Prawa kolumna — Zawarte kontrakty:** lista aktywnych umów zakupu (`Zawarte Kontrakty Zakupu`) lub przychodzących umów sprzedaży (`IncomingSalesContractsCard` / `Zawarte Kontrakty Sprzedaży`).
 - **Kolorystyka i typografia surowców oraz kontraktów:**
   - **Nazwy surowców** na kartach magazynów i na liście kontraktów: **białą czcionką** (`text-white font-bold`).
   - **Dostawca** na liście kontraktów: **niebieską czcionką** (`text-sky-300 font-bold`) dla naszego budynku lub **granatową** (`text-blue-200 bg-blue-950/80 px-1.5 py-0.5 rounded font-bold`) dla obcego dostawcy / statku.
@@ -135,7 +147,7 @@ Wzorzec: `FarmCycleSnake.tsx` + `FarmStageCard.tsx` oraz `HorsePipeline.tsx` / `
 
 ### Zamawianie surowców od innych budynków (`LivestockSupplyOrderCard.tsx`, `FarmManureBinCard.tsx`, `MillStorageBins.tsx`)
 1. **Lista producentów:** `<select>` z budynkami danego typu na mapie świata w formacie `<Gracz> • <Miasto> • <Nazwa budynku> • <Konkretny produkt> (X kg)`. **Na pierwszym miejscu każdej listy dostawców zawsze musi pojawiać się `🚢 Statek Handlowy`** (import portowy dostępny od ręki w cenie `110%` i obniżonej jakości `0%` lub `50%` średniej lokalnych producentów), a dopiero po nim lokalni producenci z mapy. Nazwy farm używają nazwiska pierwszego rolnika (`Farma zbożowa <Nazwisko>`), z automatycznym numerowaniem duplikatów (`... 2`, `... 3`).
-2. **Wybór ilości miesięcznej:** przyciski szybkiej zmiany ilości (**`-100`**, **`+100`**, **`++1t`**) wokół czytelnego licznika `X kg/msc` (zamiast sztywnej listy kilku wartości).
+2. **Wybór ilości miesięcznej:** przyciski szybkiej zmiany ilości (**`--1t`**, **`-100`**, **`+100`**, **`++1t`**) wokół czytelnego licznika `X kg/msc` (zamiast sztywnej listy kilku wartości).
 3. **Wybór kontraktu terminowego:** `<select>` zasilany wyłącznie przez `CONTRACT_OPTIONS` (`PAYG`, `3-letni -10%`, `5-letni -15%`, `10-letni -20%`).
 4. **Lista aktywnych kontraktów na samym dole panelu:**
    - Wszystkie aktywne kontrakty wyświetlają się **zawsze na samym dole** pod przyciskiem zapisu zamówienia.
@@ -145,3 +157,23 @@ Wzorzec: `FarmCycleSnake.tsx` + `FarmStageCard.tsx` oraz `HorsePipeline.tsx` / `
 
 ### Sprzedaż produktów z magazynu
 - Przyciski sprzedaży partii (np. `100 kg` obornika, `100 l` mleka, `50 kg` wełny) lub pełnej partii ziarna wymagają zatrudnionego **Kupca** (lub Hodowcy), a w modelu zamkniętym rynku brak NPC kupujących automatycznie — przychód wynika wyłącznie z realnych kontraktów i transakcji z innymi budynkami/miastem.
+
+---
+
+## 6. Stoisko Targowe / Sklep Detaliczny (`MarketplaceSection.tsx`, `MarketStallModal.tsx`, `MarketStallTradeTab.tsx`, `MarketStallStaffModal.tsx`)
+
+### Licytacja i dzierżawa slotów na targu
+- **Wolne sloty** można licytować zawsze (brak globalnej blokady po jednej licytacji w roku).
+- Dopiero **zajęty slot** (wygrany przez gracza lub NPC) czeka na wygaśnięcie dzierżawy.
+- Dzierżawa wylicytowanego stoiska trwa **pełne 12 miesięcy (360 dni)** od dnia wylicytowania (`rentedUntilTotalDays`), a nie do końca roku kalendarzowego.
+
+### Karta stoiska (okno `max-w-6xl h-[92vh]` na wzór Piekarni)
+- Kliknięcie wylicytowanego stoiska gracza otwiera osobną kartę modalną z 4 zakładkami: `🏭 Proces Sprzedaży`, `📦 Produkty`, `🛒 Zakup/Sprzedaż`, `📊 Finanse — Zestawienie`.
+- **Zakładka `🏭 Proces Sprzedaży` — 3 kroki w stylu `BakeryStageCard`:**
+  1. **`1. Zaopatrzenie`** → **`2. Handlarz`** → **`3. Dostawa`**, połączone strzałkami `FarmPipelineArrow`.
+  2. Każdy kafelek posiada ikonę **`ℹ`** oraz okrągły przycisk z **ikonką ludzika SVG** i licznikiem obsady (czerwony dla `0`, zielony dla `> 0`), otwierający modal zatrudniania identyczny z Piekarnią (`PRZYPISANI DO TEGO KROKU`, `Odepnij`, `➕ Zatrudnij i przypisz`).
+  3. **Krok 1 (`Zaopatrzenie`):** jedno okienko `<select>` łączące **produkt i dostawcę** (jak przy zamawianiu w Piekarni). Na liście **najpierw** wyświetlają się lokalni producenci oferujący **wyłącznie produkty faktycznie będące w produkcji** (konkretne wyroby, np. `Chleb Pszenny`, `Chleb Żytni na Zakwasie`, `Rogaliki`, `Bułka Tarta` — nigdy ogólne „Pieczywo i Wypieki”), a następnie pozycje ze **Statku Handlowego**.
+  4. **Krok 2 (`Handlarz`):** pasek wyboru produktu z zawartych kontraktów, do którego przypisywany jest sprzedawca.
+- **Zakładka `🛒 Zakup/Sprzedaż` (`MarketStallTradeTab.tsx`):**
+  - Zgodna z sekcją 5 (podzakładki `🛒 Zakupy` / `🤝 Sprzedaż`, układ 2-kolumnowy `grid-cols-1 lg:grid-cols-2`, przyciski `--1t`, `-100`, `+100`, `++1t`, kontrakty `CONTRACT_OPTIONS`, opcja zakupu interwencyjnego z `ℹ`).
+  - **Zasada `1 sprzedawca = 1 dobro`:** jeden sprzedawca nie może być przypisany jednocześnie do dwóch dóbr na ladzie (listy wyboru pokazują wyłącznie wolnych sprzedawców).

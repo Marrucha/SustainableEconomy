@@ -14,9 +14,11 @@ import {
   type ContractType,
 } from './industryContracts';
 import { FarmOfferBars } from './FarmOfferBars';
+import { computeFarmYieldSummary } from './farmYieldMath';
 
 interface FarmManureBinCardProps {
   state: FarmCapitalismState;
+  attachedFieldsCount?: number;
   manureStock: number;
   livestockFarms: WorldSupplierBuilding[];
   buildingsState: Record<string, BuildingState>;
@@ -34,13 +36,14 @@ interface FarmManureBinCardProps {
  */
 export const FarmManureBinCard: React.FC<FarmManureBinCardProps> = ({
   state,
+  attachedFieldsCount = 0,
   manureStock,
   livestockFarms,
   buildingsState,
   activeLivestockId,
-  selectedFarmManureKg,
+  selectedFarmManureKg: _selectedFarmManureKg,
   onSelectLivestock,
-  onBuyManure,
+  onBuyManure: _onBuyManure,
   onSpendGold,
   onUpdateState,
   showFeedback,
@@ -51,7 +54,11 @@ export const FarmManureBinCard: React.FC<FarmManureBinCardProps> = ({
   const manureQuality = Math.min(100, Math.max(0, state.manureQualityPercent ?? 100));
   const manureBrand = state.manureBrandLevel ?? 0;
   const manurePrice = state.manurePricePer100Kg ?? 12;
+  const yieldSummary = computeFarmYieldSummary(state, attachedFieldsCount);
+  const yearlyManureNeedKg = yieldSummary.manureRequiredKg;
+  const monthlyManureNeedKg = yearlyManureNeedKg > 0 ? Math.ceil(yearlyManureNeedKg / 12) : 0;
 
+  const [isOrderOpen, setIsOrderOpen] = useState<boolean>(false);
   const [orderQtyKg, setOrderQtyKg] = useState<number>(state.manureOrder?.monthlyQuantityKg || 200);
   const [contractType, setContractType] = useState<ContractType>(
     state.manureOrder?.contractType || 'pay_as_you_go'
@@ -83,8 +90,13 @@ export const FarmManureBinCard: React.FC<FarmManureBinCardProps> = ({
 
   return (
     <div className="relative bg-gradient-to-b from-stone-900 via-stone-950 to-amber-950/20 border border-amber-800/50 rounded-2xl p-4 flex flex-col justify-between shadow-md">
-      <div className="absolute top-2.5 right-2.5 bg-amber-900/60 text-amber-200 border border-amber-700/50 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
-        Ferma Bydła
+      <div
+        title={`Roczne zapotrzebowanie na nawożenie: ${yearlyManureNeedKg.toLocaleString('pl-PL')} kg/rok`}
+        className="absolute top-2.5 right-2.5 bg-stone-950 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg"
+      >
+        {monthlyManureNeedKg > 0
+          ? `${monthlyManureNeedKg.toLocaleString('pl-PL')} kg/msc (${yearlyManureNeedKg.toLocaleString('pl-PL')} kg/rok)`
+          : '0 kg/msc (Nawożenie 0%)'}
       </div>
 
       <div>
@@ -156,6 +168,16 @@ export const FarmManureBinCard: React.FC<FarmManureBinCardProps> = ({
       <div className="pt-2 border-t border-stone-800/60 space-y-2">
         {livestockFarms.length > 0 ? (
           <>
+            <button
+              type="button"
+              onClick={() => setIsOrderOpen((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-amber-950/55 hover:bg-amber-900/65 border border-amber-500/50 text-amber-200 font-bold text-[11px] uppercase tracking-wider cursor-pointer transition-colors"
+            >
+              <span>🛒 Zamów obornik / Nowy kontrakt</span>
+              <span className="text-xs text-stone-300">{isOrderOpen ? '▲' : '▼'}</span>
+            </button>
+            {isOrderOpen && (
+            <>
             <select
               value={activeLivestockId}
               onChange={(e) => onSelectLivestock(e.target.value)}
@@ -170,23 +192,45 @@ export const FarmManureBinCard: React.FC<FarmManureBinCardProps> = ({
                 );
               })}
             </select>
-            <div className="grid grid-cols-2 gap-1.5">
-              <select
-                value={orderQtyKg}
-                onChange={(e) => setOrderQtyKg(Number(e.target.value))}
-                className="bg-stone-950 border border-stone-700 rounded-lg px-2 py-1 text-[11px] text-stone-200 cursor-pointer"
-              >
-                {[100, 200, 300, 500].map((v) => (
-                  <option key={v} value={v}>
-                    {v} kg / msc
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setOrderQtyKg((v) => Math.max(100, v - 1000))}
+                  className="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-500/40 text-[11px] font-mono font-bold text-rose-200 cursor-pointer"
+                >
+                  --1t
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderQtyKg((v) => Math.max(100, v - 100))}
+                  className="px-2 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-[11px] font-mono font-bold text-stone-200 cursor-pointer"
+                >
+                  -100
+                </button>
+                <span className="flex-1 text-center font-mono text-[11px] font-bold text-yellow-300">
+                  {orderQtyKg.toLocaleString('pl-PL')} kg/msc
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setOrderQtyKg((v) => v + 100)}
+                  className="px-2 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-[11px] font-mono font-bold text-stone-200 cursor-pointer"
+                >
+                  +100
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderQtyKg((v) => v + 1000)}
+                  className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/40 text-[11px] font-mono font-bold text-amber-300 cursor-pointer"
+                >
+                  ++1t
+                </button>
+              </div>
 
               <select
                 value={contractType}
                 onChange={(e) => setContractType(e.target.value as ContractType)}
-                className="bg-stone-950 border border-amber-500/50 rounded-lg px-2 py-1 text-[11px] text-amber-200 font-semibold cursor-pointer"
+                className="w-full bg-stone-950 border border-amber-500/50 rounded-lg px-2 py-1 text-[11px] text-amber-200 font-semibold cursor-pointer"
               >
                 {CONTRACT_OPTIONS.map((opt) => (
                   <option key={opt.id} value={opt.id}>
@@ -195,34 +239,6 @@ export const FarmManureBinCard: React.FC<FarmManureBinCardProps> = ({
                 ))}
               </select>
             </div>
-
-            {activeOrder && activeMeta && (
-              <div className="bg-emerald-950/50 border border-emerald-500/40 rounded-lg p-2 flex items-center justify-between gap-2 text-[10px] font-mono">
-                <span className="text-emerald-200">
-                  ✓ {activeOrder.monthlyQuantityKg} kg/msc • {activeMeta.label}
-                  {activeMeta.durationMonths > 0
-                    ? ` (${activeOrder.monthsRemaining}/${activeMeta.durationMonths} msc, -${activeMeta.discountPercent}%)`
-                    : ' (od kolejnego msc)'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isLockedTerm && breakPenalty > 0 && onSpendGold) {
-                      onSpendGold(breakPenalty);
-                    }
-                    onUpdateState({ manureOrder: undefined });
-                    showFeedback(
-                      isLockedTerm
-                        ? `Zerwano kontrakt na obornik (kara: £${breakPenalty}).`
-                        : 'Anulowano zamówienie na obornik.'
-                    );
-                  }}
-                  className="text-rose-300 hover:text-rose-200 underline cursor-pointer shrink-0"
-                >
-                  {isLockedTerm ? `Zerwij (-£${breakPenalty})` : 'Anuluj'}
-                </button>
-              </div>
-            )}
 
             <button
               type="button"
@@ -259,16 +275,7 @@ export const FarmManureBinCard: React.FC<FarmManureBinCardProps> = ({
                 ? `📜 Zakontraktuj (${meta.label} • £${monthlyContractCost}/msc)`
                 : `📦 Ustaw PAYG (£${monthlyContractCost}/msc • od kolejnego msc)`}
             </button>
-
-            {selectedFarmManureKg > 0 && (
-              <button
-                onClick={onBuyManure}
-                className="w-full py-1.5 px-3 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 bg-amber-600/20 hover:bg-amber-600/35 text-amber-200 border border-amber-500/60 cursor-pointer"
-              >
-                <span>
-                  🛒 Zakup jednorazowy teraz ({Math.min(100, selectedFarmManureKg)} kg za £{Math.max(1, Math.round((Math.min(100, selectedFarmManureKg) / 100) * 12))})
-                </span>
-              </button>
+            </>
             )}
           </>
         ) : (

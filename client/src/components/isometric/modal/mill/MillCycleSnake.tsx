@@ -4,6 +4,7 @@ import { generateRandomEnglishName } from '../englishNames';
 import { FarmPipelineArrow } from '../FarmPipelineArrow';
 import { computeMillYieldSummary } from './millMath';
 import { MillStageCard } from './MillStageCard';
+import { computeProductionChecklist } from '../productionChecklist';
 import {
   canMillWorkerHandleStage,
   checkIsMillProductionReady,
@@ -31,6 +32,25 @@ export const MillCycleSnake: React.FC<MillCycleSnakeProps> = ({
   onUpdate,
 }) => {
   const readyCheck = checkIsMillProductionReady(state, buildingState, sizeTiles);
+  const checklist = computeProductionChecklist(
+    {
+      id: 'mill',
+      typeId: 'mill',
+      name: 'Młyn Parowy',
+      x: 0,
+      y: 0,
+      sizeX: 1,
+      sizeY: sizeTiles,
+      rotation: 0,
+      cost: 0,
+    },
+    { ...buildingState, millState: state }
+  );
+  const isActuallyRunning = readyCheck.isReady && checklist.allPassed && state.isMillingActive;
+  const pausedReason =
+    readyCheck.missingReasons[0] ||
+    checklist.items.find((i) => !i.passed)?.detail ||
+    '';
   const summary = computeMillYieldSummary(state, buildingState);
   const productCfg = MILL_PRODUCTS_CONFIG[state.productTarget] || MILL_PRODUCTS_CONFIG.maka_pszenna;
   const managerMember = state.crew.find((c) => c.profession === 'manager');
@@ -169,13 +189,14 @@ export const MillCycleSnake: React.FC<MillCycleSnakeProps> = ({
               )
             )}
             <span
+              title={isActuallyRunning ? 'Przemiał w toku' : pausedReason}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
-                readyCheck.isReady
+                isActuallyRunning
                   ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
                   : 'bg-rose-500/20 border-rose-500/50 text-rose-300'
               }`}
             >
-              {readyCheck.isReady ? '⚡ Przemiał w toku' : `⚠️ ${readyCheck.missingReasons[0]}`}
+              {isActuallyRunning ? '⚡ Przemiał w toku' : '⏸️ Przemiał wstrzymany'}
             </span>
             <span className="font-mono text-xs font-bold text-amber-300 w-10 text-right">
               {state.cycleProgressPercent}%
@@ -186,7 +207,7 @@ export const MillCycleSnake: React.FC<MillCycleSnakeProps> = ({
         <div className="w-full h-2.5 bg-stone-950 rounded-full overflow-hidden border border-stone-800">
           <div
             className={`h-full transition-all duration-300 ${
-              readyCheck.isReady
+              isActuallyRunning
                 ? 'bg-gradient-to-r from-amber-500 via-orange-400 to-emerald-400'
                 : 'bg-stone-700'
             }`}

@@ -29,7 +29,7 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
   activeOrders,
   onSpendGold,
   onSaveOrder,
-  onCancelOrder,
+  onCancelOrder: _onCancelOrder,
 }) => {
   const ordersList: LivestockSupplyContract[] = Array.isArray(activeOrders)
     ? activeOrders
@@ -37,6 +37,7 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
     ? [activeOrder]
     : [];
 
+  const [isOrderOpen, setIsOrderOpen] = useState<boolean>(false);
   const [selectedProducerId, setSelectedProducerId] = useState<string>(
     ordersList[0]?.supplierId || producers[0]?.id || ''
   );
@@ -99,6 +100,16 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
 
   return (
     <div className="space-y-2 pt-2 border-t border-stone-800/80 text-[11px]">
+      <button
+        type="button"
+        onClick={() => setIsOrderOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-amber-950/55 hover:bg-amber-900/65 border border-amber-500/50 text-amber-200 font-bold text-[11px] uppercase tracking-wider cursor-pointer transition-colors"
+      >
+        <span>🛒 Zamów dostawę / Nowy kontrakt</span>
+        <span className="text-xs text-stone-300">{isOrderOpen ? '▲' : '▼'}</span>
+      </button>
+      {isOrderOpen && (
+      <>
       <div>
         <label className="text-[10px] text-stone-400 font-mono block mb-1">
           Producent (dostawa 1× w miesiącu):
@@ -144,6 +155,14 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setQtyKg((q) => Math.max(100, q - 1000))}
+              className="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-600/40 text-rose-200 font-mono font-bold cursor-pointer"
+              title="Odejmij 1 tonę (1000 kg)"
+            >
+              --1t
+            </button>
             <button
               type="button"
               onClick={() => setQtyKg((q) => Math.max(100, q - 100))}
@@ -215,86 +234,7 @@ export const LivestockSupplyOrderCard: React.FC<LivestockSupplyOrderCardProps> =
           ? `📜 Podpisz ${meta.label} (-${meta.discountPercent}% • £${monthlyPrice}/msc)`
           : `📦 Ustaw PAYG (£${monthlyPrice}/msc • od kolejnego msc)`}
       </button>
-
-      {ordersList.length > 0 && (
-        <div className="space-y-1 pt-1.5 border-t border-stone-800/80">
-          <div className="text-[10px] font-mono text-stone-400">
-            Aktywne kontrakty ({ordersList.length}):
-          </div>
-          {ordersList.map((ord) => {
-            const ordMeta = getContractMeta(ord.contractType);
-            const supObj = producers.find((p) => p.id === ord.supplierId);
-            const ordBasePer100 =
-              kind === 'feed'
-                ? supObj?.typeId === 'mill'
-                  ? Number(((buildingsState[ord.supplierId]?.millState?.branPricePerKg ?? 0.45) * 100).toFixed(2))
-                  : 10
-                : 6;
-            const ordLocked = ordMeta.durationMonths > 0 && ord.monthsRemaining > 0;
-            const ordPenalty = computeSupplyContractPenalty(
-              ord.monthlyQuantityKg,
-              ordBasePer100,
-              ord.contractType,
-              ord.monthsRemaining
-            );
-            const isShip = ord.supplierId.startsWith('trade_ship');
-            const owner = buildingsState[ord.supplierId]?.ownerName || supObj?.playerName;
-            const isOurs = !isShip && (!owner || owner === 'Gracz');
-            const farmCropKey = buildingsState[ord.supplierId]?.farmCapitalism?.cropType || 'pszenica';
-            const productLabel =
-              kind === 'straw'
-                ? 'Słoma / Ściółka'
-                : isShip
-                ? 'Pasza (Import)'
-                : supObj?.typeId === 'mill'
-                ? 'Otręby Paszowe'
-                : CROPS_CONFIG[farmCropKey]?.name || 'Pszenica Złocista';
-            return (
-              <div
-                key={ord.supplierId}
-                className="bg-emerald-950/50 border border-emerald-500/40 rounded-lg p-1.5 flex items-center justify-between gap-2"
-              >
-                <span className="text-[10px] font-mono text-emerald-200 truncate">
-                  ✓ <span className="text-white font-bold">{productLabel}</span> •{' '}
-                  <span
-                    className={
-                      isOurs
-                        ? 'text-sky-300 font-bold'
-                        : 'text-blue-200 bg-blue-950/80 px-1 py-0.5 rounded font-bold'
-                    }
-                  >
-                    {isShip
-                      ? '🚢 Statek Handlowy'
-                      : supObj
-                      ? formatSupplierOrderLabel(supObj, buildingsState, producers)
-                      : 'Dostawca'}
-                  </span>{' '}
-                  •{' '}
-                  <span className="font-bold text-yellow-300">
-                    {ord.monthlyQuantityKg} kg/msc
-                  </span>{' '}
-                  • {ordMeta.label}
-                  {ordMeta.durationMonths > 0
-                    ? ` (${ord.monthsRemaining}/${ordMeta.durationMonths} msc, -${ordMeta.discountPercent}%)`
-                    : ''}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (ordLocked && ordPenalty > 0) {
-                      onSpendGold?.(ordPenalty);
-                    }
-                    onCancelOrder(ord.supplierId);
-                  }}
-                  title={ordLocked ? `Zerwij kontrakt z karą (-£${ordPenalty})` : 'Usuń kontrakt'}
-                  className="px-1.5 py-0.5 rounded bg-rose-950/80 hover:bg-rose-800 border border-rose-500/40 text-[10px] text-rose-200 font-bold cursor-pointer shrink-0"
-                >
-                  ✕{ordLocked && ordPenalty > 0 ? ` -£${ordPenalty}` : ''}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+      </>
       )}
     </div>
   );

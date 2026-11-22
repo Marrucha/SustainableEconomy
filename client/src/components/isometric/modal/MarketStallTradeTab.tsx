@@ -39,6 +39,7 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
   onUpdateStallSellers,
 }) => {
   const [subTab, setSubTab] = useState<'buy' | 'sell'>('buy');
+  const [isOrderOpen, setIsOrderOpen] = useState<boolean>(false);
   const [selectedProductId, setSelectedProductId] = useState<string>(
     ALL_MARKET_GOODS[0]?.id || 'chleb'
   );
@@ -215,10 +216,18 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
             </div>
 
             <div className="bg-stone-900/90 rounded-2xl p-3 border border-amber-500/30 space-y-2.5">
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
-                🛒 Nowy Kontrakt Zakupu
-              </h4>
-
+              <button
+                type="button"
+                onClick={() => setIsOrderOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-amber-950/55 hover:bg-amber-900/65 border border-amber-500/50 text-left text-[11px] font-bold uppercase tracking-wider text-amber-200 cursor-pointer transition-colors"
+              >
+                <span>🛒 Nowy Kontrakt Zakupu</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-stone-950 border border-stone-700 text-stone-300">
+                  {isOrderOpen ? '▲' : '▼'}
+                </span>
+              </button>
+              {isOrderOpen && (
+              <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-stone-400 block mb-1">Towar</label>
@@ -260,6 +269,13 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
               {/* Przyciski szybkiej zmiany ilości: -100, +100, ++1t */}
               <div className="flex items-center justify-between gap-2 bg-stone-950/80 border border-stone-800 rounded-xl p-2">
                 <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setMonthlyKg((v) => Math.max(100, v - 1000))}
+                    className="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-500/40 text-xs font-mono font-bold text-rose-200 cursor-pointer"
+                  >
+                    --1t
+                  </button>
                   <button
                     type="button"
                     onClick={() => setMonthlyKg((v) => Math.max(100, v - 100))}
@@ -327,6 +343,8 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
               >
                 + Dodaj kontrakt zakupu ({supplySlots.length}/4)
               </button>
+              </>
+              )}
             </div>
           </div>
 
@@ -437,7 +455,12 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <select
                     value={effectiveSellProductId}
-                    onChange={(e) => setSellProductId(e.target.value)}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      setSellProductId(nextId);
+                      const matched = ALL_MARKET_GOODS.find((g) => g.id === nextId);
+                      if (matched) setSellPrice(matched.defaultPrice);
+                    }}
                     className="bg-stone-950 border border-stone-700 rounded-lg px-2 py-1.5 text-[11px] text-white font-bold cursor-pointer"
                   >
                     {uniqueSecuredGoods.map((g) => (

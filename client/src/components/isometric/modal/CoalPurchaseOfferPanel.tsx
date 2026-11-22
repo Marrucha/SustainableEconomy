@@ -189,6 +189,9 @@ export const CoalPurchaseOfferPanel: React.FC<CoalPurchaseOfferPanelProps> = ({
         )
       : 0;
 
+  const storageCapTons = Math.max(10, Math.ceil(monthlyNeedTons * 4));
+  const storagePct = Math.min(100, Math.round((coalStockTons / storageCapTons) * 100));
+
   return (
     <div className="bg-stone-950/90 border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -202,9 +205,16 @@ export const CoalPurchaseOfferPanel: React.FC<CoalPurchaseOfferPanelProps> = ({
             Zapotrzebowanie: <strong className="text-yellow-300">{monthlyNeedTons.toFixed(2)} t/msc</strong>
           </span>
           <span className={coalStockTons > 0 ? 'text-emerald-300 font-bold' : 'text-rose-300 font-bold'}>
-            Zapas: {coalStockTons} t
+            {coalStockTons.toFixed(2)} / {storageCapTons} t ({storagePct}%)
           </span>
         </div>
+      </div>
+
+      <div className="w-full h-2 bg-stone-900 rounded-full overflow-hidden border border-stone-800">
+        <div
+          className={`h-full transition-all duration-300 ${isCharcoal ? 'bg-amber-600' : 'bg-stone-300'}`}
+          style={{ width: `${storagePct}%` }}
+        />
       </div>
 
       {coalStockTons <= 0 && (

@@ -37,7 +37,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
   clock,
   onUpdateState,
 }) => {
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'herd' | 'crew' | 'energy'>('pipeline');
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'herd' | 'crew' | 'energy'>('herd');
   const [speciesFeedback, setSpeciesFeedback] = useState<string | null>(null);
   const [pendingSpeciesChange, setPendingSpeciesChange] = useState<'cattle' | 'sheep' | 'horses' | 'poultry' | null>(null);
 
@@ -50,6 +50,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
   useLivestockTicks({
     clock,
     livestockState,
+    ownedHorsesCount: buildingState.ownedHorses?.length ?? 0,
     buildingsState,
     onSpendGold,
     onUpdateAnyBuildingState,
@@ -149,22 +150,45 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
       });
       setSpeciesFeedback('🐑 Zmieniono profil na Fermę Owiec! Cały dotychczasowy zapas produktów ze starego stada przepadł!');
     } else if (pendingSpeciesChange === 'horses') {
-      handleUpdateLivestock({
-        activeSpecies: 'horses',
-        storage: emptiedStorage,
-        herd: {
-          ...livestockState.herd,
-          milkingGroupCows: 0,
-          growingGroupCalves: 0,
-          sheepFlockCount: 0,
-          adultSheepCount: 0,
-          growingLambsCount: 0,
-          horsesFlockCount: livestockState.herd.adultDraftHorses ? (livestockState.herd.adultDraftHorses + (livestockState.herd.growingFoalsCount || 4)) : 14,
-          adultDraftHorses: livestockState.herd.adultDraftHorses || 10,
-          growingFoalsCount: livestockState.herd.growingFoalsCount || 4,
+      const energyHorses = (buildingState.ownedHorses || []).map((h) => ({
+        ...h,
+        group: 'breeding' as const,
+      }));
+      const existingHorses = livestockState.herd.horses || [];
+      const seenIds = new Set(existingHorses.map((h) => h.id));
+      const mergedHorses = [
+        ...existingHorses,
+        ...energyHorses.filter((h) => !seenIds.has(h.id)),
+      ];
+      const breedingCount = mergedHorses.filter((h) => h.group === 'breeding' && !h.isDeceased).length;
+      const growthCount = mergedHorses.filter((h) => h.group === 'growth' && !h.isDeceased).length;
+      const saleCount = mergedHorses.filter((h) => h.group === 'sale' && !h.isDeceased).length;
+      onUpdateState({
+        ownedHorses: [],
+        livestockState: {
+          ...livestockState,
+          activeSpecies: 'horses',
+          storage: emptiedStorage,
+          herd: {
+            ...livestockState.herd,
+            milkingGroupCows: 0,
+            growingGroupCalves: 0,
+            sheepFlockCount: 0,
+            adultSheepCount: 0,
+            growingLambsCount: 0,
+            horses: mergedHorses,
+            horsesFlockCount: mergedHorses.length > 0 ? breedingCount + growthCount + saleCount : (livestockState.herd.adultDraftHorses || 0),
+            adultDraftHorses: mergedHorses.length > 0 ? breedingCount : (livestockState.herd.adultDraftHorses || 0),
+            growingFoalsCount: mergedHorses.length > 0 ? growthCount : (livestockState.herd.growingFoalsCount || 0),
+            horsesForSale: mergedHorses.length > 0 ? saleCount : (livestockState.herd.horsesForSale || 0),
+          },
         },
       });
-      setSpeciesFeedback('🐎 Zmieniono profil na Hodowlę Koni! Cały dotychczasowy zapas produktów ze starego stada przepadł!');
+      setSpeciesFeedback(
+        energyHorses.length > 0
+          ? `🐎 Zmieniono profil na Hodowlę Koni! ${energyHorses.length} koni energetycznych dołączyło do stada rozrodczego.`
+          : '🐎 Zmieniono profil na Hodowlę Koni! Cały dotychczasowy zapas produktów ze starego stada przepadł!'
+      );
     } else if (pendingSpeciesChange === 'poultry') {
       handleUpdateLivestock({
         activeSpecies: 'poultry',
@@ -317,24 +341,6 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
       {/* 4 GŁÓWNE ZAKŁADKI FERMY ZWIERZĘCEJ */}
       <div className="flex bg-stone-950/80 p-1 rounded-2xl border border-stone-800 text-xs gap-1.5 shadow-inner">
         <button
-          onClick={() => setActiveTab('pipeline')}
-          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-            activeTab === 'pipeline'
-              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
-              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
-          }`}
-        >
-          <span className="text-base">🧬</span>
-          <span>
-            {currentSpecies === 'cattle'
-              ? 'Cykl Rozrodu (4 Etapy)'
-              : currentSpecies === 'sheep'
-              ? 'Cykl Rozrodu (4 Etapy)'
-              : 'Cykl Rozrodu (4 Etapy)'}
-          </span>
-        </button>
-
-        <button
           onClick={() => setActiveTab('herd')}
           className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTab === 'herd'
@@ -353,6 +359,20 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
         </button>
 
         <button
+          onClick={() => setActiveTab('pipeline')}
+          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeTab === 'pipeline'
+              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
+              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
+          }`}
+        >
+          <span className="text-base">🧬</span>
+          <span>
+            {currentSpecies === 'horses' ? 'Cykl Rozrodu (5 Etapów)' : 'Cykl Rozrodu (4 Etapy)'}
+          </span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('crew')}
           className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTab === 'crew'
@@ -364,17 +384,19 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
           <span>Kadra i Specjaliści</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('energy')}
-          className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-            activeTab === 'energy'
-              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
-              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
-          }`}
-        >
-          <span className="text-base">⚡</span>
-          <span>Zakup Energii</span>
-        </button>
+        {livestockState.activeSpecies !== 'horses' && (
+          <button
+            onClick={() => setActiveTab('energy')}
+            className={`flex-1 py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'energy'
+                ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
+                : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
+            }`}
+          >
+            <span className="text-base">⚡</span>
+            <span>Zakup Energii</span>
+          </button>
+        )}
       </div>
 
       {/* ZAWARTOŚĆ AKTYWNEJ ZAKŁADKI */}
@@ -384,9 +406,10 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
         </div>
       )}
 
-      {activeTab === 'pipeline' && (
+      {(activeTab === 'pipeline' || (activeTab === 'energy' && livestockState.activeSpecies === 'horses')) && (
         <LivestockPipeline
           state={livestockState}
+          ownedHorsesCount={buildingState.ownedHorses?.length ?? 0}
           clock={clock}
           onUpdateState={handleUpdateLivestock}
           onGoToCrewTab={() => setActiveTab('crew')}
@@ -408,7 +431,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
         />
       )}
 
-      {activeTab === 'energy' && (
+      {activeTab === 'energy' && livestockState.activeSpecies !== 'horses' && (
         <BusinessEnergySection
           businessTitle={building?.name || 'Farma Hodowlana'}
           energySource="konie"

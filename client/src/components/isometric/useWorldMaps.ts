@@ -154,7 +154,14 @@ export function useWorldMaps() {
   };
 
   const autoPlaceCityBuildings = (
-    specs: Array<{ typeId: string; name: string; sizeX: number; sizeY: number; cost: number }>
+    specs: Array<{
+      typeId: string;
+      name: string;
+      sizeX: number;
+      sizeY: number;
+      cost: number;
+      maxTotalOfType?: number;
+    }>
   ) => {
     if (specs.length === 0) return;
     setCityData((prev) => {
@@ -163,15 +170,23 @@ export function useWorldMaps() {
       let tiles = prev.terrainTiles;
       let buildings = prev.placedBuildings;
       let nextSide: CityExpandSide = prev.nextExpandSide || 'bottom';
+      let anyPlaced = false;
 
       for (const spec of specs) {
+        if (typeof spec.maxTotalOfType === 'number') {
+          const existingOfType = buildings.filter((b) => b.typeId === spec.typeId).length;
+          if (existingOfType >= spec.maxTotalOfType) continue;
+        }
         const res = placeCityBuildingWithAutoExpand(gx, gy, tiles, buildings, spec, nextSide);
         gx = res.gridSizeX;
         gy = res.gridSizeY;
         tiles = res.terrainTiles;
         buildings = res.placedBuildings;
         nextSide = res.nextExpandSide;
+        anyPlaced = true;
       }
+
+      if (!anyPlaced) return prev;
 
       const ensured = ensureCitySpaceFor3x3(
         gx,
@@ -192,6 +207,16 @@ export function useWorldMaps() {
         roadTypes: ensured.roadTypes,
         nextExpandSide: ensured.nextExpandSide,
       };
+    });
+  };
+
+  const removeCityBuildingsByIds = (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    setCityData((prev) => {
+      const nextPlaced = prev.placedBuildings.filter((b) => !idSet.has(b.id));
+      if (nextPlaced.length === prev.placedBuildings.length) return prev;
+      return { ...prev, placedBuildings: nextPlaced };
     });
   };
 
@@ -229,6 +254,7 @@ export function useWorldMaps() {
     cityBuildings: cityData.placedBuildings,
     allWorldBuildings,
     autoPlaceCityBuildings,
+    removeCityBuildingsByIds,
     cityPlayersCount,
     addNewCityPlayer,
   };

@@ -65,6 +65,7 @@ export interface MarketStallCrewMember {
   name: string;
   role: 'supply' | 'trader' | 'delivery';
   dailyWage: number;
+  assignedProductId?: string;
 }
 
 export interface MarketStallSlot {
@@ -85,6 +86,13 @@ export type BusinessEnergyScale = 'eco' | 'standard' | 'turbo';
 export interface CoalSupplyOrder {
   supplierId: string;
   monthlyTons: number;
+  contractType: ContractType;
+  monthsRemaining: number;
+}
+
+export interface HorseFeedSupplyOrder {
+  supplierId: string;
+  monthlyKg: number;
   contractType: ContractType;
   monthsRemaining: number;
 }
@@ -129,6 +137,9 @@ export interface BuildingState {
   // Ferma Bydła i Owiec
   livestockState?: LivestockCapitalismState;
   ownedHorses?: import('./modal/livestock/livestockTypes').HorseAnimal[];
+  horseFeedStockKg?: number; // Zapas paszy dla koni roboczych (kg)
+  horseFeedOrder?: HorseFeedSupplyOrder; // Kontrakt na paszę dla koni roboczych
+  horseFeedInterventionBuyEnabled?: boolean; // Zakup interwencyjny paszy dla koni ze statku (+10%)
   workersCount?: number;
   workerWage?: number; // £ / dzień
   managersCount?: number; // Liczba zarządców i agronomów (Klasa M)

@@ -3,10 +3,14 @@ import type { BuildingState, BusinessEnergySource, BusinessEnergyScale } from '.
 import type { WorldSupplierBuilding } from './industrySupplyConfig';
 import { ENERGY_SOURCES_INFO, SCALE_CONFIG } from './energyConfig';
 import { HorsePurchaseOfferPanel } from './HorsePurchaseOfferPanel';
+import { HorseFeedStoragePanel } from './HorseFeedStoragePanel';
 import { CoalPurchaseOfferPanel } from './CoalPurchaseOfferPanel';
 import { loadGameParameters } from '../admin/gameParameters';
+import { WorkingHorsesRoster } from './WorkingHorsesRoster';
+import { getHorseEffectiveCapacityHa } from './horseEnergyMath';
 
 interface BusinessEnergySectionProps {
+  buildingId?: string;
   businessTitle: string;
   energySource?: BusinessEnergySource;
   energyScale: BusinessEnergyScale;
@@ -21,6 +25,7 @@ interface BusinessEnergySectionProps {
 }
 
 export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
+  buildingId,
   businessTitle,
   energySource,
   energyScale,
@@ -62,15 +67,17 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
   const chimneyTax = currentSource && currentSource.hasChimneyTax && !hasGreenRelief ? 5.0 : 0.0;
 
   if (isFarmHorseOnly) {
-    const ownedCount = buildingState?.ownedHorses?.length ?? 0;
+    const ownedHorses = buildingState?.ownedHorses || [];
+    const activeHorsesCount = ownedHorses.filter((h) => !h.isDeceased).length;
     const params = loadGameParameters();
-    const dailyFeedKg = Number((ownedCount * params.horseDailyFeedKg).toFixed(1));
-    const workAreaHa = Number((ownedCount * params.horseWorkCapacityHa).toFixed(2));
+    const dailyFeedKg = Number((activeHorsesCount * params.horseDailyFeedKg).toFixed(1));
+    const workAreaHa = getHorseEffectiveCapacityHa(ownedHorses, params.horseWorkCapacityHa);
 
     return (
       <div className="space-y-3 animate-fade-in">
         <HorsePurchaseOfferPanel
-          ownedHorses={buildingState?.ownedHorses || []}
+          ownedHorses={ownedHorses}
+          buildingState={buildingState}
           allWorldBuildings={allWorldBuildings}
           buildingsState={buildingsState}
           onSpendGold={onSpendGold}
@@ -80,12 +87,29 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
 
         <div className="p-3 bg-stone-900/90 rounded-2xl border border-stone-700/70 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
           <span className="text-stone-300">
-            🐎 Moc robocza: <strong className="text-emerald-300">{workAreaHa} ha</strong> ({params.horseWorkCapacityHa} ha/koń)
+            🐎 Moc robocza: <strong className="text-emerald-300">{workAreaHa} ha</strong> ({params.horseWorkCapacityHa} ha/koń przy 100%)
           </span>
           <span className="text-stone-300">
-            🌾 Zużycie paszy (zboże): <strong className="text-amber-300">{dailyFeedKg} kg/dzień</strong> ({params.horseDailyFeedKg} kg/koń)
+            🌾 Zużycie paszy: <strong className="text-amber-300">{dailyFeedKg} kg/dzień</strong> ({params.horseDailyFeedKg} kg/koń)
           </span>
         </div>
+
+        <WorkingHorsesRoster
+          horses={ownedHorses}
+          perHorseHa={params.horseWorkCapacityHa || 5}
+        />
+
+        <HorseFeedStoragePanel
+          buildingId={buildingId}
+          ownedHorsesCount={activeHorsesCount}
+          horseFeedStockKg={buildingState?.horseFeedStockKg ?? 0}
+          horseFeedOrder={buildingState?.horseFeedOrder}
+          horseFeedInterventionBuyEnabled={buildingState?.horseFeedInterventionBuyEnabled}
+          allWorldBuildings={allWorldBuildings}
+          buildingsState={buildingsState}
+          onSpendGold={onSpendGold}
+          onUpdateState={onUpdateState}
+        />
       </div>
     );
   }
@@ -184,14 +208,32 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
       </div>
 
       {effectiveSourceKey === 'konie' && (
-        <HorsePurchaseOfferPanel
-          ownedHorses={buildingState?.ownedHorses || []}
-          allWorldBuildings={allWorldBuildings}
-          buildingsState={buildingsState}
-          onSpendGold={onSpendGold}
-          onUpdateAnyBuildingState={onUpdateAnyBuildingState}
-          onUpdateState={onUpdateState}
-        />
+        <div className="space-y-3">
+          <HorsePurchaseOfferPanel
+            ownedHorses={buildingState?.ownedHorses || []}
+            buildingState={buildingState}
+            allWorldBuildings={allWorldBuildings}
+            buildingsState={buildingsState}
+            onSpendGold={onSpendGold}
+            onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+            onUpdateState={onUpdateState}
+          />
+          <WorkingHorsesRoster
+            horses={buildingState?.ownedHorses || []}
+            perHorseHa={loadGameParameters().horseWorkCapacityHa || 5}
+          />
+          <HorseFeedStoragePanel
+            buildingId={buildingId}
+            ownedHorsesCount={(buildingState?.ownedHorses || []).filter((h) => !h.isDeceased).length}
+            horseFeedStockKg={buildingState?.horseFeedStockKg ?? 0}
+            horseFeedOrder={buildingState?.horseFeedOrder}
+            horseFeedInterventionBuyEnabled={buildingState?.horseFeedInterventionBuyEnabled}
+            allWorldBuildings={allWorldBuildings}
+            buildingsState={buildingsState}
+            onSpendGold={onSpendGold}
+            onUpdateState={onUpdateState}
+          />
+        </div>
       )}
 
       {(effectiveSourceKey === 'wegiel' || effectiveSourceKey === 'wegiel_drzewny') && (

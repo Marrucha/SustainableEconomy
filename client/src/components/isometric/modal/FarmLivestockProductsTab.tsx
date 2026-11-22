@@ -11,6 +11,7 @@ import {
   type CropType,
 } from './farmGridTypes';
 import { createDefaultLivestockState } from './livestock/livestockTypes';
+import { loadGameParameters } from '../admin/gameParameters';
 
 interface FarmLivestockProductsTabProps {
   building: PlacedBuilding;
@@ -321,6 +322,9 @@ export const FarmLivestockProductsTab: React.FC<FarmLivestockProductsTabProps> =
 
   const feedQty = ls.supplies?.feedGrainKg ?? 0;
   const strawQty = ls.supplies?.strawBeddingKg ?? 0;
+  const livestockParams = loadGameParameters();
+  const feedCapKg = livestockParams.grainSiloBaseCapacityKg || 10000;
+  const strawCapKg = livestockParams.strawStackBaseCapacityKg || 20000;
 
   const orderedRows: ProductRow[] = [
     {
@@ -328,11 +332,11 @@ export const FarmLivestockProductsTab: React.FC<FarmLivestockProductsTabProps> =
       icon: '🌾',
       name: 'Pasza zbożowa',
       quantityValue: feedQty,
-      capacityValue: 2000,
+      capacityValue: feedCapKg,
       quantityLabel: `${feedQty.toLocaleString()} kg${
         ls.feedOrder ? ` (+${ls.feedOrder.monthlyQuantityKg}/msc)` : ''
       }`,
-      capacityLabel: '2 000 kg',
+      capacityLabel: `${feedCapKg.toLocaleString('pl-PL')} kg`,
       qualityPercent: 78,
       brand: 0,
       avgBrand: 0,
@@ -343,11 +347,11 @@ export const FarmLivestockProductsTab: React.FC<FarmLivestockProductsTabProps> =
       icon: '🛏️',
       name: 'Ściółka (słoma)',
       quantityValue: strawQty,
-      capacityValue: 2000,
+      capacityValue: strawCapKg,
       quantityLabel: `${strawQty.toLocaleString()} kg${
         ls.strawOrder ? ` (+${ls.strawOrder.monthlyQuantityKg}/msc)` : ''
       }`,
-      capacityLabel: '2 000 kg',
+      capacityLabel: `${strawCapKg.toLocaleString('pl-PL')} kg`,
       qualityPercent: 80,
       brand: 0,
       avgBrand: 0,

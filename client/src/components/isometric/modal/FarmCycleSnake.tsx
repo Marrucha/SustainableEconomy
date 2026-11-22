@@ -12,6 +12,7 @@ import { FarmStageCard, type StageMeta } from './FarmStageCard';
 import { FarmPipelineArrow } from './FarmPipelineArrow';
 import { generateRandomEnglishName } from './englishNames';
 import type { UseGameClockReturn } from '../clock/useGameClock';
+import type { HorseAnimal } from './livestock/livestockTypes';
 import {
   type GameDate,
   getStageForMonth,
@@ -21,6 +22,7 @@ interface FarmCycleSnakeProps {
   state: FarmCapitalismState;
   attachedFieldsCount?: number;
   ownedHorsesCount?: number;
+  ownedHorses?: HorseAnimal[];
   clock?: UseGameClockReturn;
   onUpdate: (updates: Partial<FarmCapitalismState>) => void;
 }
@@ -40,6 +42,7 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
   state,
   attachedFieldsCount = 0,
   ownedHorsesCount = 0,
+  ownedHorses,
   clock,
   onUpdate,
 }) => {
@@ -53,9 +56,10 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
 
   const clockDate = clock ? clock.date : internalDate;
 
-  const yieldSummary = computeFarmYieldSummary(state, attachedFieldsCount, false, ownedHorsesCount);
+  const yieldSummary = computeFarmYieldSummary(state, attachedFieldsCount, false, ownedHorsesCount, ownedHorses);
   const {
     totalHectares,
+    cultivatedHectares,
     fieldFarmersCount,
     farmerCapacityHa,
     acreageEfficiencyPct,
@@ -382,13 +386,13 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
         <div className="flex flex-wrap items-center gap-5">
           <div>
             <span className="text-stone-400 block text-[11px]">
-              Wysiew ({totalHectares} ha • {fieldFarmersCount} roln. / limit {farmerCapacityHa} ha):
+              Wysiew ({cultivatedHectares} / {totalHectares} ha • {fieldFarmersCount} roln. / limit {farmerCapacityHa} ha):
             </span>
             <div className="flex items-center gap-2">
               <strong className="text-sky-300 font-mono text-sm font-bold">{seedRequiredKg} kg</strong>
-              {totalHectares > farmerCapacityHa && (
+              {cultivatedHectares < totalHectares && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-950/70 text-rose-300 border border-rose-500/40 font-mono">
-                  ⚠️ Przeciążenie: {acreageEfficiencyPct}% plon, {harvestQualityPercent}% jak.
+                  ⚠️ Nieobsiane/niezebrane: {Math.max(0, totalHectares - cultivatedHectares).toFixed(1)} ha ({acreageEfficiencyPct}% plon • {harvestQualityPercent}% jak.)
                 </span>
               )}
             </div>

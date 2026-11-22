@@ -15,6 +15,13 @@ import {
 } from './modal/bakery/bakeryTypes';
 import { MILL_PRODUCTS_CONFIG } from './modal/mill/millTypes';
 import { appendShipInterventionLogToRecord } from './modal/TradeShipInterventionLogsTab';
+import { mergeWorldTickRecord } from './mergeWorldTickRecord';
+import { computeProductionChecklist } from './modal/productionChecklist';
+import {
+  BASE_BAKERY_BREAD_CAP_KG,
+  BASE_BAKERY_RUSKS_CAP_KG,
+  computeExtraStorageDailyCostGbp,
+} from './modal/storageExpansion';
 
 interface UseBakeryWorldTickParams {
   clockDate: GameDate;
@@ -243,7 +250,8 @@ export function useBakeryWorldTick({
       if (dayChanged && !isSunday) {
         const sizeTiles = bakeryBuilding.sizeX * bakeryBuilding.sizeY;
         const ready = checkIsBakeryProductionReady(nextBakery, bState, sizeTiles);
-        if (ready.isReady && nextBakery.isBakingActive) {
+        const checklist = computeProductionChecklist(bakeryBuilding, { ...bState, bakeryState: nextBakery });
+        if (ready.isReady && checklist.allPassed && nextBakery.isBakingActive) {
           const summary = computeBakeryYieldSummary(nextBakery, bState);
           const productCfg = BAKERY_PRODUCTS_CONFIG[nextBakery.productTarget];
           const consumedFlour = Math.min(nextBakery.flourStockKg, summary.dailyFlourInputKg);
@@ -275,6 +283,17 @@ export function useBakeryWorldTick({
             bakeryChanged = true;
           }
         }
+        const extraStorageCost =
+          computeExtraStorageDailyCostGbp(nextBakery.breadStockKg, BASE_BAKERY_BREAD_CAP_KG) +
+          computeExtraStorageDailyCostGbp(nextBakery.rusksStockKg, BASE_BAKERY_RUSKS_CAP_KG);
+        if (extraStorageCost > 0) {
+          totalGoldSpent += extraStorageCost;
+          nextBakery = {
+            ...nextBakery,
+            totalExpenses: nextBakery.totalExpenses + extraStorageCost,
+          };
+          bakeryChanged = true;
+        }
       }
 
       if (bakeryChanged) {
@@ -283,7 +302,10 @@ export function useBakeryWorldTick({
       }
     }
 
-    if (changed) setBuildingsState(next);
+    if (changed) {
+      const base = stateRef.current;
+      setBuildingsState((prev) => mergeWorldTickRecord(prev, base, next));
+    }
     if (totalGoldSpent > 0) setGold((g) => Math.max(0, g - totalGoldSpent));
   }, [clockDate.year, clockDate.month, clockDate.day, setBuildingsState, setGold]);
 }

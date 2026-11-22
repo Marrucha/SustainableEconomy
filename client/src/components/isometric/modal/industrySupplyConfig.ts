@@ -576,6 +576,20 @@ export function getIncomingSalesContracts(
         contractLabel: CONTRACT_LABELS[ch.contractType] || ch.contractType,
       });
     }
+
+    // 7. Kontrakty na paszę dla koni roboczych (zakładka Energia)
+    if (st.horseFeedOrder?.supplierId === sellerBuildingId) {
+      const hf = st.horseFeedOrder;
+      lines.push({
+        id: `horse_feed_${b.id}`,
+        buyerId: b.id,
+        buyerLabel,
+        isOurBuyer,
+        productLabel: 'Pasza dla koni roboczych',
+        monthlyQtyLabel: `${hf.monthlyKg.toLocaleString('pl-PL')} kg/msc`,
+        contractLabel: CONTRACT_LABELS[hf.contractType] || hf.contractType,
+      });
+    }
   }
 
   return lines;

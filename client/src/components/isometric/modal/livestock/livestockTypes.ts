@@ -61,6 +61,7 @@ export type LivestockStage =
   | 'insemination'       // 1. Inseminacja (Weterynarz lub Hodowca)
   | 'gestation_9m'       // 2. Wzrost płodu 9 miesięcy (Hodowca + dojenie mleka do 6 msc)
   | 'birth'              // 3. Poród (Weterynarz lub Hodowca)
+  | 'rest'               // 4. Odpoczynek po porodzie / nieudanej próbie
   | 'calf_growth_2y'     // 4. Wzrost cielaka 2 lata (Hodowca)
   | 'branch_decision'    // 5. Wybór ścieżki: Sprzedaż żywca / Ubój / Stado Mleczne
   | 'branch_sale'        // 6A. Sprzedaż dorosłego bydła na rynku (Handlarz)
@@ -188,6 +189,7 @@ export interface HorseAnimal {
   breedingStatus?: 'waiting' | 'failed_wait' | 'pregnant';
   breedingWaitMonths?: number;
   pregnancyMonths?: number;
+  failedInseminationCount?: number;
   isDeceased?: boolean;
   deceasedMonthsRemaining?: number;
   vitalityPercent?: number; // 0..100% (bez paszy -1%/dzień, przy 0% -> RIP)
@@ -405,6 +407,44 @@ export function createDefaultLivestockCrew(): LivestockWorker[] {
       title: 'Kupiec Targowy Żywca i Surowców',
     },
   ];
+}
+
+export interface LivestockHorseRequirement {
+  requiredHorses: number;
+  ownedHorsesCount: number;
+  isSatisfied: boolean;
+}
+
+export function computeLivestockHorseRequirement(
+  state: LivestockCapitalismState,
+  ownedHorsesCount: number
+): LivestockHorseRequirement {
+  const sp = state.activeSpecies || 'cattle';
+  if (sp === 'horses') {
+    return { requiredHorses: 0, ownedHorsesCount, isSatisfied: true };
+  }
+  const h = state.herd;
+  let requiredHorses = 0;
+  if (sp === 'cattle') {
+    const cattleCount =
+      (h.milkingGroupCows || 0) + (h.growingGroupCalves || 0) + (h.cattleForSale || 0);
+    requiredHorses = cattleCount > 0 ? Math.ceil(cattleCount / 20) : 0;
+  } else if (sp === 'sheep') {
+    const sheepCount =
+      h.sheepFlockCount ||
+      (h.adultSheepCount || 0) + (h.growingLambsCount || 0) + (h.sheepForSale || 0);
+    requiredHorses = sheepCount > 0 ? Math.ceil(sheepCount / 50) : 0;
+  } else if (sp === 'poultry') {
+    const poultryCount =
+      h.poultryFlockCount ||
+      (h.adultHensCount || 0) + (h.growingChicksCount || 0) + (h.poultryForSale || 0);
+    requiredHorses = poultryCount > 0 ? Math.ceil(poultryCount / 500) : 0;
+  }
+  return {
+    requiredHorses,
+    ownedHorsesCount,
+    isSatisfied: ownedHorsesCount >= requiredHorses,
+  };
 }
 
 // Tworzenie stanu początkowego fermy zwierzęcej

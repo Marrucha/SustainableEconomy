@@ -110,19 +110,27 @@ export const LivestockStageCard: React.FC<LivestockStageCardProps> = ({
                   ⚡
                 </span>
               )}
-              {assignedWorker && (
-                <button
-                  type="button"
-                  onClick={() => setShowStaffModal(true)}
-                  title={`${assignedWorker.name} (${assignedWorker.profession === 'vet' ? 'Weterynarz' : 'Hodowca'}) — kliknij, aby zarządzać obsadą`}
-                  className="relative w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110 shadow-sm border bg-emerald-950 border-emerald-500 text-emerald-300"
-                >
-                  <span className="text-[11px]">👤</span>
-                  <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-stone-950 text-white border border-stone-600 text-[8px] font-mono font-bold flex items-center justify-center">
-                    1
-                  </span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowStaffModal(true)}
+                title={
+                  assignedWorker
+                    ? `${assignedWorker.name} (${assignedWorker.profession === 'vet' ? 'Weterynarz' : 'Hodowca'}) — kliknij, aby zarządzać obsadą`
+                    : 'Brak obsady — kliknij, aby przypisać lub zatrudnić pracownika'
+                }
+                className={`relative w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110 shadow-sm border ${
+                  assignedWorker
+                    ? 'bg-emerald-950/90 hover:bg-emerald-900 border-emerald-400 text-emerald-400'
+                    : 'bg-rose-950/90 hover:bg-rose-900 border-rose-400 text-rose-300'
+                }`}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                </svg>
+                <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-stone-950 text-white border border-white/80 text-[8px] font-mono font-bold flex items-center justify-center">
+                  {assignedWorker ? 1 : 0}
+                </span>
+              </button>
             </div>
           </div>
 
@@ -143,19 +151,6 @@ export const LivestockStageCard: React.FC<LivestockStageCardProps> = ({
             </div>
           )}
         </div>
-
-        {/* 2. PRZYCISK OBSADA (TYLKO GDY BRAK PRACOWNIKA) */}
-        {isMissing && (
-          <div className="pt-1 border-t border-stone-300">
-            <button
-              type="button"
-              onClick={() => setShowStaffModal(true)}
-              className="w-full py-1 px-2 rounded-md font-bold text-[11px] cursor-pointer transition-all border bg-rose-200 hover:bg-rose-300 border-rose-500 text-rose-950"
-            >
-              👥 Obsada
-            </button>
-          </div>
-        )}
       </div>
 
       {/* MODAL OBSADY ETAPU (SPÓJNY Z FARMĄ ZBOŻOWĄ) */}

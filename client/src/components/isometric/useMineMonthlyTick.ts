@@ -9,6 +9,8 @@ import {
   type MineCapitalismState,
 } from './modal/mine/mineCapitalismTypes';
 import { computeMineYieldSummary, getMineStageForProgress } from './modal/mine/mineMath';
+import { mergeWorldTickRecord } from './mergeWorldTickRecord';
+import { computeProductionChecklist } from './modal/productionChecklist';
 
 interface UseMineMonthlyTickParams {
   clockDate: GameDate;
@@ -95,10 +97,11 @@ export function useMineMonthlyTick({
 
       const sizeTiles = bldg.sizeX * bldg.sizeY;
       const ready = checkIsMineProductionReady(nextMine, bState, sizeTiles);
+      const checklist = computeProductionChecklist(bldg, { ...bState, mineCapitalism: nextMine, mineStock: nextStock });
       const summary = computeMineYieldSummary(nextMine, bState, depInfo);
 
       const isSunday = totalDays % 7 === 6;
-      if (dayChanged && !isSunday && ready.isReady && nextMine.isMiningActive) {
+      if (dayChanged && !isSunday && ready.isReady && checklist.allPassed && nextMine.isMiningActive) {
         const nextProgress = Number(((nextMine.cycleProgressPercent + 100 / 30) % 100).toFixed(1));
         const producedDaily = Number((summary.monthlyOreTons / 30).toFixed(1));
         nextStock = Math.min(nextMine.capacityTons, Number((nextStock + producedDaily).toFixed(1)));
@@ -146,7 +149,10 @@ export function useMineMonthlyTick({
       }
     }
 
-    if (changed) setBuildingsState(next);
+    if (changed) {
+      const base = stateRef.current;
+      setBuildingsState((prev) => mergeWorldTickRecord(prev, base, next));
+    }
     if (totalGoldSpent > 0) setGold((g) => Math.max(0, g - totalGoldSpent));
   }, [clockDate.year, clockDate.month, clockDate.day, setBuildingsState, setGold]);
 }

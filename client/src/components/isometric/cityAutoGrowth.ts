@@ -108,16 +108,54 @@ export function findSpotAdjacentToRoad(
   gridSizeX: number,
   gridSizeY: number,
   terrainTiles: Record<string, TileDef['type']>,
-  placedBuildings: PlacedBuilding[]
-): { x: number; y: number } | null {
-  for (let y = 0; y < gridSizeY; y++) {
-    for (let x = 3; x < gridSizeX; x++) {
-      if (canPlaceBuildingAt(x, y, sizeX, sizeY, gridSizeX, gridSizeY, terrainTiles, placedBuildings)) {
-        return { x, y };
+  placedBuildings: PlacedBuilding[],
+  preferredTypeId?: string
+): { x: number; y: number; sizeX: number; sizeY: number; rotation: 0 | 90 } | null {
+  const orientations: Array<{ sx: number; sy: number; rot: 0 | 90 }> =
+    sizeX === sizeY
+      ? [{ sx: sizeX, sy: sizeY, rot: 0 }]
+      : [
+          { sx: sizeX, sy: sizeY, rot: 0 },
+          { sx: sizeY, sy: sizeX, rot: 90 },
+        ];
+
+  const candidates: Array<{ x: number; y: number; sizeX: number; sizeY: number; rotation: 0 | 90 }> = [];
+  for (const { sx, sy, rot } of orientations) {
+    for (let y = 0; y < gridSizeY; y++) {
+      for (let x = 3; x < gridSizeX; x++) {
+        if (canPlaceBuildingAt(x, y, sx, sy, gridSizeX, gridSizeY, terrainTiles, placedBuildings)) {
+          candidates.push({ x, y, sizeX: sx, sizeY: sy, rotation: rot });
+        }
       }
     }
   }
-  return null;
+  if (candidates.length === 0) return null;
+
+  if (preferredTypeId) {
+    const sameType = placedBuildings.filter((b) => b.typeId === preferredTypeId);
+    if (sameType.length > 0) {
+      let best = candidates[0];
+      let bestDist = Infinity;
+      for (const c of candidates) {
+        const cx = c.x + c.sizeX / 2;
+        const cy = c.y + c.sizeY / 2;
+        let minD = Infinity;
+        for (const b of sameType) {
+          const bx = b.x + b.sizeX / 2;
+          const by = b.y + b.sizeY / 2;
+          const d = Math.abs(cx - bx) + Math.abs(cy - by);
+          if (d < minD) minD = d;
+        }
+        if (minD < bestDist || (minD === bestDist && c.rotation === 0 && best.rotation !== 0)) {
+          bestDist = minD;
+          best = c;
+        }
+      }
+      return best;
+    }
+  }
+
+  return candidates[0];
 }
 
 export type CityExpandSide = 'bottom' | 'right' | 'top';
@@ -338,7 +376,8 @@ export function placeCityBuildingWithAutoExpand(
     gridSizeX,
     gridSizeY,
     terrainTiles,
-    placedBuildings
+    placedBuildings,
+    spec.typeId
   );
 
   if (existingSpot) {
@@ -348,9 +387,9 @@ export function placeCityBuildingWithAutoExpand(
       name: spec.name,
       x: existingSpot.x,
       y: existingSpot.y,
-      sizeX: spec.sizeX,
-      sizeY: spec.sizeY,
-      rotation: 0,
+      sizeX: existingSpot.sizeX,
+      sizeY: existingSpot.sizeY,
+      rotation: existingSpot.rotation,
       cost: spec.cost,
     };
     return {

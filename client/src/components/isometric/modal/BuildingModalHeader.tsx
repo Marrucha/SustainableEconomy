@@ -1,21 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { BuildingState, PlacedBuilding } from '../types';
 import type { UseGameClockReturn } from '../clock/useGameClock';
 import { formatGameDate } from '../clock/gameClockTypes';
-import { checkIsProductionReady, createDefaultFarmCapitalismState } from './farmGridTypes';
 import { FRUITS_CONFIG } from './orchard/orchardTypes';
-import { checkIsMillProductionReady, createDefaultMillState } from './mill/millTypes';
-import { checkIsBakeryProductionReady, createDefaultBakeryState } from './bakery/bakeryTypes';
-import { checkIsMineProductionReady, createDefaultMineCapitalismState } from './mine/mineCapitalismTypes';
+import type { ProductionChecklistResult } from './productionChecklist';
+import { ProductionChecklistModal } from './BusinessSummaryTab';
 
 interface BuildingModalHeaderProps {
   building: PlacedBuilding;
   buildingState: BuildingState;
-  isFarm: boolean;
+  isFarm?: boolean;
   isOrchard: boolean;
-  isMill: boolean;
+  isMill?: boolean;
   isBakery?: boolean;
   isMine?: boolean;
+  checklist?: ProductionChecklistResult;
+  onGoToSummary?: () => void;
   clock?: UseGameClockReturn;
   onClose: () => void;
 }
@@ -23,14 +23,13 @@ interface BuildingModalHeaderProps {
 export const BuildingModalHeader: React.FC<BuildingModalHeaderProps> = ({
   building,
   buildingState,
-  isFarm,
   isOrchard,
-  isMill,
-  isBakery = false,
-  isMine = false,
+  checklist,
+  onGoToSummary,
   clock,
   onClose,
 }) => {
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
   const firstWheatFarmer =
     building.typeId === 'wheat_farm'
       ? (buildingState.farmCapitalism?.crew || []).find(
@@ -55,95 +54,13 @@ export const BuildingModalHeader: React.FC<BuildingModalHeaderProps> = ({
       ? `${displayName} • ${FRUITS_CONFIG[buildingState.orchardState.fruitType]?.name || ''}`
       : displayName;
 
-  const renderStatusBadge = () => {
-    if (isFarm) {
-      const rawCap = buildingState.farmCapitalism;
-      const farmCap =
-        rawCap && Array.isArray(rawCap.crew) && rawCap.agronomist && rawCap.stageAssignments
-          ? rawCap
-          : createDefaultFarmCapitalismState();
-      const farmReady = checkIsProductionReady(farmCap).isReady;
-      return (
-        <span
-          title={farmReady ? 'Przepływ aktywny' : 'Brak pełnej obsady'}
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${
-            farmReady
-              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-              : 'bg-rose-500/20 border-rose-500 text-rose-300'
-          }`}
-        >
-          {farmReady ? '✓' : '✕'}
-        </span>
-      );
-    }
-
-    if (isMill) {
-      const millState = buildingState.millState || createDefaultMillState();
-      const millReady = checkIsMillProductionReady(
-        millState,
-        buildingState,
-        building.sizeX * building.sizeY
-      ).isReady;
-      return (
-        <span
-          title={millReady ? 'Przemiał aktywny' : 'Brak obsady lub zasilania'}
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${
-            millReady
-              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-              : 'bg-rose-500/20 border-rose-500 text-rose-300'
-          }`}
-        >
-          {millReady ? '✓' : '✕'}
-        </span>
-      );
-    }
-
-    if (isBakery) {
-      const bakeryState = buildingState.bakeryState || createDefaultBakeryState();
-      const bakeryReady = checkIsBakeryProductionReady(
-        bakeryState,
-        buildingState,
-        building.sizeX * building.sizeY
-      ).isReady;
-      return (
-        <span
-          title={bakeryReady ? 'Wypiek aktywny' : 'Brak obsady, mąki lub zasilania'}
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${
-            bakeryReady
-              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-              : 'bg-rose-500/20 border-rose-500 text-rose-300'
-          }`}
-        >
-          {bakeryReady ? '✓' : '✕'}
-        </span>
-      );
-    }
-
-    if (isMine) {
-      const mineState =
-        buildingState.mineCapitalism ||
-        createDefaultMineCapitalismState(buildingState.mineDepositType);
-      const mineReady = checkIsMineProductionReady(
-        mineState,
-        buildingState,
-        building.sizeX * building.sizeY
-      ).isReady;
-      return (
-        <span
-          title={mineReady ? 'Wydobycie aktywne' : 'Brak obsady, zarządcy lub zasilania'}
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${
-            mineReady
-              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-              : 'bg-rose-500/20 border-rose-500 text-rose-300'
-          }`}
-        >
-          {mineReady ? '✓' : '✕'}
-        </span>
-      );
-    }
-
-    return null;
-  };
+  const hasActiveWorkingHorses = (buildingState.ownedHorses || []).some((h) => !h.isDeceased);
+  const isLivestockNoFeed =
+    building.typeId === 'livestock_farm' &&
+    (buildingState.livestockState?.supplies?.feedGrainKg ?? 0) <= 0;
+  const isWorkingHorseNoFeed =
+    hasActiveWorkingHorses && (buildingState.horseFeedStockKg ?? 0) <= 0;
+  const isNoFeed = isLivestockNoFeed || isWorkingHorseNoFeed;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 pb-2 flex-shrink-0">
@@ -154,6 +71,33 @@ export const BuildingModalHeader: React.FC<BuildingModalHeaderProps> = ({
         <h2 className="text-lg sm:text-xl font-bold font-serif text-amber-100 truncate">
           {fullTitle}
         </h2>
+        {checklist &&
+          (checklist.allPassed ? (
+            <span
+              title="Wszystkie warunki produkcji spełnione"
+              className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500 text-emerald-300 flex items-center justify-center text-xs font-bold shrink-0"
+            >
+              ✓
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowChecklistModal(true)}
+              title="Kliknij, aby zobaczyć niespełnione warunki produkcji"
+              className="w-6 h-6 rounded-full bg-rose-500/20 hover:bg-rose-500/35 border border-rose-500 text-rose-300 flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer transition-colors"
+            >
+              ✕
+            </button>
+          ))}
+        {isNoFeed && (
+          <span
+            title="Brak paszy w magazynie — konie tracą zdrowie!"
+            className="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500 text-rose-200 text-[11px] font-bold flex items-center gap-1 shrink-0"
+          >
+            <span>🌾</span>
+            <span>Brak paszy</span>
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
@@ -180,7 +124,6 @@ export const BuildingModalHeader: React.FC<BuildingModalHeaderProps> = ({
             ))}
           </div>
         )}
-        {renderStatusBadge()}
         <button
           onClick={onClose}
           className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
@@ -188,6 +131,17 @@ export const BuildingModalHeader: React.FC<BuildingModalHeaderProps> = ({
           ✕
         </button>
       </div>
+      {showChecklistModal && checklist && (
+        <ProductionChecklistModal
+          title={fullTitle}
+          checklist={checklist}
+          onClose={() => setShowChecklistModal(false)}
+          onGoToSummary={() => {
+            setShowChecklistModal(false);
+            onGoToSummary?.();
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import type { PlacedBuilding, BuildingState } from './types';
 import { canDemolishBuildingWithPastureRules, countAttachedWheatFields, findConnectedWheatFarm } from './pastureTopology';
 import { FarmSection } from './modal/FarmSection';
+import { FarmStorageBins } from './modal/FarmStorageBins';
+import { createDefaultFarmCapitalismState } from './modal/farmGridTypes';
 import { FlaxSection } from './modal/flax/FlaxSection';
 import { HopSection } from './modal/hop/HopSection';
 import { OrchardSection } from './modal/orchard/OrchardSection';
@@ -43,6 +45,8 @@ import { FarmLivestockFinanceTab } from './modal/FarmLivestockFinanceTab';
 import { INDUSTRY_PROFILES } from './modal/industryProfiles';
 import { computeFactoryStaffMetrics } from './modal/industryStaffMath';
 import { computeMonthlyProductionUnits } from './modal/industryContracts';
+import { computeProductionChecklist } from './modal/productionChecklist';
+import { BusinessSummaryTab } from './modal/BusinessSummaryTab';
 
 interface BuildingModalProps {
   building: PlacedBuilding;
@@ -101,7 +105,11 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
 
   const validation = canDemolishBuildingWithPastureRules(building, placedBuildings);
 
-  const [businessTab, setBusinessTab] = useState<BusinessTabType>('production');
+  const [businessTab, setBusinessTab] = useState<BusinessTabType>('summary');
+  const attachedFieldsCount = isFarm ? countAttachedWheatFields(building, placedBuildings) : 0;
+  const checklist = isBusiness
+    ? computeProductionChecklist(building, buildingState, attachedFieldsCount)
+    : undefined;
   const [productsSubTab, setProductsSubTab] = useState<'inventory' | 'recipes'>('inventory');
   const [residentialTab, setResidentialTab] = useState<'rent' | 'energy'>('rent');
 
@@ -147,6 +155,8 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           isMill={isMill}
           isBakery={isBakery}
           isMine={isMine}
+          checklist={checklist}
+          onGoToSummary={() => setBusinessTab('summary')}
           clock={clock}
           onClose={onClose}
         />
@@ -159,6 +169,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           isMill={isMill}
           isBakery={isBakery}
           isMine={isMine}
+          checklistOk={checklist?.allPassed}
           businessTab={businessTab}
           residentialTab={residentialTab}
           onSelectBusinessTab={setBusinessTab}
@@ -167,7 +178,9 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
 
         {/* ZAWARTOŚĆ SPECYFICZNA DLA TYPU BUDYNKU */}
         <div className="py-1.5 px-1 space-y-2 text-sm overflow-y-auto flex-1">
-          {businessTab === 'finance' && isMine ? (
+          {isBusiness && businessTab === 'summary' && checklist ? (
+            <BusinessSummaryTab checklist={checklist} onNavigateTab={setBusinessTab} />
+          ) : businessTab === 'finance' && isMine ? (
             <MineFinanceTab buildingState={buildingState} onUpdateState={onUpdateState} />
           ) : businessTab === 'finance' && isBakery ? (
             <BakeryFinanceTab
@@ -191,8 +204,23 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
               buildingsState={buildingsState}
               onUpdateState={onUpdateState}
             />
+          ) : isBusiness && businessTab === 'trade' && isFarm ? (
+            <FarmStorageBins
+              currentBuildingId={building.id}
+              state={buildingState.farmCapitalism || createDefaultFarmCapitalismState()}
+              attachedFieldsCount={countAttachedWheatFields(building, placedBuildings)}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              onSpendGold={onSpendGold}
+              onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+              onUpdateState={(patch) => {
+                const cur = buildingState.farmCapitalism || createDefaultFarmCapitalismState();
+                onUpdateState({ farmCapitalism: { ...cur, ...patch } });
+              }}
+            />
           ) : isBusiness && businessTab === 'trade' && isLivestock ? (
             <LivestockStorageBins
+              buildingId={building.id}
               state={buildingState.livestockState || createDefaultLivestockState()}
               allWorldBuildings={allWorldBuildings}
               buildingsState={buildingsState}

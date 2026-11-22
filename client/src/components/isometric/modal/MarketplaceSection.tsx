@@ -164,12 +164,14 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
   const handleUpdateStallStageCrew = (
     slotIndex: number,
     stageKey: 'supply' | 'trader' | 'delivery',
-    members: MarketStallCrewMember[]
+    members: MarketStallCrewMember[],
+    nextSellers?: MarketStallSeller[]
   ) => {
     const updatedStalls = stalls.map((s) =>
       s.slotIndex === slotIndex
         ? {
             ...s,
+            ...(nextSellers !== undefined ? { sellers: nextSellers } : {}),
             stageCrew: {
               ...(s.stageCrew || {}),
               [stageKey]: members,
