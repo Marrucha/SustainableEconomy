@@ -165,10 +165,23 @@ Wzorzec: `FarmCycleSnake.tsx` + `FarmStageCard.tsx` oraz `HorsePipeline.tsx` / `
 ### Licytacja i dzierżawa slotów na targu
 - **Wolne sloty** można licytować zawsze (brak globalnej blokady po jednej licytacji w roku).
 - Dopiero **zajęty slot** (wygrany przez gracza lub NPC) czeka na wygaśnięcie dzierżawy.
-- Dzierżawa wylicytowanego stoiska trwa **pełne 12 miesięcy (360 dni)** od dnia wylicytowania (`rentedUntilTotalDays`), a nie do końca roku kalendarzowego.
+- Dzierżawa wylicytowanego stoiska trwa **pełne 3 lata (1080 dni)** od dnia wylicytowania (`rentedUntilTotalDays`).
 
-### Karta stoiska (okno `max-w-6xl h-[92vh]` na wzór Piekarni)
-- Kliknięcie wylicytowanego stoiska gracza otwiera osobną kartę modalną z 4 zakładkami: `🏭 Proces Sprzedaży`, `📦 Produkty`, `🛒 Zakup/Sprzedaż`, `📊 Finanse — Zestawienie`.
+### Karta stoiska i sklepu detalicznego (`MarketStallModal.tsx`, `GroceryShopSection.tsx`, `MarketProductsOfferGrid.tsx`)
+- Okno `max-w-6xl h-[92vh]` na wzór Piekarni z zakładkami: `📋 Podsumowanie`, `🏭 Proces Sprzedaży`, `📦 Produkty`, `🛒 Zakup/Sprzedaż`, `📊 Finanse — Zestawienie`.
+- **Zakładka `📦 Produkty` — wspólny komponent `MarketProductsOfferGrid.tsx`:**
+  - Wszystkie 6 produktów w sklepie (siatka 3-kolumnowa `lg:grid-cols-3`) lub 4 produkty na stoisku targowym (siatka 2-kolumnowa `sm:grid-cols-2`) mieszczą się bez przewijania.
+  - **Jaśniejsze tło karty:** `bg-stone-700/75 border-stone-600 rounded-xl p-3`.
+  - **Układ 2-kolumnowy karty (`grid-cols-[1fr_1fr]`):**
+    - **Lewa kolumna:** nazwa produktu (`text-sm font-bold text-white`), etykieta **firmy** producenta/dostawcy (niebieska `bg-sky-500/25` dla naszej firmy, czerwona `bg-rose-500/25` dla konkurencji, szara `bg-stone-600/60` z `🚢 Import` dla statku), wspólna **otoczka 3D ceny** (`Cena £` + `Zakup: £...` poniżej w tej samej ramce z gradientem pionowym i cieniem) oraz **4 trójwymiarowe (3D) pionowe słupki (`h-[88px]`):** `⭐ Jakość`, `🏷️ Marka`, `💷 Cena`, `📍 Lokal.`.
+    - **Prawa kolumna:** kwadratowy/dopasowany placeholder na zdjęcie produktu (`flex-1 min-h-[96px]`) wpasowany w lukę nad ściśniętymi od dołu ocenami klas społecznych (`🔨 Robotnicy`, `💼 Mieszczanie`, `👑 Elita`).
+  - **Parametr `Lokalizacja` (`computeBuildingLocationScore` w `marketDemandMath.ts`):**
+    - Na Targowisku Miejskim zawsze `100%`.
+    - Dla pozostałych budynków handlowych: odległość z twierdzenia Pitagorasa (`Math.hypot(dx, dy)`) od środka najbliższego targowiska do najbliższej krawędzi budynku; każda szerokość kratki obniża wynik o `2%` (`0..100%`).
+  - **Wagi ocen klas społecznych (suma = 100%):**
+    - **Robotnicy:** `72%` Cena + `9%` Marka + `9%` Jakość + `10%` Lokalizacja
+    - **Mieszczanie:** `48%` Cena + `16%` Marka + `16%` Jakość + `20%` Lokalizacja
+    - **Elita:** `20%` Cena + `25%` Marka + `25%` Jakość + `30%` Lokalizacja
 - **Zakładka `🏭 Proces Sprzedaży` — 3 kroki w stylu `BakeryStageCard`:**
   1. **`1. Zaopatrzenie`** → **`2. Handlarz`** → **`3. Dostawa`**, połączone strzałkami `FarmPipelineArrow`.
   2. Każdy kafelek posiada ikonę **`ℹ`** oraz okrągły przycisk z **ikonką ludzika SVG** i licznikiem obsady (czerwony dla `0`, zielony dla `> 0`), otwierający modal zatrudniania identyczny z Piekarnią (`PRZYPISANI DO TEGO KROKU`, `Odepnij`, `➕ Zatrudnij i przypisz`).
