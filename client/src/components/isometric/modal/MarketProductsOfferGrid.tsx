@@ -154,7 +154,7 @@ export const MarketProductsOfferGrid: React.FC<MarketProductsOfferGridProps> = (
                       {item.producerLabel}
                     </span>
                   </div>
-                  <div className="inline-flex flex-col items-stretch gap-1 px-2 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/60 shadow-sm">
+                  <div className="inline-flex flex-col items-stretch gap-1 px-2 py-1 rounded-lg bg-gradient-to-b from-emerald-500/30 via-emerald-600/20 to-emerald-900/35 border border-emerald-400/70 border-t-emerald-300/90 shadow-[0_3px_8px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.2)]">
                     <div className="flex items-center justify-between gap-1.5">
                       <span className="text-[9px] uppercase font-bold text-emerald-200">Cena £</span>
                       <input
