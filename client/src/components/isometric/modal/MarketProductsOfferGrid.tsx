@@ -154,17 +154,36 @@ export const MarketProductsOfferGrid: React.FC<MarketProductsOfferGridProps> = (
                       {item.producerLabel}
                     </span>
                   </div>
-                  <div className="flex w-full flex-col items-stretch gap-1 px-2 py-1 rounded-lg bg-gradient-to-b from-emerald-500/30 via-emerald-600/20 to-emerald-900/35 border border-emerald-400/70 border-t-emerald-300/90 shadow-[0_3px_8px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.2)]">
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="text-[9px] uppercase font-bold text-emerald-200">Cena £</span>
+                  <div className="flex w-full flex-col items-stretch gap-1 px-2 py-1.5 rounded-lg bg-gradient-to-b from-emerald-500/30 via-emerald-600/20 to-emerald-900/35 border border-emerald-400/70 border-t-emerald-300/90 shadow-[0_3px_8px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.2)]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] uppercase font-bold text-emerald-200 shrink-0">
+                        Cena £
+                      </span>
                       <input
                         type="number"
                         min={0.1}
                         step={item.retailPrice >= 20 ? 1 : 0.1}
                         value={item.retailPrice}
                         onChange={(e) => handleChangePrice(item, Number(e.target.value))}
-                        className="w-14 bg-stone-950/90 border border-emerald-500/50 rounded px-1 py-0.5 text-right font-mono text-[11px] font-extrabold text-emerald-300 focus:outline-none focus:border-amber-400"
+                        className="flex-1 min-w-0 bg-stone-950/90 border border-emerald-500/50 rounded px-1.5 py-0.5 text-right font-mono text-xs font-extrabold text-emerald-300 focus:outline-none focus:border-amber-400"
                       />
+                    </div>
+                    <div className="grid grid-cols-4 gap-1">
+                      {[-10, -1, 1, 10].map((pct) => (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() =>
+                            handleChangePrice(
+                              item,
+                              Math.max(0.1, Number((item.retailPrice * (1 + pct / 100)).toFixed(2)))
+                            )
+                          }
+                          className="py-0.5 rounded bg-stone-950/75 hover:bg-emerald-500/30 border border-emerald-400/40 text-[9px] font-mono font-bold text-emerald-100 cursor-pointer transition-colors"
+                        >
+                          {pct > 0 ? `+${pct}%` : `${pct}%`}
+                        </button>
+                      ))}
                     </div>
                     <span className="text-[10px] font-mono text-rose-300 font-semibold border-t border-emerald-400/25 pt-0.5 text-right">
                       Zakup: £{item.purchasePrice.toFixed(2)}
