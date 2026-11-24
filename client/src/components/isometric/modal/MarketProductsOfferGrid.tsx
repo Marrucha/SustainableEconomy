@@ -149,7 +149,7 @@ export const MarketProductsOfferGrid: React.FC<MarketProductsOfferGridProps> = (
                     </p>
                     <span
                       title={item.producerTooltip}
-                      className={`inline-block max-w-full px-1.5 py-0.5 rounded border text-[10px] font-mono font-semibold truncate mt-0.5 ${item.producerBadgeClass}`}
+                      className={`block w-full px-1.5 py-0.5 rounded border text-[10px] font-mono font-semibold truncate mt-0.5 ${item.producerBadgeClass}`}
                     >
                       {item.producerLabel}
                     </span>
