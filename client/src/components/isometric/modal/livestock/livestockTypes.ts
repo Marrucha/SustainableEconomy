@@ -198,12 +198,15 @@ export interface HorseAnimal {
 // Struktura Stada (Podział na grupy wiekowe i użytkowe)
 export interface LivestockHerdData {
   milkingGroupCows: number;  // Grupa do dojenia / produkcji mleka (bydło)
+  bullsCount?: number;       // Buhaje rozpłodowe
   growingGroupCalves: number;// Grupa do wzrostu (cielęta i jałówki dorastające 2 lata)
   cattleForSale?: number;    // Bydło przeznaczone na sprzedaż
   sheepFlockCount: number;   // Stado owiec łączne
   adultSheepCount: number;   // Dorosłe maciorki dające wełnę 2x w roku
+  ramsCount?: number;        // Barany rozpłodowe
   growingLambsCount: number; // Rosnące jagnięta (okres odchowu 15 miesięcy)
   sheepForSale?: number;     // Owce przeznaczone na sprzedaż
+  roostersCount?: number;    // Koguty rozpłodowe
   // Konie robocze i kopalniane (Shire, Clydesdale, kuce dołowe Pit Ponies)
   horsesFlockCount?: number;  // Łączne stado koni
   adultDraftHorses?: number;  // Dorosłe klacze / konie w rozrodzie
@@ -298,6 +301,8 @@ export interface LivestockCapitalismState {
   strawOrder?: LivestockSupplyContract;
   strawOrders?: LivestockSupplyContract[];
   interventionBuyEnabled?: boolean;
+  feedZeroDaysCount?: number;
+  strawZeroDaysCount?: number;
 
   // Stado i Magazyn
   herd: LivestockHerdData;
@@ -448,6 +453,17 @@ export function computeLivestockHorseRequirement(
 }
 
 // Tworzenie stanu początkowego fermy zwierzęcej
+export function computeDailyManureKg(
+  species: 'cattle' | 'sheep' | 'horses' | 'poultry',
+  animalCount: number
+): number {
+  if (animalCount <= 0) return 0;
+  if (species === 'cattle') return Math.round(animalCount * 24);
+  if (species === 'horses') return Math.round(animalCount * 22);
+  if (species === 'sheep') return Math.round(animalCount * 3.5);
+  return Math.round(animalCount * 0.15);
+}
+
 export function createDefaultLivestockState(): LivestockCapitalismState {
   return {
     crew: [],
@@ -480,33 +496,43 @@ export function createDefaultLivestockState(): LivestockCapitalismState {
     poultrySalePrice: 3,
     totalChicksHatched: 0,
     supplies: {
-      strawBeddingKg: 400,
-      feedGrainKg: 10800, // Zapas zboża na 1 rok dla 3 koni (3 * 10 kg/dzień * 360 dni)
+      strawBeddingKg: 0,
+      feedGrainKg: 0,
     },
     herd: {
-      milkingGroupCows: 12,
-      growingGroupCalves: 8,
-      sheepFlockCount: 22,
-      adultSheepCount: 16,
-      growingLambsCount: 6,
-      horsesFlockCount: 3,
-      adultDraftHorses: 3,
+      milkingGroupCows: 0,
+      bullsCount: 0,
+      growingGroupCalves: 0,
+      cattleForSale: 0,
+      sheepFlockCount: 0,
+      adultSheepCount: 0,
+      ramsCount: 0,
+      growingLambsCount: 0,
+      sheepForSale: 0,
+      adultHensCount: 0,
+      roostersCount: 0,
+      growingChicksCount: 0,
+      poultryForSale: 0,
+      poultryFlockCount: 0,
+      horsesFlockCount: 0,
+      adultDraftHorses: 0,
       growingFoalsCount: 0,
       horsesForSale: 0,
+      horses: [],
     },
     storage: {
-      beefKg: 250,
-      muttonKg: 150,
-      leatherPcs: 30,
-      milkLiters: 480,
-      woolKg: 200,
-      manureKg: 400,
+      beefKg: 0,
+      muttonKg: 0,
+      leatherPcs: 0,
+      milkLiters: 0,
+      woolKg: 0,
+      manureKg: 0,
     },
-    totalCalvesBorn: 14,
-    totalLambsBorn: 18,
-    totalProceduresFailed: 1,
+    totalCalvesBorn: 0,
+    totalLambsBorn: 0,
+    totalProceduresFailed: 0,
     lastProcedureRiskPercent: 5,
-    lastCycleRevenue: 98,
-    lastCycleCost: 46,
+    lastCycleRevenue: 0,
+    lastCycleCost: 0,
   };
 }

@@ -2,26 +2,38 @@ import { CITY_GEOMETRY, RURAL_GEOMETRY } from './mapConfig';
 import type { TileDef, PlacedBuilding } from './types';
 
 // ==========================================
-// 1. MAPA MIEJSKA (CITY) - Siatka 14x12, kafle 128x64
+// 1. MAPA MIEJSKA (CITY) - Siatka 27x24 (+6 kratek w każdą stronę, morze 2 kratki)
 // ==========================================
 export function createInitialCityTerrain(): Record<string, TileDef['type']> {
   const initial: Record<string, TileDef['type']> = {};
   for (let x = 0; x < CITY_GEOMETRY.gridSizeX; x++) {
     for (let y = 0; y < CITY_GEOMETRY.gridSizeY; y++) {
       let type: TileDef['type'] = 'grass';
-      if (x === 0) type = 'water';
-      else if (x === 1) type = 'quay';
-      else if (
-        x === 2 ||
-        (x >= 2 && y === 3) ||
-        (x >= 2 && y === 7)
-      ) {
+      const isMarketRingRoad =
+        ((x === 11 || x === 15) && y >= 9 && y <= 13) ||
+        ((y === 9 || y === 13) && x >= 11 && x <= 15);
+      // 4 drogi promieniste z narożników placu + dodatkowa siatka dróg wg planu
+      const isRadialRoad =
+        (y === 9 && x >= 3 && x <= 10) ||
+        (x === 15 && y >= 0 && y <= 8) ||
+        (y === 13 && x >= 3 && x <= 26) ||
+        (x === 11 && y >= 14 && y <= 23) ||
+        (y === 5 && x >= 3 && x <= 26) ||
+        (y === 18 && x >= 3 && x <= 26) ||
+        (x === 7 && y >= 0 && y <= 23) ||
+        (x === 11 && y >= 0 && y <= 5) ||
+        (x === 19 && y >= 0 && y <= 23);
+
+      if (x === 0 || x === 1) type = 'water';
+      else if (x === 2) type = 'quay';
+      else if (isMarketRingRoad || isRadialRoad) {
         type = 'road';
       } else {
-        // Naturalne strefy leśne na obrzeżach miasta
-        const isNorthEastForest = x >= 12 && y <= 2 && (x + y) % 5 !== 0;
-        const isSouthForest = x >= 4 && x <= 10 && y >= 11 && (x + y) % 4 !== 0;
-        if (isNorthEastForest || isSouthForest) {
+        // Dzikie drzewa tylko przy skrajnej PD-wschodniej krawędzi mapy (głębokość 1 lub losowo 2 kratki)
+        const isCoalPlot = x === 26 && y >= 22;
+        const isSeEdgeDepth1 = x === 26 && !isCoalPlot;
+        const isSeEdgeDepth2 = x === 25 && (x * 31 + y * 13) % 5 < 2;
+        if (isSeEdgeDepth1 || isSeEdgeDepth2) {
           const hash = (x * 37 + y * 17) % 3;
           type = hash === 0 ? 'forest_oak' : hash === 1 ? 'forest_pine' : 'forest_grove';
         }
@@ -37,7 +49,7 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     id: 'trade_ship_init',
     typeId: 'trade_ship',
     name: 'Statek Handlowy (Port Londyn)',
-    x: 0,
+    x: 1,
     y: 0,
     sizeX: 1,
     sizeY: 2,
@@ -45,22 +57,11 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     cost: 0,
   },
   {
-    id: 'trade_school_init',
-    typeId: 'trade_school',
-    name: 'Szkoła Branżowa i Techniczna',
-    x: 3,
-    y: 4,
-    sizeX: 2,
-    sizeY: 2,
-    rotation: 0,
-    cost: 4200,
-  },
-  {
     id: 'marketplace_init',
     typeId: 'marketplace',
     name: 'Targowisko Miejskie (8 Stoisk)',
-    x: 5,
-    y: 4,
+    x: 12,
+    y: 10,
     sizeX: 3,
     sizeY: 3,
     rotation: 0,
@@ -70,62 +71,18 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     id: 'town_hall_init',
     typeId: 'town_hall',
     name: 'Wiktoriański Ratusz',
-    x: 8,
-    y: 4,
+    x: 12,
+    y: 6,
     sizeX: 3,
     sizeY: 3,
     rotation: 0,
     cost: 15000,
   },
   {
-    id: 'university_init',
-    typeId: 'university',
-    name: 'Wiktoriański Uniwersytet',
-    x: 11,
-    y: 4,
-    sizeX: 3,
-    sizeY: 3,
-    rotation: 0,
-    cost: 11000,
-  },
-  {
-    id: 'tenement_workers_init',
-    typeId: 'tenement_workers',
-    name: 'Kamienica Robotnicza (Klasa R)',
-    x: 3,
-    y: 8,
-    sizeX: 1,
-    sizeY: 2,
-    rotation: 0,
-    cost: 1200,
-  },
-  {
-    id: 'tenement_middle_init',
-    typeId: 'tenement_middle',
-    name: 'Kamienica Mieszczańska (Klasa M)',
-    x: 6,
-    y: 8,
-    sizeX: 1,
-    sizeY: 2,
-    rotation: 0,
-    cost: 2600,
-  },
-  {
-    id: 'park_init',
-    typeId: 'oak',
-    name: 'Park Miejski',
-    x: 9,
-    y: 8,
-    sizeX: 2,
-    sizeY: 2,
-    rotation: 0,
-    cost: 1500,
-  },
-  {
     id: 'tenement_elite_mayor_init',
     typeId: 'tenement_elite',
     name: 'Willa Elity (Burmistrz)',
-    x: 11,
+    x: 17,
     y: 8,
     sizeX: 2,
     sizeY: 2,
@@ -133,11 +90,176 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     cost: 5500,
   },
   {
+    id: 'university_init',
+    typeId: 'university',
+    name: 'Wiktoriański Uniwersytet',
+    x: 16,
+    y: 10,
+    sizeX: 3,
+    sizeY: 3,
+    rotation: 0,
+    cost: 11000,
+  },
+  {
+    id: 'theatre_init',
+    typeId: 'city_theatre',
+    name: 'Teatr Miejski',
+    x: 16,
+    y: 14,
+    sizeX: 3,
+    sizeY: 2,
+    rotation: 0,
+    cost: 4800,
+  },
+  {
+    id: 'cathedral_init',
+    typeId: 'cathedral',
+    name: 'Katedra',
+    x: 8,
+    y: 10,
+    sizeX: 3,
+    sizeY: 2,
+    rotation: 0,
+    cost: 12000,
+  },
+  {
+    id: 'park_init',
+    typeId: 'oak',
+    name: 'Park Miejski',
+    x: 11,
+    y: 8,
+    sizeX: 1,
+    sizeY: 1,
+    rotation: 0,
+    cost: 1500,
+  },
+  {
+    id: 'police_init',
+    typeId: 'police_station',
+    name: 'Policja',
+    x: 12,
+    y: 14,
+    sizeX: 1,
+    sizeY: 2,
+    rotation: 0,
+    cost: 1800,
+  },
+  {
+    id: 'courthouse_init',
+    typeId: 'courthouse',
+    name: 'Sąd Miejski',
+    x: 12,
+    y: 16,
+    sizeX: 1,
+    sizeY: 2,
+    rotation: 0,
+    cost: 2800,
+  },
+  {
+    id: 'fire_station_init',
+    typeId: 'fire_station',
+    name: 'Straż Pożarna',
+    x: 13,
+    y: 14,
+    sizeX: 1,
+    sizeY: 2,
+    rotation: 0,
+    cost: 2000,
+  },
+  {
+    id: 'pumping_station_init',
+    typeId: 'pumping_station',
+    name: 'Stacja Pomp',
+    x: 13,
+    y: 16,
+    sizeX: 2,
+    sizeY: 2,
+    rotation: 0,
+    cost: 3200,
+  },
+  {
+    id: 'hospital_init',
+    typeId: 'city_hospital',
+    name: 'Szpital Miejski',
+    x: 15,
+    y: 16,
+    sizeX: 2,
+    sizeY: 2,
+    rotation: 0,
+    cost: 5400,
+  },
+  {
+    id: 'baths_init',
+    typeId: 'public_baths',
+    name: 'Łaźnia i Pralnia',
+    x: 17,
+    y: 16,
+    sizeX: 1,
+    sizeY: 2,
+    rotation: 0,
+    cost: 1600,
+  },
+  {
+    id: 'library_init',
+    typeId: 'public_library',
+    name: 'Biblioteka Publiczna',
+    x: 18,
+    y: 16,
+    sizeX: 1,
+    sizeY: 2,
+    rotation: 0,
+    cost: 2200,
+  },
+  {
+    id: 'railway_station_init',
+    typeId: 'railway_station',
+    name: 'Stacja Kolejowa',
+    x: 12,
+    y: 19,
+    sizeX: 2,
+    sizeY: 4,
+    rotation: 0,
+    cost: 9500,
+  },
+  {
+    id: 'tenement_workers_init',
+    typeId: 'tenement_workers',
+    name: 'Kamienica Robotnicza (Klasa R)',
+    x: 9,
+    y: 23,
+    sizeX: 2,
+    sizeY: 1,
+    rotation: 90,
+    cost: 1200,
+  },
+  {
+    id: 'tenement_middle_init',
+    typeId: 'tenement_middle',
+    name: 'Kamienica Mieszczańska (Klasa M)',
+    x: 9,
+    y: 20,
+    sizeX: 2,
+    sizeY: 1,
+    rotation: 90,
+    cost: 2600,
+  },
+  {
+    id: 'trade_school_init',
+    typeId: 'trade_school',
+    name: 'Szkoła Branżowa i Techniczna',
+    x: 14,
+    y: 14,
+    sizeX: 2,
+    sizeY: 2,
+    rotation: 0,
+    cost: 4200,
+  },
+  {
     id: 'coal_init',
     typeId: 'coal_plant',
     name: 'Elektrociepłownia Węglowa',
-    x: 6,
-    y: 1,
+    x: 26,
+    y: 22,
     sizeX: 1,
     sizeY: 2,
     rotation: 0,
@@ -225,39 +347,6 @@ export const INITIAL_RURAL_BUILDINGS: PlacedBuilding[] = [
     sizeY: 12, // 6 * 2
     rotation: 0,
     cost: 12000,
-  },
-  {
-    id: 'rural_farm_init',
-    typeId: 'wheat_farm',
-    name: 'Farma Zbożowa',
-    x: 6,
-    y: 2,
-    sizeX: 6, // 3 * 2
-    sizeY: 8, // 4 * 2
-    rotation: 0,
-    cost: 2800,
-  },
-  {
-    id: 'rural_orchard_init',
-    typeId: 'orchard',
-    name: 'Sad Owocowy',
-    x: 14,
-    y: 4,
-    sizeX: 4, // 2 * 2
-    sizeY: 4, // 2 * 2
-    rotation: 0,
-    cost: 1800,
-  },
-  {
-    id: 'rural_livestock_init',
-    typeId: 'livestock_farm',
-    name: 'Farma Hodowlana',
-    x: 6,
-    y: 13,
-    sizeX: 6, // 3 * 2
-    sizeY: 8, // 4 * 2
-    rotation: 0,
-    cost: 2400,
   },
 ];
 

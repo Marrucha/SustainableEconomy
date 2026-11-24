@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import type { FarmCapitalismState, FarmCrewMember, FarmCycleStage, WorkerProfession } from './farmGridTypes';
-import { PROFESSION_LABELS, getStageAssignedWorkerIds, getWorkerStageRoleTitle } from './farmGridTypes';
+import {
+  PROFESSION_LABELS,
+  getHiredAgronomistsCount,
+  getRequiredAgronomistsCount,
+  getStageAssignedWorkerIds,
+  getWorkerStageRoleTitle,
+} from './farmGridTypes';
 import { generateRandomEnglishName } from './englishNames';
 import { WorkdayHoursBar, WorkerDailyWageInput } from './CrewControls';
 
@@ -29,14 +35,31 @@ export const FarmCrewTab: React.FC<FarmCrewTabProps> = ({ state, onUpdateState }
 
   const crew = state.crew || [];
   const agronomist = state.agronomist;
+  const fieldFarmersCount = crew.filter(
+    (w) => w.profession === 'farmer' || w.profession === 'all_rounder'
+  ).length;
+  const hiredAgronomists = getHiredAgronomistsCount(agronomist);
+  const requiredAgronomists = getRequiredAgronomistsCount(fieldFarmersCount);
 
   const totalCrewWages = crew.reduce((sum, w) => sum + w.wageDaily, 0);
-  const agronomistWage = agronomist.hired ? agronomist.wageDaily : 0;
+  const agronomistWage = hiredAgronomists * agronomist.wageDaily;
   const totalDailyPayroll = totalCrewWages + agronomistWage;
 
   const handleToggleAgronomist = () => {
+    const nextHired = !agronomist.hired;
     onUpdateState({
-      agronomist: { ...agronomist, hired: !agronomist.hired },
+      agronomist: { ...agronomist, hired: nextHired, count: nextHired ? 1 : 0 },
+    });
+  };
+
+  const handleChangeAgronomistsCount = (delta: number) => {
+    const nextCount = Math.max(0, hiredAgronomists + delta);
+    onUpdateState({
+      agronomist: {
+        ...agronomist,
+        hired: nextCount > 0,
+        count: nextCount,
+      },
     });
   };
 
@@ -219,6 +242,29 @@ export const FarmCrewTab: React.FC<FarmCrewTabProps> = ({ state, onUpdateState }
           )}
 
           <div className="flex items-center gap-2.5 shrink-0">
+            {agronomist.hired && (
+              <div className="flex items-center gap-1 bg-stone-900 border border-stone-700 rounded-lg px-1.5 py-0.5 font-mono text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => handleChangeAgronomistsCount(-1)}
+                  className="px-1.5 text-stone-300 hover:text-white cursor-pointer"
+                  title="Zmniejsz liczbę agronomów"
+                >
+                  −
+                </button>
+                <span className={hiredAgronomists < requiredAgronomists ? 'text-amber-300 font-bold' : 'text-sky-200 font-bold'}>
+                  {hiredAgronomists}/{requiredAgronomists}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleChangeAgronomistsCount(1)}
+                  className="px-1.5 text-stone-300 hover:text-white cursor-pointer"
+                  title="Zatrudnij kolejnego agronoma (1 na 20 rolników)"
+                >
+                  +
+                </button>
+              </div>
+            )}
             <WorkerDailyWageInput
               wage={agronomist.wageDaily}
               min={1}
@@ -344,7 +390,11 @@ export const FarmCrewTab: React.FC<FarmCrewTabProps> = ({ state, onUpdateState }
       <div className="bg-stone-900/60 px-3 py-2 rounded-xl border border-stone-800 text-xs flex flex-wrap items-center justify-between gap-2 font-mono">
         <span className="text-stone-300">
           Załoga: <strong className="text-amber-300">{crew.length} os.</strong> +{' '}
-          <strong className="text-sky-300">{agronomist.hired ? '1 agronom' : 'brak agronoma'}</strong>
+          <strong className="text-sky-300">
+            {hiredAgronomists > 0
+              ? `${hiredAgronomists} ${hiredAgronomists === 1 ? 'agronom' : 'agronomów'} (wymagani: ${requiredAgronomists})`
+              : 'brak agronoma'}
+          </strong>
         </span>
         <span className="text-stone-300">
           Płace: <strong className="text-emerald-400">£ {totalDailyPayroll.toFixed(1)} / dzień</strong>{' '}

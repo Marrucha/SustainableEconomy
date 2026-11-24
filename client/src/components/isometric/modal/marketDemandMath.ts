@@ -30,9 +30,34 @@ export interface ProductMarketScores {
   qualityScore: number;
   brandScore: number;
   priceScore: number;
-  workersOverall: number; // 80% cena, 10% marka, 10% jakość
-  middleOverall: number;  // 60% cena, 20% marka, 20% jakość
-  eliteOverall: number;   // 30% cena, 35% marka, 35% jakość
+  locationScore: number;
+  workersOverall: number; // 72% cena, 9% marka, 9% jakość, 10% lokalizacja
+  middleOverall: number;  // 48% cena, 16% marka, 16% jakość, 20% lokalizacja
+  eliteOverall: number;   // 20% cena, 25% marka, 25% jakość, 30% lokalizacja
+}
+
+export function computeBuildingLocationScore(
+  building: Pick<WorldSupplierBuilding, 'typeId' | 'x' | 'y' | 'sizeX' | 'sizeY' | 'mapType'> | undefined,
+  allWorldBuildings: WorldSupplierBuilding[]
+): number {
+  if (!building || building.typeId === 'marketplace') return 100;
+  const targetMap = building.mapType || 'city';
+  const marketplaces = allWorldBuildings.filter(
+    (b) => b.typeId === 'marketplace' && (b.mapType || 'city') === targetMap
+  );
+  if (marketplaces.length === 0) return 100;
+
+  let minDistTiles = Infinity;
+  for (const m of marketplaces) {
+    const cx = m.x + m.sizeX / 2;
+    const cy = m.y + m.sizeY / 2;
+    const dx = Math.max(building.x - cx, 0, cx - (building.x + building.sizeX));
+    const dy = Math.max(building.y - cy, 0, cy - (building.y + building.sizeY));
+    const distTiles = Math.hypot(dx, dy);
+    if (distTiles < minDistTiles) minDistTiles = distTiles;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(100 - minDistTiles * 2)));
 }
 
 export function resolveRetailPrice(
@@ -91,7 +116,8 @@ export function computeProductMarketScores(
   defaultPrice: number,
   supplierBuildingId?: string,
   buildingsState?: Record<string, BuildingState>,
-  allWorldBuildings?: WorldSupplierBuilding[]
+  allWorldBuildings?: WorldSupplierBuilding[],
+  locationScore = 100
 ): ProductMarketScores {
   const isShip = Boolean(supplierBuildingId?.startsWith('trade_ship'));
   const supState = supplierBuildingId ? buildingsState?.[supplierBuildingId] : undefined;
@@ -151,20 +177,22 @@ export function computeProductMarketScores(
     priceScore = Math.max(-100, Math.round((2 - priceRatio) * 50));
   }
 
+  const safeLocation = Math.max(0, Math.min(100, Math.round(locationScore)));
   const workersOverall = Math.round(
-    priceScore * 0.8 + brandScore * 0.1 + qualityScore * 0.1
+    priceScore * 0.72 + brandScore * 0.09 + qualityScore * 0.09 + safeLocation * 0.1
   );
   const middleOverall = Math.round(
-    priceScore * 0.6 + brandScore * 0.2 + qualityScore * 0.2
+    priceScore * 0.48 + brandScore * 0.16 + qualityScore * 0.16 + safeLocation * 0.2
   );
   const eliteOverall = Math.round(
-    priceScore * 0.3 + brandScore * 0.35 + qualityScore * 0.35
+    priceScore * 0.2 + brandScore * 0.25 + qualityScore * 0.25 + safeLocation * 0.3
   );
 
   return {
     qualityScore,
     brandScore,
     priceScore,
+    locationScore: safeLocation,
     workersOverall,
     middleOverall,
     eliteOverall,

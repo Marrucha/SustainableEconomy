@@ -1,7 +1,12 @@
 import React from 'react';
 import type { BuildingState, PlacedBuilding } from '../types';
 import { formatSupplierOrderLabel, type WorldSupplierBuilding } from './industrySupplyConfig';
-import { createDefaultFarmCapitalismState, CROPS_CONFIG, getGrainSiloDailyCostPence } from './farmGridTypes';
+import {
+  createDefaultFarmCapitalismState,
+  CROPS_CONFIG,
+  getGrainSiloDailyCostPence,
+  getHiredAgronomistsCount,
+} from './farmGridTypes';
 import { computeFarmYieldSummary } from './farmYieldMath';
 import { getContractMeta } from './industryContracts';
 import { getMillGrainOrders } from './mill/millTypes';
@@ -207,7 +212,7 @@ export const FarmFinanceSummary: React.FC<FarmFinanceSummaryProps> = ({
 
   const dailyWages =
     (farm.crew || []).reduce((s, w) => s + w.wageDaily, 0) +
-    (farm.agronomist?.hired ? farm.agronomist.wageDaily : 0);
+    getHiredAgronomistsCount(farm.agronomist) * (farm.agronomist?.wageDaily || 0);
   const purchaseLines: { label: string; detail: string; cost: number }[] = [
     { label: 'Kadra i Agronom', detail: '30 dni', cost: Number((dailyWages * 30).toFixed(2)) },
     {

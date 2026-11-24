@@ -97,13 +97,36 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
     onUpdateState({ livestockState: nextState });
   };
 
-  const handleConfirmSwitchSpecies = () => {
-    if (!pendingSpeciesChange || pendingSpeciesChange === livestockState.activeSpecies) {
+  const hasAnyHerdOrProductStock = () => {
+    const h = livestockState.herd;
+    const st = livestockState.storage;
+    const liveHorses = (h.horses || []).filter((x) => !x.isDeceased).length;
+    const totalAnimals =
+      (h.milkingGroupCows || 0) +
+      (h.growingGroupCalves || 0) +
+      (h.cattleForSale || 0) +
+      (h.adultSheepCount || 0) +
+      (h.growingLambsCount || 0) +
+      (h.sheepForSale || 0) +
+      liveHorses +
+      (h.adultDraftHorses || 0) +
+      (h.growingFoalsCount || 0) +
+      (h.horsesForSale || 0);
+    const totalProducts =
+      (st?.beefKg || 0) +
+      (st?.muttonKg || 0) +
+      (st?.leatherPcs || 0) +
+      (st?.milkLiters || 0) +
+      (st?.woolKg || 0) +
+      (st?.manureKg || 0);
+    return totalAnimals > 0 || totalProducts > 0;
+  };
+
+  const applySpeciesSwitch = (newSpecies: 'cattle' | 'sheep' | 'horses' | 'poultry') => {
+    if (newSpecies === livestockState.activeSpecies) {
       setPendingSpeciesChange(null);
       return;
     }
-
-    const newSpecies = pendingSpeciesChange;
 
     // Po zmianie typu hodowli automatycznie przepada cały zapas produktów!
     const emptiedStorage = {
@@ -121,8 +144,8 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
         storage: emptiedStorage,
         herd: {
           ...livestockState.herd,
-          milkingGroupCows: livestockState.herd.milkingGroupCows || 12,
-          growingGroupCalves: livestockState.herd.growingGroupCalves || 8,
+          milkingGroupCows: livestockState.herd.milkingGroupCows || 0,
+          growingGroupCalves: livestockState.herd.growingGroupCalves || 0,
           sheepFlockCount: 0,
           adultSheepCount: 0,
           growingLambsCount: 0,
@@ -140,16 +163,16 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
           ...livestockState.herd,
           milkingGroupCows: 0,
           growingGroupCalves: 0,
-          sheepFlockCount: livestockState.herd.adultSheepCount ? (livestockState.herd.adultSheepCount + (livestockState.herd.growingLambsCount || 6)) : 22,
-          adultSheepCount: livestockState.herd.adultSheepCount || 16,
-          growingLambsCount: livestockState.herd.growingLambsCount || 6,
+          sheepFlockCount: (livestockState.herd.adultSheepCount || 0) + (livestockState.herd.growingLambsCount || 0),
+          adultSheepCount: livestockState.herd.adultSheepCount || 0,
+          growingLambsCount: livestockState.herd.growingLambsCount || 0,
           horsesFlockCount: 0,
           adultDraftHorses: 0,
           growingFoalsCount: 0,
         },
       });
       setSpeciesFeedback('🐑 Zmieniono profil na Fermę Owiec! Cały dotychczasowy zapas produktów ze starego stada przepadł!');
-    } else if (pendingSpeciesChange === 'horses') {
+    } else if (newSpecies === 'horses') {
       const energyHorses = (buildingState.ownedHorses || []).map((h) => ({
         ...h,
         group: 'breeding' as const,
@@ -189,7 +212,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
           ? `🐎 Zmieniono profil na Hodowlę Koni! ${energyHorses.length} koni energetycznych dołączyło do stada rozrodczego.`
           : '🐎 Zmieniono profil na Hodowlę Koni! Cały dotychczasowy zapas produktów ze starego stada przepadł!'
       );
-    } else if (pendingSpeciesChange === 'poultry') {
+    } else if (newSpecies === 'poultry') {
       handleUpdateLivestock({
         activeSpecies: 'poultry',
         storage: {
@@ -226,6 +249,21 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
     setTimeout(() => setSpeciesFeedback(null), 5000);
   };
 
+  const handleConfirmSwitchSpecies = () => {
+    if (pendingSpeciesChange) {
+      applySpeciesSwitch(pendingSpeciesChange);
+    }
+  };
+
+  const handleRequestSpeciesSwitch = (newSpecies: 'cattle' | 'sheep' | 'horses' | 'poultry') => {
+    if (currentSpecies === newSpecies) return;
+    if (!hasAnyHerdOrProductStock()) {
+      applySpeciesSwitch(newSpecies);
+      return;
+    }
+    setPendingSpeciesChange(newSpecies);
+  };
+
   const currentSpecies = livestockState.activeSpecies;
 
   return (
@@ -238,9 +276,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
 
         <div className="flex gap-2 w-full sm:w-auto">
           <button
-            onClick={() => {
-              if (currentSpecies !== 'cattle') setPendingSpeciesChange('cattle');
-            }}
+            onClick={() => handleRequestSpeciesSwitch('cattle')}
             className={`flex-1 sm:flex-none py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               currentSpecies === 'cattle'
                 ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
@@ -252,9 +288,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
           </button>
 
           <button
-            onClick={() => {
-              if (currentSpecies !== 'sheep') setPendingSpeciesChange('sheep');
-            }}
+            onClick={() => handleRequestSpeciesSwitch('sheep')}
             className={`flex-1 sm:flex-none py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               currentSpecies === 'sheep'
                 ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
@@ -266,9 +300,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
           </button>
 
           <button
-            onClick={() => {
-              if (currentSpecies !== 'horses') setPendingSpeciesChange('horses');
-            }}
+            onClick={() => handleRequestSpeciesSwitch('horses')}
             className={`flex-1 sm:flex-none py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               currentSpecies === 'horses'
                 ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
@@ -280,9 +312,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
           </button>
 
           <button
-            onClick={() => {
-              if (currentSpecies !== 'poultry') setPendingSpeciesChange('poultry');
-            }}
+            onClick={() => handleRequestSpeciesSwitch('poultry')}
             className={`flex-1 sm:flex-none py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               currentSpecies === 'poultry'
                 ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/60 shadow-md ring-1 ring-emerald-400/40'
@@ -420,6 +450,7 @@ export const LivestockSection: React.FC<LivestockSectionProps> = ({
         <LivestockHerdTab
           state={livestockState}
           clockDay={clock?.date.day ?? 1}
+          onSpendGold={onSpendGold}
           onUpdateState={handleUpdateLivestock}
         />
       )}

@@ -106,6 +106,21 @@ export const MillCrewTab: React.FC<MillCrewTabProps> = ({
         onChangeHours={(h) => onUpdate({ workdayHours: h })}
       />
 
+      <label className="flex items-center justify-between gap-3 bg-stone-900/80 border border-stone-800 rounded-xl px-3 py-2 cursor-pointer hover:border-amber-500/40 transition-colors">
+        <div className="text-xs">
+          <span className="font-bold text-amber-200">🗓️ Wolne soboty</span>
+          <span className="text-stone-400 text-[11px] block">
+            W niedziele młyn nie pracuje; po zaznaczeniu produkcja stoi także w soboty.
+          </span>
+        </div>
+        <input
+          type="checkbox"
+          checked={Boolean(state.freeSaturdays)}
+          onChange={(e) => onUpdate({ freeSaturdays: e.target.checked })}
+          className="w-4 h-4 accent-amber-500 cursor-pointer"
+        />
+      </label>
+
       {showRoleInfo && (
         <div className="bg-stone-950/90 border border-amber-500/30 rounded-xl p-3 text-xs space-y-1.5">
           {Object.values(MILL_PROFESSIONS).map((p) => (

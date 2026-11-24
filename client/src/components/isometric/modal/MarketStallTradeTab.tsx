@@ -17,6 +17,7 @@ import {
   type ContractType,
 } from './industryContracts';
 import { getTransportCompanies, resolveRouteForSupplier } from './transportLogistics';
+import { computeProductPurchasePrice, resolveRetailPrice } from './marketDemandMath';
 
 interface MarketStallTradeTabProps {
   stall: MarketStallSlot;
@@ -24,6 +25,9 @@ interface MarketStallTradeTabProps {
   playerStallsCount: number;
   allWorldBuildings: WorldSupplierBuilding[];
   buildingsState: Record<string, BuildingState>;
+  maxProducts?: number;
+  maxProductsPerTrader?: number;
+  isShopMode?: boolean;
   onUpdateSuppliersCount: (count: number) => void;
   onUpdateStallSupply: (slotIndex: number, supplySlots: MarketStallSupplySlot[]) => void;
   onUpdateStallSellers: (slotIndex: number, sellers: MarketStallSeller[]) => void;
@@ -35,10 +39,13 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
   playerStallsCount,
   allWorldBuildings,
   buildingsState,
+  maxProducts = 4,
+  maxProductsPerTrader = 1,
+  isShopMode = false,
   onUpdateStallSupply,
   onUpdateStallSellers,
 }) => {
-  const [subTab, setSubTab] = useState<'buy' | 'sell'>('buy');
+  const [subTab, setSubTab] = useState<'buy' | 'sell' | 'pricelist'>('buy');
   const [isOrderOpen, setIsOrderOpen] = useState<boolean>(false);
   const [selectedProductId, setSelectedProductId] = useState<string>(
     ALL_MARKET_GOODS[0]?.id || 'chleb'
@@ -52,7 +59,9 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
   const supplySlots = stall.supplySlots || [];
   const sellers = stall.sellers || [];
   const traderCrew = stall.stageCrew?.trader || [];
-  const isStallSupplied = suppliersCount > 0 && suppliersCount * 4 >= playerStallsCount;
+  const isStallSupplied = isShopMode
+    ? (stall.stageCrew?.supply?.length ?? 0) > 0
+    : suppliersCount > 0 && suppliersCount * 4 >= playerStallsCount;
   const transportCompanies = getTransportCompanies(allWorldBuildings);
   const availableOffers = getAvailableMarketOffers(allWorldBuildings, buildingsState);
 
@@ -82,7 +91,7 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
   const meta = getContractMeta(contractType);
 
   const handleAddBuyContract = () => {
-    if (supplySlots.length >= 4) return;
+    if (supplySlots.length >= maxProducts) return;
     const nextSlot: MarketStallSupplySlot = {
       slotIndex: supplySlots.length + 1,
       productId: selectedProductId,
@@ -114,10 +123,13 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
   const [sellProductId, setSellProductId] = useState<string>('');
   const [sellPrice, setSellPrice] = useState<number>(2.0);
   const [sellTraderId, setSellTraderId] = useState<string>('');
-  const usedTraderIds = new Set(
-    sellers.map((s) => s.traderId).filter((id): id is string => Boolean(id))
+  const traderUsageCount = new Map<string, number>();
+  sellers.forEach((s) => {
+    if (s.traderId) traderUsageCount.set(s.traderId, (traderUsageCount.get(s.traderId) || 0) + 1);
+  });
+  const freeTraders = traderCrew.filter(
+    (t) => (traderUsageCount.get(t.id) || 0) < maxProductsPerTrader
   );
-  const freeTraders = traderCrew.filter((t) => !usedTraderIds.has(t.id));
   const effectiveSellProductId = uniqueSecuredGoods.some((g) => g.id === sellProductId)
     ? sellProductId
     : uniqueSecuredGoods[0]?.id || '';
@@ -126,7 +138,7 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
     : freeTraders[0]?.id || '';
 
   const handleAddSeller = () => {
-    if (sellers.length >= 4 || !effectiveSellProductId) return;
+    if (sellers.length >= maxProducts || !effectiveSellProductId) return;
     const chosenTrader = freeTraders.find((t) => t.id === effectiveSellTraderId);
     const nextSeller: MarketStallSeller = {
       sellerIndex: sellers.length + 1,
@@ -140,7 +152,8 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
   const handleAssignTraderToSeller = (sellerIndex: number, traderId: string) => {
     if (
       traderId &&
-      sellers.some((s) => s.sellerIndex !== sellerIndex && s.traderId === traderId)
+      sellers.filter((s) => s.sellerIndex !== sellerIndex && s.traderId === traderId).length >=
+        maxProductsPerTrader
     ) {
       return;
     }
@@ -160,9 +173,17 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
     onUpdateStallSellers(stall.slotIndex, filtered);
   };
 
+  const handleUpdateSellerPrice = (sellerIdx: number, nextPrice: number) => {
+    const safePrice = Math.max(0.1, Number(nextPrice.toFixed(2)));
+    const updated = sellers.map((s) =>
+      s.sellerIndex === sellerIdx ? { ...s, retailPrice: safePrice } : s
+    );
+    onUpdateStallSellers(stall.slotIndex, updated);
+  };
+
   return (
     <div className="space-y-3">
-      {/* Podział na 2 podzakładki: Zakupy / Sprzedaż */}
+      {/* Podział na 3 podzakładki: Zakupy / Sprzedaż / Cennik */}
       <div className="flex gap-1.5 bg-stone-950/80 p-1 rounded-xl border border-stone-800">
         <button
           type="button"
@@ -184,7 +205,18 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
               : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
           }`}
         >
-          🤝 Sprzedaż (Detal na Stoisku)
+          🤝 Sprzedaż ({isShopMode ? 'Detal w Sklepie' : 'Detal na Stoisku'})
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('pricelist')}
+          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+            subTab === 'pricelist'
+              ? 'bg-sky-500/25 text-sky-200 border border-sky-400/50'
+              : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
+          }`}
+        >
+          🏷️ Cennik ({sellers.length})
         </button>
       </div>
 
@@ -211,7 +243,7 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
                 </div>
               </div>
               <span className="px-2 py-0.5 rounded-lg bg-stone-950 border border-amber-500/40 text-amber-300 font-mono text-[10px] font-bold">
-                {supplySlots.length} / 4 sloty
+                {supplySlots.length} / {maxProducts} sloty
               </span>
             </div>
 
@@ -337,11 +369,11 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
 
               <button
                 type="button"
-                disabled={supplySlots.length >= 4}
+                disabled={supplySlots.length >= maxProducts}
                 onClick={handleAddBuyContract}
                 className="w-full py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-stone-950 text-xs font-bold cursor-pointer"
               >
-                + Dodaj kontrakt zakupu ({supplySlots.length}/4)
+                + Dodaj kontrakt zakupu ({supplySlots.length}/{maxProducts})
               </button>
               </>
               )}
@@ -439,12 +471,12 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
             )}
           </div>
         </div>
-      ) : (
+      ) : subTab === 'sell' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* LEWA KOLUMNA: Dodanie oferty sprzedaży detalicznej */}
           <div className="bg-stone-900/90 rounded-2xl p-3 border border-amber-500/30 space-y-2.5">
             <h4 className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
-              🤝 Wystaw Produkt na Stoisku ({sellers.length}/4)
+              🤝 Wystaw Produkt na Stoisku ({sellers.length}/{maxProducts})
             </h4>
             {uniqueSecuredGoods.length === 0 ? (
               <p className="text-xs text-stone-400 italic">
@@ -504,11 +536,11 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
                 </div>
                 <button
                   type="button"
-                  disabled={sellers.length >= 4}
+                  disabled={sellers.length >= maxProducts}
                   onClick={handleAddSeller}
                   className="w-full py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold cursor-pointer"
                 >
-                  + Wystaw na ladę ({sellers.length}/4)
+                  + Wystaw na ladę ({sellers.length}/{maxProducts})
                 </button>
               </>
             )}
@@ -546,7 +578,11 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
                         >
                           <option value="">-- Wybierz sprzedawcę --</option>
                           {traderCrew
-                            .filter((t) => t.id === sel.traderId || !usedTraderIds.has(t.id))
+                            .filter(
+                              (t) =>
+                                t.id === sel.traderId ||
+                                (traderUsageCount.get(t.id) || 0) < maxProductsPerTrader
+                            )
                             .map((t) => (
                               <option key={t.id} value={t.id}>
                                 👤 {t.name}
@@ -567,6 +603,81 @@ export const MarketStallTradeTab: React.FC<MarketStallTradeTabProps> = ({
               </div>
             )}
           </div>
+        </div>
+      ) : (
+        <div className="bg-stone-900/90 rounded-2xl p-3.5 border border-sky-500/40 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-sky-300">
+                🏷️ Cennik Detaliczny ({sellers.length}/{maxProducts})
+              </h4>
+              <p className="text-[11px] text-stone-400">
+                Ustaw ceny sprzedaży dla wystawionych produktów i kontroluj marżę względem kosztu zakupu.
+              </p>
+            </div>
+          </div>
+
+          {sellers.length === 0 ? (
+            <div className="p-5 rounded-xl bg-stone-950/70 border border-stone-800 text-center text-xs text-stone-400">
+              Brak wystawionych produktów. Najpierw dodaj produkty w podzakładce Sprzedaż.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {sellers.map((sel) => {
+                const good = ALL_MARKET_GOODS.find((g) => g.id === sel.productId);
+                const matchingSupply = supplySlots.find((s) => s.productId === sel.productId);
+                const retailPrice = resolveRetailPrice(sel.retailPrice, good?.defaultPrice);
+                const purchasePrice = computeProductPurchasePrice(
+                  sel.productId,
+                  good?.defaultPrice ?? retailPrice,
+                  matchingSupply?.supplierBuildingId,
+                  matchingSupply?.contractType,
+                  allWorldBuildings,
+                  buildingsState
+                );
+                const margin = Number((retailPrice - purchasePrice).toFixed(2));
+                return (
+                  <div
+                    key={`${sel.sellerIndex}_${sel.productId}`}
+                    className="bg-stone-950/85 border border-stone-800 rounded-xl p-3 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="text-xs font-bold text-amber-200 truncate">
+                        {good?.icon} {good?.label || sel.productId}
+                      </div>
+                      <div className="text-[10px] font-mono text-stone-400">
+                        Zakup: £{purchasePrice.toFixed(2)} • Ref.: £{(good?.defaultPrice ?? retailPrice).toFixed(2)}
+                      </div>
+                      <div
+                        className={`text-[10px] font-mono font-bold ${
+                          margin >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
+                        Marża: {margin >= 0 ? `+£${margin.toFixed(2)}` : `-£${Math.abs(margin).toFixed(2)}`}
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-1.5 shrink-0 text-xs font-mono">
+                      <span className="text-stone-400">£</span>
+                      <input
+                        type="number"
+                        min={0.1}
+                        step={0.1}
+                        value={retailPrice}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!Number.isNaN(val) && val > 0) {
+                            handleUpdateSellerPrice(sel.sellerIndex, val);
+                          }
+                        }}
+                        className="w-20 bg-stone-900 border border-sky-500/60 rounded-lg px-2 py-1 text-right font-bold text-sky-200 focus:outline-none focus:border-sky-400"
+                      />
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

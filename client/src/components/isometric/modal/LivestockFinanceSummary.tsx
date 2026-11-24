@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { BuildingState, PlacedBuilding } from '../types';
 import { formatSupplierOrderLabel, type WorldSupplierBuilding } from './industrySupplyConfig';
-import { createDefaultLivestockState } from './livestock/livestockTypes';
+import { computeDailyManureKg, createDefaultLivestockState } from './livestock/livestockTypes';
 import { createDefaultHorsesList } from './livestock/HorseRosterSection';
 import { getContractMeta } from './industryContracts';
 import type { FinanceContractLine } from './FarmFinanceSummary';
@@ -246,7 +246,8 @@ export const LivestockFinanceSummary: React.FC<LivestockFinanceSummaryProps> = (
     ? (ls.herd.adultSheepCount || 16) + (ls.herd.growingLambsCount || 6) + (ls.herd.sheepForSale ?? 4)
     : horsesList.length;
 
-  const dailyManureKg = Math.max(2, Math.round(animalCount * 1.5));
+  const hasStrawBedding = (ls.supplies?.strawBeddingKg ?? 0) > 0;
+  const dailyManureKg = hasStrawBedding ? computeDailyManureKg(species, animalCount) : 0;
   const monthlyManureKg = dailyManureKg * 30;
   const monthlyMilkL = isCattle ? ls.herd.milkingGroupCows * 14 * 30 : 0;
   const annualWoolKg = isSheep ? (ls.herd.adultSheepCount || 16) * 18 : 0;

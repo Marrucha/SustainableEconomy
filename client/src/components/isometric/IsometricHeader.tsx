@@ -43,11 +43,23 @@ export const IsometricHeader: React.FC<IsometricHeaderProps> = ({
 export const IsometricClockControls: React.FC<{
   clock: UseGameClockReturn;
   onOpenAdmin?: () => void;
-}> = ({ clock, onOpenAdmin }) => {
+  onOpenSaveLoad?: () => void;
+}> = ({ clock, onOpenAdmin, onOpenSaveLoad }) => {
   const { isPlaying, speed, togglePlay, setSpeed } = clock;
 
   return (
     <div className="flex items-center gap-2 bg-stone-900/90 px-2.5 py-1 rounded-xl border border-stone-800 text-xs font-mono shadow-xl backdrop-blur-md select-none">
+      {onOpenSaveLoad && (
+        <button
+          type="button"
+          onClick={onOpenSaveLoad}
+          title="Zapisz grę, wczytaj zapis lub rozpocznij nową grę"
+          className="px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all flex items-center gap-1 bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-900/80 hover:text-white"
+        >
+          <span>💾</span>
+          <span>Zapis / Gra</span>
+        </button>
+      )}
       {onOpenAdmin && (
         <button
           onClick={onOpenAdmin}

@@ -10,6 +10,7 @@ import { FarmOfferBars } from './FarmOfferBars';
 interface FarmStrawBinCardProps {
   state: FarmCapitalismState;
   strawStock: number;
+  avgMarketPrice?: number | null;
   onSellStraw: () => void;
   onSpendGold?: (amount: number) => void;
   onUpdateState: (patch: Partial<FarmCapitalismState>) => void;
@@ -22,6 +23,7 @@ interface FarmStrawBinCardProps {
 export const FarmStrawBinCard: React.FC<FarmStrawBinCardProps> = ({
   state,
   strawStock,
+  avgMarketPrice,
   onSellStraw,
   onSpendGold,
   onUpdateState,
@@ -34,31 +36,52 @@ export const FarmStrawBinCard: React.FC<FarmStrawBinCardProps> = ({
   const strawBrand = state.strawBrandLevel ?? 0;
   const strawPricePerTon = state.strawPricePerTon ?? 60;
   const strawFillPct = Math.min(100, Math.round((strawStock / strawCapKg) * 100));
+  const refPriceText =
+    avgMarketPrice !== null && avgMarketPrice !== undefined
+      ? `śr. rynkowa: £${avgMarketPrice}/t`
+      : 'statek: £66/t';
 
   return (
     <div className="relative bg-gradient-to-b from-stone-900 via-stone-950 to-amber-950/20 border border-amber-700/60 rounded-2xl p-4 flex flex-col justify-between shadow-md">
-      <div className="absolute top-2.5 right-2.5 bg-amber-900/60 text-amber-200 border border-amber-700/50 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
-        Ściółka Oborowa
-      </div>
-
       <div>
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-2xl p-1.5 bg-stone-950 rounded-xl border border-stone-800 shadow-sm">
-            🌾
-          </span>
-          <div>
-            <h4 className="text-xs font-bold text-amber-100 flex items-center gap-1.5">
-              <span>Stóg Słomy Zbożowej</span>
-              <span
-                title="Słoma ze żniw stanowi niezbędną ściółkę dla ferm zwierzęcych, gdzie w oborach tworzy cenny obornik."
-                className="w-4 h-4 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 text-[10px] inline-flex items-center justify-center cursor-help"
-              >
-                ?
-              </span>
-            </h4>
-            <span className="text-[10px] text-amber-400/80 block font-mono">
-              Magazyn Ściółki #3
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl p-1.5 bg-stone-950 rounded-xl border border-stone-800 shadow-sm">
+              🌾
             </span>
+            <div>
+              <h4 className="text-xs font-bold text-amber-100 flex items-center gap-1.5">
+                <span>Stóg Słomy Zbożowej</span>
+                <span
+                  title="Słoma ze żniw stanowi niezbędną ściółkę dla ferm zwierzęcych, gdzie w oborach tworzy cenny obornik."
+                  className="w-4 h-4 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 text-[10px] inline-flex items-center justify-center cursor-help"
+                >
+                  ?
+                </span>
+              </h4>
+              <span className="text-[10px] text-amber-400/80 block font-mono">
+                Magazyn Ściółki #3
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end gap-0.5">
+            <label className="text-[10px] font-mono text-stone-300 flex items-center gap-1">
+              <span>Cena (£/t):</span>
+              <input
+                type="number"
+                min={1}
+                max={999}
+                value={strawPricePerTon}
+                onChange={(e) =>
+                  onUpdateState({
+                    strawPricePerTon: Math.max(1, Number(e.target.value) || 60),
+                  })
+                }
+                className="w-16 bg-stone-950 border border-amber-500/60 rounded-lg px-1.5 py-0.5 text-xs font-mono font-bold text-amber-300 text-right focus:outline-none focus:border-amber-400"
+              />
+            </label>
+            <span className="text-[9px] font-mono text-stone-400">({refPriceText})</span>
           </div>
         </div>
 

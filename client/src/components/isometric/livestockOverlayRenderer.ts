@@ -1,6 +1,9 @@
 import type { PlacedBuilding, BuildingCatalogItem } from './types';
 import type { LivestockCapitalismState } from './modal/livestock/livestockTypes';
-import { createDefaultLivestockState } from './modal/livestock/livestockTypes';
+import {
+  computeDailyManureKg,
+  createDefaultLivestockState,
+} from './modal/livestock/livestockTypes';
 import type { GameDate } from './clock/gameClockTypes';
 
 function drawRoundRect(
@@ -69,10 +72,19 @@ export function renderLivestockProgressOverlay(p: LivestockOverlayParams) {
   const growthPassed = (totalMonths % growthMax) || growthMax;
   const growthPercent = Math.min(100, Math.max(0, Math.round((growthPassed / growthMax) * 100)));
 
-  // Szacunki podaży dziennej i rocznej (Bydło: mleko i obornik; Owce: wełna)
+  // Szacunki podaży dziennej i rocznej spójne z kartą produkcji
+  const totalCattle =
+    (herd.milkingGroupCows || 0) + (herd.growingGroupCalves || 0) + (herd.cattleForSale ?? 0);
+  const totalHorses =
+    herd.horses && herd.horses.length > 0
+      ? herd.horses.filter((x) => !x.isDeceased).length
+      : (herd.adultDraftHorses ?? 0) + (herd.growingFoalsCount ?? 0) + (herd.horsesForSale ?? 0);
+  const hasStrawBedding = (state.supplies?.strawBeddingKg ?? 0) > 0;
   const dailyMilk = Math.round(herd.milkingGroupCows * 14); // l/dzień
-  const dailyManure = Math.round(herd.milkingGroupCows * 24); // kg/dzień (tylko bydło mleczne w oborze)
-  const annualWool = Math.round((herd.adultSheepCount || 16) * 18); // kg/rok (2 strzyżenia)
+  const dailyManure = hasStrawBedding
+    ? computeDailyManureKg(state.activeSpecies || 'cattle', isHorses ? totalHorses : totalCattle)
+    : 0;
+  const annualWool = Math.round((herd.adultSheepCount || 0) * 18); // kg/rok (2 strzyżenia)
 
   // Środek geometryczny i kalenica dachu (w sprite livestock_farm_norm.png y=220 to szczyt dachu)
   const centerX = (2 * bldg.x + bldg.sizeX - 2 * bldg.y - bldg.sizeY) * (tileW / 4);
@@ -237,8 +249,8 @@ export function renderLivestockProgressOverlay(p: LivestockOverlayParams) {
     ? [{ icon: '🧶', val: `${annualWool}`, unit: 'kg/r', fill: 0.8, col: '#f472b6' }]
     : isHorses
     ? [
-        { icon: '🐎', val: `${herd.adultDraftHorses || 10}`, unit: 'szt.', fill: 0.85, col: '#f59e0b' },
-        { icon: '💩', val: `${Math.round((herd.adultDraftHorses || 10) * 18)}`, unit: 'kg/d', fill: 0.7, col: '#fbbf24' },
+        { icon: '🐎', val: `${totalHorses}`, unit: 'szt.', fill: 0.85, col: '#f59e0b' },
+        { icon: '💩', val: `${dailyManure}`, unit: 'kg/d', fill: 0.7, col: '#fbbf24' },
       ]
     : [
         { icon: '🥛', val: `${dailyMilk}`, unit: 'l/d', fill: 0.75, col: '#38bdf8' },

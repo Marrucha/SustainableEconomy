@@ -4,6 +4,7 @@ import type { GameDate } from './clock/gameClockTypes';
 import { useMineMonthlyTick } from './useMineMonthlyTick';
 import { useWoodcutterMonthlyTick } from './useWoodcutterMonthlyTick';
 import { useFarmAnnualTick } from './useFarmAnnualTick';
+import { useLivestockWorldTick } from './useLivestockWorldTick';
 import { useMillWorldTick } from './useMillWorldTick';
 import { useBakeryWorldTick } from './useBakeryWorldTick';
 import { useCoalContractsWorldTick } from './useCoalContractsWorldTick';
@@ -43,6 +44,7 @@ export function useWorldSimulationTicks({
   useMineMonthlyTick({ clockDate, placedBuildings, buildingsState, setBuildingsState, setGold });
   useWoodcutterMonthlyTick({ clockDate, placedBuildings, buildingsState, setBuildingsState });
   useFarmAnnualTick({ clockDate, placedBuildings, buildingsState, setBuildingsState, setGold });
+  useLivestockWorldTick({ clockDate, placedBuildings, setBuildingsState, setGold });
   useMillWorldTick({ clockDate, cityBuildings, buildingsState, setBuildingsState, setGold });
   useBakeryWorldTick({ clockDate, cityBuildings, buildingsState, setBuildingsState, setGold });
   useCoalContractsWorldTick({

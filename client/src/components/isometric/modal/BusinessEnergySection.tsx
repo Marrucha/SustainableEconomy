@@ -103,11 +103,11 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
           buildingId={buildingId}
           ownedHorsesCount={activeHorsesCount}
           horseFeedStockKg={buildingState?.horseFeedStockKg ?? 0}
+          horseStrawStockKg={buildingState?.horseStrawStockKg ?? 0}
           horseFeedOrder={buildingState?.horseFeedOrder}
-          horseFeedInterventionBuyEnabled={buildingState?.horseFeedInterventionBuyEnabled}
+          horseStrawOrder={buildingState?.horseStrawOrder}
           allWorldBuildings={allWorldBuildings}
           buildingsState={buildingsState}
-          onSpendGold={onSpendGold}
           onUpdateState={onUpdateState}
         />
       </div>
@@ -226,11 +226,11 @@ export const BusinessEnergySection: React.FC<BusinessEnergySectionProps> = ({
             buildingId={buildingId}
             ownedHorsesCount={(buildingState?.ownedHorses || []).filter((h) => !h.isDeceased).length}
             horseFeedStockKg={buildingState?.horseFeedStockKg ?? 0}
+            horseStrawStockKg={buildingState?.horseStrawStockKg ?? 0}
             horseFeedOrder={buildingState?.horseFeedOrder}
-            horseFeedInterventionBuyEnabled={buildingState?.horseFeedInterventionBuyEnabled}
+            horseStrawOrder={buildingState?.horseStrawOrder}
             allWorldBuildings={allWorldBuildings}
             buildingsState={buildingsState}
-            onSpendGold={onSpendGold}
             onUpdateState={onUpdateState}
           />
         </div>

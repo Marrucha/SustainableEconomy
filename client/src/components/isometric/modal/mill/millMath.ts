@@ -53,10 +53,11 @@ export function computeMillYieldSummary(
   }
 
   const managerBonus = hasManager ? 1.15 : 1.0;
-  const efficiencyMultiplier = Number((energySpeedMult * managerBonus).toFixed(2));
+  const hoursMultiplier = Math.max(0.1, (mill.workdayHours ?? 10) / 10);
+  const efficiencyMultiplier = Number((energySpeedMult * managerBonus * hoursMultiplier).toFixed(2));
 
-  // Baza: 200 kg ziarna dziennie (pobierana z gameParameters.ts)
-  const baseDailyGrainKg = loadGameParameters().millBaseDailyGrainKg ?? 200;
+  // Baza: 2500 kg ziarna dziennie (15 t tygodniowo przy 6 dniach roboczych)
+  const baseDailyGrainKg = loadGameParameters().millBaseDailyGrainKg ?? 2500;
   const dailyGrainInputKg = Math.round(baseDailyGrainKg * efficiencyMultiplier);
 
   const dailyFlourOutputKg = Math.round(dailyGrainInputKg * productCfg.flourYieldRatio);
@@ -70,12 +71,14 @@ export function computeMillYieldSummary(
 
   const dailyPayrollCost = mill.crew.reduce((sum, m) => sum + m.dailyWage, 0);
 
+  const workingDaysPerMonth = mill.freeSaturdays ? 22 : 26;
+
   return {
     dailyGrainInputKg,
     dailyFlourOutputKg,
     dailyBranOutputKg,
-    monthlyFlourForecastKg: dailyFlourOutputKg * 30,
-    monthlyBranForecastKg: dailyBranOutputKg * 30,
+    monthlyFlourForecastKg: dailyFlourOutputKg * workingDaysPerMonth,
+    monthlyBranForecastKg: dailyBranOutputKg * workingDaysPerMonth,
     qualityPercent,
     dailyPayrollCost,
     dailyEnergyCost,

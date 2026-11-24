@@ -5,9 +5,11 @@ import {
   canWorkerHandleStage,
   CROPS_CONFIG,
   getGrainSiloDailyCostPence,
+  getHiredAgronomistsCount,
   getStageAssignedWorkerIds,
 } from './farmGridTypes';
 import { computeFarmYieldSummary } from './farmYieldMath';
+import { loadGameParameters } from '../admin/gameParameters';
 import { FarmStageCard, type StageMeta } from './FarmStageCard';
 import { FarmPipelineArrow } from './FarmPipelineArrow';
 import { generateRandomEnglishName } from './englishNames';
@@ -35,7 +37,7 @@ const STAGES_CONFIG: StageMeta[] = [
   { id: 'weeding', num: 5, label: 'Pielenie i Nawadnianie', shortLabel: 'Pielenie/Nawod.', icon: '🌿', desc: 'Opcjonalne pielenie ręczne (+5% plonu) oraz nawadnianie (+10% i pełna ochrona przed utratą plonu przy suszy).', requiredProfessionLabel: 'Rolnik (Pielarz/Nawad.)', isOptional: true },
   { id: 'growing', num: 6, label: 'Wzrost pod Okiem Agronoma', shortLabel: 'Wzrost & Gleba', icon: '🌾', desc: 'Wegetacja łanu pod stałym nadzorem agronomicznym (Klasa M).', requiredProfessionLabel: 'Nadzór Agronoma' },
   { id: 'harvesting', num: 7, label: 'Żniwa i Omłot Snopów', shortLabel: 'Żniwa', icon: '🌾', desc: 'Koszenie łanów sierpami, wiązanie snopków i omłot ziarna.', requiredProfessionLabel: 'Rolnik (Żniwiarz)' },
-  { id: 'storing_selling', num: 8, label: 'Zbyt lub Magazyn Silosu', shortLabel: 'Zbyt / Silos', icon: '💰', desc: 'Sprzedaż gotówkowa na rynku miejskim lub złożenie ziarna do silosu.', requiredProfessionLabel: 'Kupiec / Sprzedawca' },
+  { id: 'storing_selling', num: 8, label: 'Młocka i Czyszczenie Ziarna', shortLabel: 'Młocka', icon: '🌾', desc: 'Jesienno-zimowy omłot zboża i przygotowanie ziarna do złożenia w magazynie 1 stycznia.', requiredProfessionLabel: 'Kupiec / Sprzedawca' },
 ];
 
 export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
@@ -82,9 +84,11 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
   const effectiveFertLevel: FertilizingLevel = !state.enableFertilizing ? 0 : (state.fertilizingLevel ?? 100);
   const seedCost = state.seedSource === 'market' ? 22 : 0;
   const fertCost = hasFertWorker ? (effectiveFertLevel === 100 ? 14 : effectiveFertLevel === 50 ? 7 : 0) : 0;
-  const sprayCost = hasWeedWorker ? (state.enableWeeding ? 9 : 0) + (state.enableIrrigation ? 8 : 0) : 0;
+  const sprayCost = hasWeedWorker
+    ? (state.enableWeeding ? 9 : 0) + (state.enableIrrigation ? Math.round(8 * totalHectares) : 0)
+    : 0;
   const crewLaborCost = (state.crew || []).reduce((acc, w) => acc + w.wageDaily, 0);
-  const agronomistCost = state.agronomist.hired ? state.agronomist.wageDaily : 0;
+  const agronomistCost = getHiredAgronomistsCount(state.agronomist) * state.agronomist.wageDaily;
   const siloStorageCostGbp = getGrainSiloDailyCostPence(state.siloLevel) / 100;
   const totalDailyCosts = Number((seedCost + fertCost + sprayCost + crewLaborCost + agronomistCost + siloStorageCostGbp).toFixed(2));
 
@@ -135,12 +139,36 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
     }
   }, [clock, clockDate.month, isReady, state.enableFertilizing, state.enableWeeding, state.enableIrrigation, hasFertWorker, hasWeedWorker, hasEnoughManure]);
 
+  const FARM_FIELD_STAGES: FarmCycleStage[] = [
+    'plowing',
+    'sowing',
+    'fertilizing',
+    'weeding',
+    'harvesting',
+  ];
+
   const handleAssignWorkerToStage = (stage: FarmCycleStage, workerId: string) => {
     if (!workerId) return;
     const updated = { ...(state.stageAssignments || {}) };
-    const current = getStageAssignedWorkerIds(updated, stage);
-    if (!current.includes(workerId)) {
-      updated[stage] = [...current, workerId];
+    const worker = (state.crew || []).find((w) => w.id === workerId);
+    const isFieldRole = worker?.profession === 'farmer' || worker?.profession === 'all_rounder';
+    const isFieldStage = FARM_FIELD_STAGES.includes(stage);
+    const alreadyInAnyFieldStage = FARM_FIELD_STAGES.some((st) =>
+      getStageAssignedWorkerIds(updated, st).includes(workerId)
+    );
+
+    const targetStages =
+      isFieldRole && isFieldStage && !alreadyInAnyFieldStage ? FARM_FIELD_STAGES : [stage];
+
+    let changed = false;
+    for (const targetStage of targetStages) {
+      const current = getStageAssignedWorkerIds(updated, targetStage);
+      if (!current.includes(workerId)) {
+        updated[targetStage] = [...current, workerId];
+        changed = true;
+      }
+    }
+    if (changed) {
       onUpdate({ stageAssignments: updated });
     }
   };
@@ -220,13 +248,16 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
           avatar: isMerchant ? '💰' : '🌾',
           ...(!isMerchant ? { skillBonusPercent: [2, 5, 8, 10][Math.floor(Math.random() * 4)] } : {}),
         };
-        const currentIds = getStageAssignedWorkerIds(state.stageAssignments, stageId);
+        const targetStages =
+          !isMerchant && FARM_FIELD_STAGES.includes(stageId) ? FARM_FIELD_STAGES : [stageId];
+        const nextAssignments = { ...(state.stageAssignments || {}) };
+        for (const targetStage of targetStages) {
+          const currentIds = getStageAssignedWorkerIds(nextAssignments, targetStage);
+          nextAssignments[targetStage] = [...currentIds, newId];
+        }
         onUpdate({
           crew: [...crew, newMember],
-          stageAssignments: {
-            ...state.stageAssignments,
-            [stageId]: [...currentIds, newId],
-          },
+          stageAssignments: nextAssignments,
         });
       },
       onHireAgronomist: () => {
@@ -257,6 +288,13 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
       ? Math.min(100, Math.max(0, Math.round((currentDayInYear / 360) * 100)))
       : 0;
 
+  const requiredFarmersCount = Math.ceil(
+    totalHectares / (loadGameParameters().farmerWorkCapacityHa || 5)
+  );
+  const workCapacityPct =
+    totalHectares > 0 ? Math.round((yieldSummary.cultivatedHectares / totalHectares) * 100) : 100;
+  const isPartialWorkCapacity = isReady && yieldSummary.cultivatedHectares < totalHectares;
+
   return (
     <div className="space-y-2">
       {/* 1. GŁÓWNY PASEK POSTĘPU PRODUKCJI */}
@@ -267,9 +305,19 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
           </span>
           <div className="flex items-center gap-2">
             {isReady ? (
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/60 text-emerald-300 text-[11px] font-bold flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Farma pracuje • 🐎 {yieldSummary.ownedHorsesCount}/{yieldSummary.requiredHorsesCount} ({yieldSummary.horseCapacityHa}/{totalHectares} ha)
+              <span
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border ${
+                  isPartialWorkCapacity
+                    ? 'bg-amber-500/20 border-amber-500/60 text-amber-300'
+                    : 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300'
+                }`}
+              >
+                <span
+                  className={`inline-block w-2 h-2 rounded-full animate-pulse ${
+                    isPartialWorkCapacity ? 'bg-amber-400' : 'bg-emerald-400'
+                  }`}
+                />
+                Farma pracuje ({workCapacityPct}%) • 👷 {yieldSummary.fieldFarmersCount}/{requiredFarmersCount} • 🐎 {yieldSummary.ownedHorsesCount}/{yieldSummary.requiredHorsesCount} ({yieldSummary.cultivatedHectares}/{totalHectares} ha)
               </span>
             ) : (
               <span className="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/60 text-rose-300 text-[11px] font-bold">
@@ -388,8 +436,13 @@ export const FarmCycleSnake: React.FC<FarmCycleSnakeProps> = ({
             <span className="text-stone-400 block text-[11px]">
               Wysiew ({cultivatedHectares} / {totalHectares} ha • {fieldFarmersCount} roln. / limit {farmerCapacityHa} ha):
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <strong className="text-sky-300 font-mono text-sm font-bold">{seedRequiredKg} kg</strong>
+              {yieldSummary.seedCoveragePercent < 100 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-500/40 font-mono font-bold">
+                  ⚠️ Obsiano tylko {yieldSummary.seedCoveragePercent}% ({yieldSummary.seedsAvailableKg} / {seedRequiredKg} kg)
+                </span>
+              )}
               {cultivatedHectares < totalHectares && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-950/70 text-rose-300 border border-rose-500/40 font-mono">
                   ⚠️ Nieobsiane/niezebrane: {Math.max(0, totalHectares - cultivatedHectares).toFixed(1)} ha ({acreageEfficiencyPct}% plon • {harvestQualityPercent}% jak.)

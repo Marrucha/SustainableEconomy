@@ -48,7 +48,7 @@ export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
 
   horseDailyFeedKg: 10,
   horseWorkCapacityHa: 5,
-  farmerWorkCapacityHa: 10,
+  farmerWorkCapacityHa: 5,
   horseGestationMonths: 11,
   cattleGestationMonths: 9,
   sheepGestationMonths: 5,
@@ -64,17 +64,17 @@ export const DEFAULT_GAME_PARAMETERS: GameParametersConfig = {
   horseDailyVitalityLossNoFeedPercent: 0.28,
 
   manurePenCapacityKg: 1000,
-  grainSiloBaseCapacityKg: 10000,
+  grainSiloBaseCapacityKg: 50000,
   strawStackBaseCapacityKg: 20000,
-  manureBinBaseCapacityKg: 10000,
+  manureBinBaseCapacityKg: 100000,
   manurePerHa100Kg: 10000,
   farmBaseHectares: 10,
 
-  millBaseDailyGrainKg: 200,
+  millBaseDailyGrainKg: 2500,
   bakeryBaseDailyFlourKg: 120,
 };
 
-const STORAGE_KEY = 'sustainable_economy_admin_params_v1';
+const STORAGE_KEY = 'sustainable_economy_admin_params_v2';
 
 export function loadGameParameters(): GameParametersConfig {
   try {

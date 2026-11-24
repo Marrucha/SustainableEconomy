@@ -1,6 +1,8 @@
 import {
   CROPS_CONFIG,
   canWorkerHandleStage,
+  getHiredAgronomistsCount,
+  getRequiredAgronomistsCount,
   getStageAssignedWorkerIds,
   type FarmCapitalismState,
   type FarmCycleStage,
@@ -40,6 +42,9 @@ export interface FarmYieldSummary {
   harvestWeatherPct: number;
   combinedWeatherPct: number;
   seedRequiredKg: number;
+  seedsAvailableKg: number;
+  seedCoverageRatio: number;
+  seedCoveragePercent: number;
   manureRequiredKg: number;
   manureUsedKg: number;
   hasEnoughManure: boolean;
@@ -80,11 +85,11 @@ export function computeFarmYieldSummary(
   const crew = state.crew || [];
   const assignments = state.stageAssignments || {};
 
-  // 1 rolnik polowy obsługuje bazowo 10 ha, a 1 koń roboczy 5 ha (proporcjonalnie do kondycji)
+  // 1 rolnik polowy obsługuje bazowo 5 ha, a 1 koń roboczy 5 ha (proporcjonalnie do kondycji)
   const fieldFarmersCount = crew.filter(
     (w) => w.profession === 'farmer' || w.profession === 'all_rounder'
   ).length;
-  const farmerCapPerWorker = params.farmerWorkCapacityHa || 10;
+  const farmerCapPerWorker = params.farmerWorkCapacityHa || 5;
   const farmerCapacityHa = fieldFarmersCount * farmerCapPerWorker;
   const horseCapPerHorse = params.horseWorkCapacityHa || 5;
   const activeOwnedHorses = ownedHorses ? ownedHorses.filter((h) => !h.isDeceased) : undefined;
@@ -123,9 +128,15 @@ export function computeFarmYieldSummary(
   );
 
   // Premia agronoma: maksymalnie +20%
-  const agronomistBonusPct = state.agronomist?.hired
-    ? Math.min(20, Math.max(0, state.agronomist.yieldBonusPercent || 0))
-    : 0;
+  const hiredAgronomists = getHiredAgronomistsCount(state.agronomist);
+  const requiredAgronomists = getRequiredAgronomistsCount(fieldFarmersCount);
+  const agronomistCoverage = hiredAgronomists > 0 ? Math.min(1, hiredAgronomists / requiredAgronomists) : 0;
+  const agronomistBonusPct =
+    hiredAgronomists > 0
+      ? Math.round(
+          Math.min(20, Math.max(0, state.agronomist.yieldBonusPercent || 0)) * agronomistCoverage
+        )
+      : 0;
 
   // Premia doświadczonego rolnika: maksymalnie +10%
   let farmerBonusPct = 0;
@@ -161,9 +172,20 @@ export function computeFarmYieldSummary(
   }
   const weedingBonusPct = state.enableWeeding && hasWeedWorker ? 5 : 0;
   const irrigationActive = Boolean(state.enableIrrigation);
-  const irrigationBonusPct = irrigationActive ? 10 : 0;
-  const growthWeatherPct = getGrowthWeatherPercent(state.growingWeather, irrigationActive);
-  const harvestWeatherPct = getHarvestWeatherPercent(state.harvestWeather);
+  const isWetWeather = state.growingWeather === 'rainy' || state.growingWeather === 'stormy';
+  const irrigationBonusPct = irrigationActive && !isWetWeather ? 10 : 0;
+  const stageAllowsGrowthWeather =
+    state.currentStage === 'growing' ||
+    state.currentStage === 'harvesting' ||
+    state.currentStage === 'storing_selling';
+  const stageAllowsHarvestWeather =
+    state.currentStage === 'harvesting' || state.currentStage === 'storing_selling';
+  const growthWeatherPct = stageAllowsGrowthWeather
+    ? getGrowthWeatherPercent(state.growingWeather, irrigationActive)
+    : 100;
+  const harvestWeatherPct = stageAllowsHarvestWeather
+    ? getHarvestWeatherPercent(state.harvestWeather)
+    : 100;
   const combinedWeatherFactor = (growthWeatherPct / 100) * (harvestWeatherPct / 100);
   const combinedWeatherPct = Math.round(combinedWeatherFactor * 100);
   const droughtPenaltyPct = isDrought && !irrigationActive ? 30 : 0;
@@ -177,7 +199,23 @@ export function computeFarmYieldSummary(
 
   const netMultiplier = Math.max(0.1, 1 + (totalBonusPct - droughtPenaltyPct) / 100);
 
-  const totalYieldKg = Math.round(baseYieldKg * netMultiplier * acreageYieldFactor * combinedWeatherFactor);
+  const activeCrop = state.cropType || 'pszenica';
+  const siloGrainKg =
+    state.grainStockKg?.[activeCrop] ??
+    (activeCrop === 'pszenica' ? state.wheatStockKg ?? 0 : 0);
+  const seedsAvailableKg =
+    state.sowingCompletedForCurrentCycle && (state.lastSowingSeedsUsedKg ?? 0) > 0
+      ? (state.lastSowingSeedsUsedKg ?? 0)
+      : siloGrainKg > 0
+      ? siloGrainKg
+      : (state.seedsStockKg ?? 0);
+  const seedCoverageRatio =
+    seedRequiredKg > 0 ? Math.min(1, Math.max(0, seedsAvailableKg / seedRequiredKg)) : 1;
+  const seedCoveragePercent = Math.round(seedCoverageRatio * 100);
+
+  const totalYieldKg = Math.round(
+    baseYieldKg * netMultiplier * acreageYieldFactor * combinedWeatherFactor * seedCoverageRatio
+  );
 
   return {
     totalHectares,
@@ -193,6 +231,9 @@ export function computeFarmYieldSummary(
     harvestWeatherPct,
     combinedWeatherPct,
     seedRequiredKg,
+    seedsAvailableKg,
+    seedCoverageRatio,
+    seedCoveragePercent,
     manureRequiredKg,
     manureUsedKg,
     hasEnoughManure,

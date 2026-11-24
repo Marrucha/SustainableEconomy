@@ -157,6 +157,9 @@ export function useMillWorldTick({
                   [cropKey]: nextCropStock,
                 },
                 wheatStockKg: nextCropStock,
+                lastCycleRevenue: Number(
+                  ((supplierFarm.lastCycleRevenue || 0) + orderCost).toFixed(2)
+                ),
               },
             };
           }
@@ -219,7 +222,9 @@ export function useMillWorldTick({
       }
 
       const isSunday = totalDays % 7 === 6;
-      if (dayChanged && !isSunday) {
+      const isSaturday = totalDays % 7 === 5;
+      const isDayOff = isSunday || (Boolean(nextMill.freeSaturdays) && isSaturday);
+      if (dayChanged && !isDayOff) {
         const sizeTiles = millBuilding.sizeX * millBuilding.sizeY;
         const ready = checkIsMillProductionReady(nextMill, bState, sizeTiles);
         const checklist = computeProductionChecklist(millBuilding, { ...bState, millState: nextMill });
@@ -231,7 +236,7 @@ export function useMillWorldTick({
           if (consumedGrain > 0) {
             const producedFlour = Math.round(consumedGrain * productCfg.flourYieldRatio);
             const producedBran = Math.round(consumedGrain * productCfg.branYieldRatio);
-            const nextProgress = (nextMill.cycleProgressPercent + 10) % 100;
+            const nextProgress = Number(((nextMill.cycleProgressPercent + 100 / 7) % 100).toFixed(2));
 
             nextMill = {
               ...nextMill,

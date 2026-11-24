@@ -38,7 +38,7 @@ export const AGRICULTURAL_SCHEDULE: {
   { stage: 'weeding', months: [6], seasonName: 'Wczesne Lato • Pielenie i oprysk' },
   { stage: 'growing', months: [7], seasonName: 'Pełnia Lata • Wzrost i dojrzewanie' },
   { stage: 'harvesting', months: [8], seasonName: 'Późne Lato • Żniwa i omłot' },
-  { stage: 'storing_selling', months: [9, 10, 11, 12], seasonName: 'Jesień/Zima • Zbyt i silos' },
+  { stage: 'storing_selling', months: [9, 10, 11, 12], seasonName: 'Jesień/Zima • Młocka i czyszczenie ziarna' },
 ];
 
 export function getStageForMonth(month: number): FarmCycleStage {

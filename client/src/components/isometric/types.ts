@@ -73,7 +73,7 @@ export interface MarketStallSlot {
   tenantName: string | null;
   annualRent: number;
   rentedUntilYear?: number;
-  rentedUntilTotalDays?: number; // Pełne 12 miesięcy (360 dni) od dnia wylicytowania
+  rentedUntilTotalDays?: number; // Pełne 3 lata (1080 dni) od dnia wylicytowania
   rentedUntilDateLabel?: string; // Czytelna data końca dzierżawy, np. 15.11.1881
   supplySlots?: MarketStallSupplySlot[]; // 4 sloty zaopatrzeniowca na stoisku
   sellers?: MarketStallSeller[]; // do 4 sprzedawców na jednym stoisku (każdy 1 produkt)
@@ -140,6 +140,8 @@ export interface BuildingState {
   horseFeedStockKg?: number; // Zapas paszy dla koni roboczych (kg)
   horseFeedOrder?: HorseFeedSupplyOrder; // Kontrakt na paszę dla koni roboczych
   horseFeedInterventionBuyEnabled?: boolean; // Zakup interwencyjny paszy dla koni ze statku (+10%)
+  horseStrawStockKg?: number; // Zapas ściółki dla koni roboczych (kg) — zużywana bez produkcji obornika
+  horseStrawOrder?: HorseFeedSupplyOrder; // Kontrakt na ściółkę dla koni roboczych
   workersCount?: number;
   workerWage?: number; // £ / dzień
   managersCount?: number; // Liczba zarządców i agronomów (Klasa M)
@@ -205,6 +207,12 @@ export interface BuildingState {
 
   // Targowisko Miejskie (8 stoisk, licytacja raz w roku, zaopatrzeniowiec 1:4 stoiska)
   marketStalls?: MarketStallSlot[];
+  marketReserveTemplates?: Array<{
+    sellers?: MarketStallSeller[];
+    supplySlots?: MarketStallSupplySlot[];
+    stageCrew?: MarketStallSlot['stageCrew'];
+  }>;
+  groceryShopState?: MarketStallSlot;
   marketLastAuctionYear?: number;
   marketSuppliersCount?: number; // liczba zaopatrzeniowców (1 obsługuje do 4 stoisk)
   newspaperAds?: Array<{

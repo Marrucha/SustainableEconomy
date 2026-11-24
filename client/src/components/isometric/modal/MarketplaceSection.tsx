@@ -88,43 +88,98 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
     });
   };
 
+  const hasStallSetup = (s: MarketStallSlot) =>
+    Boolean(
+      (s.sellers && s.sellers.length > 0) ||
+        (s.supplySlots && s.supplySlots.length > 0) ||
+        s.stageCrew?.supply?.length ||
+        s.stageCrew?.trader?.length ||
+        s.stageCrew?.delivery?.length
+    );
+
   const handlePlaceBatchBid = () => {
     if (selectedAuctionSlots.length === 0) return;
 
     let wonCount = 0;
     let totalSpent = 0;
     const wonIndices: number[] = [];
+    const reserveQueue = [...(buildingState.marketReserveTemplates || [])];
 
-    const updatedStalls = stalls.map((s) => {
-      if (!selectedAuctionSlots.includes(s.slotIndex)) return s;
+    // Najpierw zabezpiecz załogę i zamówienia ze straconych/wygasłych stoisk gracza, których gracz nie licytuje ponownie
+    const preCleanedStalls = stalls.map((s) => {
+      const isExpiredPlayerStall = s.tenantName === 'Gracz' && !isStallRentedNow(s);
+      const isBeingBid = selectedAuctionSlots.includes(s.slotIndex);
+      if (isExpiredPlayerStall && !isBeingBid && hasStallSetup(s)) {
+        reserveQueue.push({
+          sellers: s.sellers || [],
+          supplySlots: s.supplySlots || [],
+          stageCrew: s.stageCrew,
+        });
+        return { ...s, sellers: [], supplySlots: [], stageCrew: undefined };
+      }
+      return s;
+    });
+
+    const bidResults = preCleanedStalls.map((s) => {
+      if (!selectedAuctionSlots.includes(s.slotIndex)) return { stall: s, won: false };
       const npcCompetingBid = Math.round(
         BASE_AUCTION_MIN_BID + ((s.slotIndex * 73 + currentYear * 17) % 250)
       );
       const won = bidPerSlot >= npcCompetingBid;
-      const untilTotalDays = currentTotalDays + 360;
-      const untilDateLabel = `${String(currentDay).padStart(2, '0')}.${String(currentMonth).padStart(2, '0')}.${currentYear + 1}`;
+      const untilTotalDays = currentTotalDays + 360 * 3;
+      const untilDateLabel = `${String(currentDay).padStart(2, '0')}.${String(currentMonth).padStart(2, '0')}.${currentYear + 3}`;
       if (won) {
         wonCount += 1;
         totalSpent += bidPerSlot;
         wonIndices.push(s.slotIndex);
         return {
-          ...s,
-          tenantName: 'Gracz',
-          annualRent: bidPerSlot,
-          rentedUntilYear: currentYear + 1,
-          rentedUntilTotalDays: untilTotalDays,
-          rentedUntilDateLabel: untilDateLabel,
-          sellers: s.sellers || [],
+          won: true,
+          stall: {
+            ...s,
+            tenantName: 'Gracz',
+            annualRent: bidPerSlot,
+            rentedUntilYear: currentYear + 3,
+            rentedUntilTotalDays: untilTotalDays,
+            rentedUntilDateLabel: untilDateLabel,
+            sellers: s.sellers || [],
+          },
         };
       }
+      // Stracone na rzecz konkurencji — przenieś całą załogę i zamówienia do rezerwy na nowy stragan
+      if (hasStallSetup(s)) {
+        reserveQueue.push({
+          sellers: s.sellers || [],
+          supplySlots: s.supplySlots || [],
+          stageCrew: s.stageCrew,
+        });
+      }
       return {
-        ...s,
-        tenantName: 'Kupiec Miejski (NPC)',
-        annualRent: npcCompetingBid,
-        rentedUntilYear: currentYear + 1,
-        rentedUntilTotalDays: untilTotalDays,
-        rentedUntilDateLabel: untilDateLabel,
+        won: false,
+        stall: {
+          ...s,
+          tenantName: 'Kupiec Miejski (NPC)',
+          annualRent: npcCompetingBid,
+          rentedUntilYear: currentYear + 3,
+          rentedUntilTotalDays: untilTotalDays,
+          rentedUntilDateLabel: untilDateLabel,
+          sellers: [],
+          supplySlots: [],
+          stageCrew: undefined,
+        },
       };
+    });
+
+    const updatedStalls = bidResults.map(({ stall: s, won }) => {
+      if (won && !hasStallSetup(s) && reserveQueue.length > 0) {
+        const restored = reserveQueue.shift()!;
+        return {
+          ...s,
+          sellers: restored.sellers || [],
+          supplySlots: restored.supplySlots || [],
+          stageCrew: restored.stageCrew,
+        };
+      }
+      return s;
     });
 
     if (totalSpent > 0 && onSpendGold) {
@@ -133,6 +188,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
 
     onUpdateState({
       marketStalls: updatedStalls,
+      marketReserveTemplates: reserveQueue,
       marketLastAuctionYear: currentYear,
     });
 
@@ -292,7 +348,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({
         <div className="p-4 rounded-2xl bg-stone-950/85 border border-amber-500/40 space-y-3">
           <div className="flex items-center justify-between">
             <h5 className="text-xs font-bold text-amber-300">
-              🔨 Licytacja {selectedAuctionSlots.length} / 4 stoisk ({selectedAuctionSlots.map((i) => `#${i}`).join(', ')}) na rok {currentYear}
+              🔨 Licytacja {selectedAuctionSlots.length} / 4 stoisk ({selectedAuctionSlots.map((i) => `#${i}`).join(', ')}) na lata {currentYear}–{currentYear + 3}
             </h5>
             <button
               type="button"

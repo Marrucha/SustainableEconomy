@@ -10,6 +10,7 @@ interface BuildingModalTabsProps {
   isMill: boolean;
   isBakery?: boolean;
   isMine?: boolean;
+  isGroceryShop?: boolean;
   checklistOk?: boolean;
   businessTab: BusinessTabType;
   residentialTab: ResidentialTabType;
@@ -25,6 +26,7 @@ export const BuildingModalTabs: React.FC<BuildingModalTabsProps> = ({
   isMill,
   isBakery = false,
   isMine = false,
+  isGroceryShop = false,
   checklistOk,
   businessTab,
   residentialTab,
@@ -32,7 +34,7 @@ export const BuildingModalTabs: React.FC<BuildingModalTabsProps> = ({
   onSelectResidentialTab,
 }) => {
   const productionIcon = '🏭';
-  const productionLabel = 'Produkcja';
+  const productionLabel = isGroceryShop ? 'Proces Sprzedaży' : 'Produkcja';
 
   return (
     <>
@@ -82,7 +84,7 @@ export const BuildingModalTabs: React.FC<BuildingModalTabsProps> = ({
               <span className="tracking-wide">Produkty</span>
             </button>
 
-            {(isFarm || isMill || isBakery || isMine || isLivestock) && (
+            {(isFarm || isMill || isBakery || isMine || isLivestock || isGroceryShop) && (
               <button
                 onClick={() => onSelectBusinessTab('trade')}
                 className={`flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
@@ -96,7 +98,7 @@ export const BuildingModalTabs: React.FC<BuildingModalTabsProps> = ({
               </button>
             )}
 
-            {(isFarm || isLivestock || isMill || isBakery || isMine) && (
+            {(isFarm || isLivestock || isMill || isBakery || isMine || isGroceryShop) && (
               <button
                 onClick={() => onSelectBusinessTab('finance')}
                 className={`flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${

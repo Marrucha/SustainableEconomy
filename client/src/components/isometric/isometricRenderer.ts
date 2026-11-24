@@ -356,18 +356,16 @@ export function renderIsometricScene(p: RenderParams) {
     }
   });
 
-  // 3.5. Paski postępu nad budynkami produkcyjnymi w widoku wiejskim
-  if (mapType === 'rural') {
-    renderBuildingProgressOverlays({
-      ctx,
-      placedBuildings: p.placedBuildings,
-      tileW,
-      tileH,
-      buildingsState: p.buildingsState,
-      clockDate: p.clockDate,
-      mouseWorldPos: p.mouseWorldPos,
-    });
-  }
+  // 3.5. Paski postępu i wskaźniki nad budynkami (wieś i miasto)
+  renderBuildingProgressOverlays({
+    ctx,
+    placedBuildings: p.placedBuildings,
+    tileW,
+    tileH,
+    buildingsState: p.buildingsState,
+    clockDate: p.clockDate,
+    mouseWorldPos: p.mouseWorldPos,
+  });
 
   // 4. Podgląd stawiania (Ghost Preview)
   if (p.selectedType && p.hoverTile) {

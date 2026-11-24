@@ -3,6 +3,13 @@ import type { BuildingState } from '../types';
 import type { WorldSupplierBuilding } from './industrySupplyConfig';
 import { getProducerMarketAvailability } from './industrySupplyConfig';
 import { FinanceBusinessDetail } from './FinanceBusinessDetail';
+import { computeBuildingFinanceNumbers, countAllBuildingStaff } from './financeSummaryMath';
+import {
+  countAttachedFlaxFields,
+  countAttachedHopFields,
+  countAttachedPastures,
+  countAttachedWheatFields,
+} from '../pastureTopology';
 
 export type EconomySector =
   | 'wydobywcza'
@@ -28,8 +35,8 @@ const SECTORS: SectorMeta[] = [
 
 const MINING_IDS = new Set(['mine_shaft', 'coal_mine', 'woodcutter']);
 const AGRICULTURE_IDS = new Set([
-  'wheat_farm', 'wheat_field', 'orchard', 'flax_farm', 'flax_field',
-  'hop_farm', 'hop_field', 'livestock_farm', 'pasture_cattle', 'pasture_sheep',
+  'wheat_farm', 'orchard', 'flax_farm',
+  'hop_farm', 'livestock_farm',
   'rubber_plantation', 'sugar_beet_farm', 'tobacco_field', 'cotton_plantation', 'horse_ranch',
 ]);
 const CRAFT_IDS = new Set(['bakery', 'blacksmith', 'shoemaker', 'butcher', 'jeweler', 'watchmaker']);
@@ -50,32 +57,11 @@ function classifySector(typeId: string): EconomySector | null {
   return null;
 }
 
-function countBuildingStaff(st?: BuildingState): number {
-  if (!st) return 0;
-  const factoryStaff =
-    (st.factoryWorkersCount ?? 0) +
-    (st.factoryManagersCount ?? 0) +
-    (st.factoryWarehousemenCount ?? 0) +
-    (st.merchantHired ? 1 : 0) +
-    (st.factorySellerHired ? 1 : 0);
-  const marketStaff =
-    (st.marketSuppliersCount ?? 0) +
-    (st.marketStalls || []).reduce((s, slot) => s + (slot.sellers?.length ?? 0), 0);
-  const ruralCrew =
-    (st.farmCapitalism?.crew?.length ?? 0) +
-    (st.flaxState?.crew?.length ?? 0) +
-    (st.hopState?.crew?.length ?? 0) +
-    (st.orchardState?.crew?.length ?? 0) +
-    (st.livestockState?.crew?.length ?? 0) +
-    (st.mineStaff?.surfaceWorkersCount ?? 0) +
-    (st.mineStaff?.minersCount ?? 0);
-  return factoryStaff + marketStaff + ruralCrew;
-}
-
 interface FinanceModalProps {
   gold: number;
   allWorldBuildings: WorldSupplierBuilding[];
   buildingsState: Record<string, BuildingState>;
+  onNavigateToBuilding?: (building: WorldSupplierBuilding) => void;
   onClose: () => void;
 }
 
@@ -85,10 +71,45 @@ function formatMarketplaceName(st?: BuildingState): string {
   return `Targowisko Miejskie (${count} ${word})`;
 }
 
+function formatPluralPl(count: number, one: string, few: string, many: string): string {
+  if (count === 1) return `${count} ${one}`;
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} ${few}`;
+  return `${count} ${many}`;
+}
+
+function formatEnterpriseName(
+  b: WorldSupplierBuilding,
+  st: BuildingState | undefined,
+  allWorldBuildings: WorldSupplierBuilding[]
+): string {
+  if (b.typeId === 'marketplace') return formatMarketplaceName(st);
+  const baseName = st?.enterpriseName || b.name;
+  if (b.typeId === 'wheat_farm') {
+    const count = countAttachedWheatFields(b, allWorldBuildings);
+    return `${baseName} (${formatPluralPl(count, 'pole', 'pola', 'pól')})`;
+  }
+  if (b.typeId === 'flax_farm') {
+    const count = countAttachedFlaxFields(b, allWorldBuildings);
+    return `${baseName} (${formatPluralPl(count, 'pole', 'pola', 'pól')})`;
+  }
+  if (b.typeId === 'hop_farm') {
+    const count = countAttachedHopFields(b, allWorldBuildings);
+    return `${baseName} (${formatPluralPl(count, 'pole', 'pola', 'pól')})`;
+  }
+  if (b.typeId === 'livestock_farm') {
+    const count = countAttachedPastures(b, allWorldBuildings);
+    return `${baseName} (${formatPluralPl(count, 'zagroda', 'zagrody', 'zagród')})`;
+  }
+  return baseName;
+}
+
 export const FinanceModal: React.FC<FinanceModalProps> = ({
   gold,
   allWorldBuildings,
   buildingsState,
+  onNavigateToBuilding,
   onClose,
 }) => {
   const [activeSector, setActiveSector] = useState<EconomySector | 'all'>('all');
@@ -99,14 +120,10 @@ export const FinanceModal: React.FC<FinanceModalProps> = ({
       const sector = classifySector(b.typeId);
       if (!sector) return null;
       const st = buildingsState[b.id];
-      const staff = countBuildingStaff(st);
+      const staff = countAllBuildingStaff(st);
       const avail = getProducerMarketAvailability(b, st);
-      const unitPrice = st?.productPrice ?? 2.0;
-      const estStockValue = Math.round(avail.stockUnits * unitPrice);
-      const enterpriseName =
-        b.typeId === 'marketplace'
-          ? formatMarketplaceName(st)
-          : st?.enterpriseName || b.name;
+      const fin = computeBuildingFinanceNumbers(b, st, allWorldBuildings, buildingsState);
+      const enterpriseName = formatEnterpriseName(b, st, allWorldBuildings);
       return {
         building: b,
         sector,
@@ -114,25 +131,32 @@ export const FinanceModal: React.FC<FinanceModalProps> = ({
         ownerName: st?.ownerName || 'Gracz 1',
         staff,
         avail,
-        unitPrice,
-        estStockValue,
+        revenue: fin.revenue,
+        cost: fin.cost,
+        profit: fin.profit,
       };
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
 
   const sectorSummaries = SECTORS.map((meta) => {
     const items = rows.filter((r) => r.sector === meta.id);
+    const revenue = items.reduce((s, r) => s + r.revenue, 0);
+    const cost = items.reduce((s, r) => s + r.cost, 0);
     return {
       ...meta,
       count: items.length,
       staff: items.reduce((s, r) => s + r.staff, 0),
-      stockValue: items.reduce((s, r) => s + r.estStockValue, 0),
+      revenue,
+      cost,
+      profit: revenue - cost,
     };
   });
 
   const filteredRows = activeSector === 'all' ? rows : rows.filter((r) => r.sector === activeSector);
   const totalStaff = rows.reduce((s, r) => s + r.staff, 0);
-  const totalStockValue = rows.reduce((s, r) => s + r.estStockValue, 0);
+  const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0);
+  const totalCost = rows.reduce((s, r) => s + r.cost, 0);
+  const totalProfit = totalRevenue - totalCost;
   const selectedRow = selectedBuildingId
     ? rows.find((r) => r.building.id === selectedBuildingId) || null
     : null;
@@ -159,22 +183,32 @@ export const FinanceModal: React.FC<FinanceModalProps> = ({
         </div>
 
         {/* Główne KPI */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 text-xs">
           <div className="p-3 rounded-xl bg-stone-950/70 border border-stone-800">
             <p className="text-[10px] text-stone-400 uppercase">Skarbiec</p>
             <p className="text-lg font-mono font-bold text-emerald-400">£{gold.toLocaleString('en-US')}</p>
           </div>
           <div className="p-3 rounded-xl bg-stone-950/70 border border-stone-800">
-            <p className="text-[10px] text-stone-400 uppercase">Wszystkie zakłady</p>
+            <p className="text-[10px] text-stone-400 uppercase">Zakłady</p>
             <p className="text-lg font-mono font-bold text-amber-200">{rows.length}</p>
           </div>
           <div className="p-3 rounded-xl bg-stone-950/70 border border-stone-800">
-            <p className="text-[10px] text-stone-400 uppercase">Łączne zatrudnienie</p>
+            <p className="text-[10px] text-stone-400 uppercase">Zatrudnienie</p>
             <p className="text-lg font-mono font-bold text-sky-300">{totalStaff} os.</p>
           </div>
-          <div className="p-3 rounded-xl bg-stone-950/70 border border-stone-800">
-            <p className="text-[10px] text-stone-400 uppercase">Wartość magazynów</p>
-            <p className="text-lg font-mono font-bold text-amber-300">£{totalStockValue.toLocaleString('en-US')}</p>
+          <div className="p-3 rounded-xl bg-stone-950/70 border border-emerald-500/30">
+            <p className="text-[10px] text-stone-400 uppercase">Przychód</p>
+            <p className="text-lg font-mono font-bold text-emerald-300">+£{totalRevenue.toLocaleString('en-US')}</p>
+          </div>
+          <div className="p-3 rounded-xl bg-stone-950/70 border border-rose-500/30">
+            <p className="text-[10px] text-stone-400 uppercase">Koszt</p>
+            <p className="text-lg font-mono font-bold text-rose-400">-£{totalCost.toLocaleString('en-US')}</p>
+          </div>
+          <div className="p-3 rounded-xl bg-stone-950/70 border border-amber-500/40">
+            <p className="text-[10px] text-stone-400 uppercase">Zysk</p>
+            <p className={`text-lg font-mono font-bold ${totalProfit >= 0 ? 'text-amber-300' : 'text-rose-400'}`}>
+              {totalProfit >= 0 ? `+£${totalProfit.toLocaleString('en-US')}` : `-£${Math.abs(totalProfit).toLocaleString('en-US')}`}
+            </p>
           </div>
         </div>
 
@@ -211,8 +245,13 @@ export const FinanceModal: React.FC<FinanceModalProps> = ({
                       Zakłady: <strong className="text-amber-200">{sec.count}</strong> • Załoga:{' '}
                       <strong className="text-sky-300">{sec.staff}</strong>
                     </p>
-                    <p className="text-[11px] font-mono text-emerald-300 mt-0.5">
-                      Magazyn: £{sec.stockValue.toLocaleString('en-US')}
+                    <p className="text-[10px] font-mono text-stone-300 mt-0.5">
+                      <span className="text-emerald-300">+£{sec.revenue.toLocaleString('en-US')}</span>
+                      {' / '}
+                      <span className="text-rose-300">-£{sec.cost.toLocaleString('en-US')}</span>
+                    </p>
+                    <p className={`text-[11px] font-mono font-bold ${sec.profit >= 0 ? 'text-amber-300' : 'text-rose-400'}`}>
+                      Zysk: {sec.profit >= 0 ? `+£${sec.profit.toLocaleString('en-US')}` : `-£${Math.abs(sec.profit).toLocaleString('en-US')}`}
                     </p>
                   </button>
                 );
@@ -248,9 +287,9 @@ export const FinanceModal: React.FC<FinanceModalProps> = ({
                       <th className="p-3">Branża</th>
                       <th className="p-3">Lokalizacja</th>
                       <th className="p-3">Załoga</th>
-                      <th className="p-3">Magazyn</th>
-                      <th className="p-3">Sprzedawca</th>
-                      <th className="p-3 text-right">Wartość zapasu</th>
+                      <th className="p-3 text-right">Przychód</th>
+                      <th className="p-3 text-right">Koszt</th>
+                      <th className="p-3 text-right">Zysk</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-800/70">
@@ -271,20 +310,29 @@ export const FinanceModal: React.FC<FinanceModalProps> = ({
                               {meta.icon} {meta.label}
                             </span>
                           </td>
-                          <td className="p-3 text-stone-300 font-mono text-[11px]">
-                            {row.building.mapType === 'rural' ? 'Wieś' : 'Miasto'} ({row.building.x}, {row.building.y})
+                          <td className="p-3">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onNavigateToBuilding?.(row.building);
+                                onClose();
+                              }}
+                              title="Przejdź na mapę i wyśrodkuj na obiekcie"
+                              className="font-mono text-[11px] text-sky-300 hover:text-sky-200 underline decoration-sky-500/60 hover:decoration-sky-300 cursor-pointer"
+                            >
+                              📍 {row.building.mapType === 'rural' ? 'Wieś' : 'Miasto'} ({row.building.x}, {row.building.y})
+                            </button>
                           </td>
                           <td className="p-3 font-mono text-sky-300">{row.staff} os.</td>
-                          <td className="p-3 font-mono text-amber-200">{row.avail.stockLabel}</td>
-                          <td className="p-3">
-                            {row.avail.hasSeller ? (
-                              <span className="text-emerald-300 text-[11px] font-semibold">✓ Aktywny</span>
-                            ) : (
-                              <span className="text-stone-500 text-[11px]">Brak</span>
-                            )}
+                          <td className="p-3 text-right font-mono font-semibold text-emerald-300">
+                            +£{row.revenue.toLocaleString('en-US')}
                           </td>
-                          <td className="p-3 text-right font-mono font-bold text-emerald-400">
-                            £{row.estStockValue.toLocaleString('en-US')} →
+                          <td className="p-3 text-right font-mono font-semibold text-rose-400">
+                            -£{row.cost.toLocaleString('en-US')}
+                          </td>
+                          <td className={`p-3 text-right font-mono font-bold ${row.profit >= 0 ? 'text-amber-300' : 'text-rose-400'}`}>
+                            {row.profit >= 0 ? `+£${row.profit.toLocaleString('en-US')}` : `-£${Math.abs(row.profit).toLocaleString('en-US')}`} →
                           </td>
                         </tr>
                       );

@@ -9,6 +9,7 @@ interface EconomyHudMenuProps {
   allWorldBuildings: WorldSupplierBuilding[];
   buildingsState: Record<string, BuildingState>;
   onToggleBuildMode: () => void;
+  onNavigateToBuilding?: (building: WorldSupplierBuilding) => void;
   buildTreeSlot?: React.ReactNode;
 }
 
@@ -18,6 +19,7 @@ export const EconomyHudMenu: React.FC<EconomyHudMenuProps> = ({
   allWorldBuildings,
   buildingsState,
   onToggleBuildMode,
+  onNavigateToBuilding,
   buildTreeSlot,
 }) => {
   const [isFinanceOpen, setIsFinanceOpen] = useState(false);
@@ -60,6 +62,7 @@ export const EconomyHudMenu: React.FC<EconomyHudMenuProps> = ({
           allWorldBuildings={allWorldBuildings}
           buildingsState={buildingsState}
           onClose={() => setIsFinanceOpen(false)}
+          onNavigateToBuilding={onNavigateToBuilding}
         />
       )}
     </>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import type { PlacedBuilding, BuildingState } from './types';
+import { HorseMaintenanceWarningModal } from './modal/HorseMaintenanceWarningModal';
 import { canDemolishBuildingWithPastureRules, countAttachedWheatFields, findConnectedWheatFarm } from './pastureTopology';
 import { FarmSection } from './modal/FarmSection';
 import { FarmStorageBins } from './modal/FarmStorageBins';
@@ -35,6 +36,7 @@ import { UniversitySection } from './modal/UniversitySection';
 import { TradeSchoolSection } from './modal/TradeSchoolSection';
 import { TownHallSection } from './modal/TownHallSection';
 import { MarketplaceSection } from './modal/MarketplaceSection';
+import { GroceryShopSection } from './modal/GroceryShopSection';
 import { TradeShipSection } from './modal/TradeShipSection';
 import { computeCityHousingStatus } from './cityAutoGrowth';
 import type { UseGameClockReturn } from './clock/useGameClock';
@@ -94,6 +96,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
   const isWoodcutter = building.typeId === 'woodcutter';
   const isMill = building.typeId === 'mill';
   const isBakery = building.typeId === 'bakery';
+  const isGroceryShop = building.typeId === 'grocery_shop';
   const isUniversity = building.typeId === 'university';
   const isTradeSchool = building.typeId === 'trade_school';
   const isResidential = building.typeId.startsWith('tenement');
@@ -112,6 +115,63 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
     : undefined;
   const [productsSubTab, setProductsSubTab] = useState<'inventory' | 'recipes'>('inventory');
   const [residentialTab, setResidentialTab] = useState<'rent' | 'energy'>('rent');
+  const activeHorsesCount = (buildingState.ownedHorses || []).filter((h) => !h.isDeceased).length;
+  const initialHorsesCountRef = useRef<number>(activeHorsesCount);
+  const [showHorseCloseWarning, setShowHorseCloseWarning] = useState<boolean>(false);
+
+  const dailyFeedPerHorse = loadGameParameters().horseDailyFeedKg || 10;
+  const neededFeedKg = activeHorsesCount * dailyFeedPerHorse * 30;
+  const neededStrawKg = activeHorsesCount * 15 * 30;
+  const currentFeedOrderKg = buildingState.horseFeedOrder?.monthlyKg ?? 0;
+  const currentStrawOrderKg = buildingState.horseStrawOrder?.monthlyKg ?? 0;
+  const horsesIncreased = activeHorsesCount > initialHorsesCountRef.current;
+  const hasUnderContractedOrder =
+    Boolean(buildingState.horseFeedOrder && currentFeedOrderKg < neededFeedKg) ||
+    Boolean(buildingState.horseStrawOrder && currentStrawOrderKg < neededStrawKg);
+  const needsHorseMaintenanceConfirm =
+    activeHorsesCount > 0 &&
+    ((horsesIncreased && (currentFeedOrderKg < neededFeedKg || currentStrawOrderKg < neededStrawKg)) ||
+      hasUnderContractedOrder);
+
+  const handleAttemptClose = () => {
+    if (needsHorseMaintenanceConfirm) {
+      setShowHorseCloseWarning(true);
+      return;
+    }
+    onClose();
+  };
+
+  const handleAdjustHorseMaintenanceAndClose = () => {
+    const existingSupplier =
+      buildingState.horseFeedOrder?.supplierId ||
+      buildingState.horseStrawOrder?.supplierId ||
+      'trade_ship_init';
+    const existingContract =
+      buildingState.horseFeedOrder?.contractType ||
+      buildingState.horseStrawOrder?.contractType ||
+      'pay_as_you_go';
+    const existingMonths =
+      buildingState.horseFeedOrder?.monthsRemaining ??
+      buildingState.horseStrawOrder?.monthsRemaining ??
+      0;
+    onUpdateState({
+      horseFeedInterventionBuyEnabled: true,
+      horseFeedOrder: {
+        supplierId: existingSupplier,
+        monthlyKg: neededFeedKg,
+        contractType: existingContract,
+        monthsRemaining: existingMonths,
+      },
+      horseStrawOrder: {
+        supplierId: existingSupplier,
+        monthlyKg: neededStrawKg,
+        contractType: existingContract,
+        monthsRemaining: existingMonths,
+      },
+    });
+    setShowHorseCloseWarning(false);
+    onClose();
+  };
 
   const activeReliefs = buildingState.appliedTaxReliefs || {};
   const hasGreenRelief = Boolean(activeReliefs['green_ecology']);
@@ -126,7 +186,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
   };
 
   const isWideModal =
-    isFarm || isFlax || isHop || isLivestock || isOrchard || isMine || isWoodcutter || isMill || isBakery || isTownHall || isTradeShip;
+    isFarm || isFlax || isHop || isLivestock || isOrchard || isMine || isWoodcutter || isMill || isBakery || isGroceryShop || isTownHall || isTradeShip;
 
   return (
     <div
@@ -138,7 +198,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
         className={`relative w-full ${
           isTradeShip
             ? 'max-w-7xl h-[92vh]'
-            : isFarm || isFlax || isHop || isLivestock || isOrchard || isMine || isWoodcutter || isMill || isBakery
+            : isFarm || isFlax || isHop || isLivestock || isOrchard || isMine || isWoodcutter || isMill || isBakery || isGroceryShop
             ? 'max-w-6xl h-[92vh]'
             : isTownHall
             ? 'max-w-5xl h-[92vh]'
@@ -158,7 +218,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           checklist={checklist}
           onGoToSummary={() => setBusinessTab('summary')}
           clock={clock}
-          onClose={onClose}
+          onClose={handleAttemptClose}
         />
 
         <BuildingModalTabs
@@ -169,7 +229,18 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           isMill={isMill}
           isBakery={isBakery}
           isMine={isMine}
-          checklistOk={checklist?.allPassed}
+          isGroceryShop={isGroceryShop}
+          checklistOk={
+            isGroceryShop
+              ? Boolean(
+                  (buildingState.groceryShopState?.stageCrew?.supply?.length ?? 0) > 0 &&
+                    (buildingState.groceryShopState?.stageCrew?.trader?.length ?? 0) > 0 &&
+                    (buildingState.groceryShopState?.stageCrew?.delivery?.length ?? 0) > 0 &&
+                    (buildingState.groceryShopState?.sellers?.length ?? 0) <=
+                      (buildingState.groceryShopState?.stageCrew?.trader?.length ?? 0) * 3
+                )
+              : checklist?.allPassed
+          }
           businessTab={businessTab}
           residentialTab={residentialTab}
           onSelectBusinessTab={setBusinessTab}
@@ -178,7 +249,17 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
 
         {/* ZAWARTOŚĆ SPECYFICZNA DLA TYPU BUDYNKU */}
         <div className="py-1.5 px-1 space-y-2 text-sm overflow-y-auto flex-1">
-          {isBusiness && businessTab === 'summary' && checklist ? (
+          {isBusiness && isGroceryShop ? (
+            <GroceryShopSection
+              building={building}
+              buildingState={buildingState}
+              businessTab={businessTab}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              onNavigateTab={setBusinessTab}
+              onUpdateState={onUpdateState}
+            />
+          ) : isBusiness && businessTab === 'summary' && checklist ? (
             <BusinessSummaryTab checklist={checklist} onNavigateTab={setBusinessTab} />
           ) : businessTab === 'finance' && isMine ? (
             <MineFinanceTab buildingState={buildingState} onUpdateState={onUpdateState} />
@@ -623,13 +704,32 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
           )}
 
           <button
-            onClick={onClose}
+            onClick={handleAttemptClose}
             className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-stone-950 text-xs font-bold rounded-xl transition-colors cursor-pointer"
           >
             Zapisz i Zamknij
           </button>
         </div>
       </div>
+
+      {showHorseCloseWarning && (
+        <HorseMaintenanceWarningModal
+          activeHorsesCount={activeHorsesCount}
+          neededFeedKg={neededFeedKg}
+          neededStrawKg={neededStrawKg}
+          currentFeedOrderKg={currentFeedOrderKg}
+          currentStrawOrderKg={currentStrawOrderKg}
+          onAdjustQuantityAndClose={handleAdjustHorseMaintenanceAndClose}
+          onChangeSupplier={() => {
+            setShowHorseCloseWarning(false);
+            setBusinessTab('production');
+          }}
+          onCloseAnyway={() => {
+            setShowHorseCloseWarning(false);
+            onClose();
+          }}
+        />
+      )}
     </div>
   );
 };

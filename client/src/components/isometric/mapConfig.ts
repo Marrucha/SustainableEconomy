@@ -12,8 +12,8 @@ export interface MapGeometry {
 export const CITY_GEOMETRY: MapGeometry = {
   tileWidth: 128,
   tileHeight: 64,
-  gridSizeX: 14,
-  gridSizeY: 12,
+  gridSizeX: 27,
+  gridSizeY: 24,
 };
 
 // Na wsi pola są 2x mniejsze (64x32), więc siatka ma rozmiar 100x100 pól
@@ -88,6 +88,16 @@ export const CITY_ALLOWED_BUILDINGS = new Set([
   'university',
   'transport_company',
   'town_hall',
+  'police_station',
+  'fire_station',
+  'courthouse',
+  'city_theatre',
+  'cathedral',
+  'pumping_station',
+  'city_hospital',
+  'public_baths',
+  'public_library',
+  'railway_station',
   'oak',
   'road_curb',
   'road_seamless',

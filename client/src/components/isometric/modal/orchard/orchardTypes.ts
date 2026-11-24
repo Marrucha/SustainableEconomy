@@ -192,19 +192,19 @@ export function createDefaultOrchardState(initialFruit?: FruitType, isLocked: bo
     fruitDestination: 'sell_market',
     enableTreeTrimmingBonus: true,
     fruitStockKg: {
-      jablko: 620,
+      jablko: 0,
       gruszka: 0,
       sliwka: 0,
       wisnia: 0,
     },
-    ciderStockL: 280,
-    prunedWoodKg: 190,
+    ciderStockL: 0,
+    prunedWoodKg: 0,
     currentStage: 'pruning',
-    stageProgress: 25,
-    totalCyclesCompleted: 2,
-    lastCycleYieldKg: 850,
-    lastCycleRevenue: 106,
-    lastCycleCost: 32,
+    stageProgress: 0,
+    totalCyclesCompleted: 0,
+    lastCycleYieldKg: 0,
+    lastCycleRevenue: 0,
+    lastCycleCost: 0,
   };
 }
 

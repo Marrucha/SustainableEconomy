@@ -36,8 +36,45 @@ export const MarketStallFinanceTab: React.FC<MarketStallFinanceTabProps> = ({
   buildingsState,
 }) => {
   const productRows =
-    traderCrew.length > 0
-      ? traderCrew
+    sellers.length > 0
+      ? sellers.map((sel) => {
+          const good = ALL_MARKET_GOODS.find((g) => g.id === sel.productId);
+          const matchingSupply = supplySlots.find((s) => s.productId === sel.productId);
+          const retailPrice = resolveRetailPrice(sel.retailPrice, good?.defaultPrice);
+          const purchasePrice = computeProductPurchasePrice(
+            sel.productId,
+            good?.defaultPrice ?? retailPrice,
+            matchingSupply?.supplierBuildingId,
+            matchingSupply?.contractType,
+            allWorldBuildings,
+            buildingsState
+          );
+          const demand = estimateProductMonthlyDemand(
+            sel.productId,
+            demographics,
+            retailPrice,
+            good?.defaultPrice
+          );
+          const monthlyVolume = demand.monthlyVolume;
+          const monthlyRevenue = Number((retailPrice * monthlyVolume).toFixed(2));
+          const monthlySupplyCost = Number((purchasePrice * monthlyVolume).toFixed(2));
+          const monthlyMargin = Number((monthlyRevenue - monthlySupplyCost).toFixed(2));
+          return {
+            key: `${sel.sellerIndex}_${sel.productId}`,
+            good,
+            productId: sel.productId,
+            tierLabel: demand.tierLabel,
+            traderLabel: sel.traderName
+              ? `Handlarz: ${sel.traderName}`
+              : `Sprzedawca #${sel.sellerIndex}`,
+            retailPrice,
+            monthlyVolume,
+            monthlyRevenue,
+            monthlySupplyCost,
+            monthlyMargin,
+          };
+        })
+      : traderCrew
           .map((w, idx) => {
             const prodId =
               w.assignedProductId &&
@@ -46,11 +83,8 @@ export const MarketStallFinanceTab: React.FC<MarketStallFinanceTabProps> = ({
                 : securedGoods[idx]?.id || securedGoods[0]?.id || '';
             if (!prodId) return null;
             const good = ALL_MARKET_GOODS.find((g) => g.id === prodId);
-            const matchingSeller =
-              sellers.find((s) => s.traderId === w.id) ||
-              sellers.find((s) => s.productId === prodId);
             const matchingSupply = supplySlots.find((s) => s.productId === prodId);
-            const retailPrice = resolveRetailPrice(matchingSeller?.retailPrice, good?.defaultPrice);
+            const retailPrice = resolveRetailPrice(undefined, good?.defaultPrice);
             const purchasePrice = computeProductPurchasePrice(
               prodId,
               good?.defaultPrice ?? retailPrice,
@@ -82,44 +116,7 @@ export const MarketStallFinanceTab: React.FC<MarketStallFinanceTabProps> = ({
               monthlyMargin,
             };
           })
-          .filter((r): r is NonNullable<typeof r> => Boolean(r))
-      : sellers.map((sel) => {
-          const good = ALL_MARKET_GOODS.find((g) => g.id === sel.productId);
-          const matchingSupply = supplySlots.find((s) => s.productId === sel.productId);
-          const retailPrice = resolveRetailPrice(sel.retailPrice, good?.defaultPrice);
-          const purchasePrice = computeProductPurchasePrice(
-            sel.productId,
-            good?.defaultPrice ?? retailPrice,
-            matchingSupply?.supplierBuildingId,
-            matchingSupply?.contractType,
-            allWorldBuildings,
-            buildingsState
-          );
-          const demand = estimateProductMonthlyDemand(
-            sel.productId,
-            demographics,
-            retailPrice,
-            good?.defaultPrice
-          );
-          const monthlyVolume = demand.monthlyVolume;
-          const monthlyRevenue = Number((retailPrice * monthlyVolume).toFixed(2));
-          const monthlySupplyCost = Number((purchasePrice * monthlyVolume).toFixed(2));
-          const monthlyMargin = Number((monthlyRevenue - monthlySupplyCost).toFixed(2));
-          return {
-            key: String(sel.sellerIndex),
-            good,
-            productId: sel.productId,
-            tierLabel: demand.tierLabel,
-            traderLabel: sel.traderName
-              ? `Handlarz #${sel.sellerIndex}: ${sel.traderName}`
-              : `Sprzedawca #${sel.sellerIndex}`,
-            retailPrice,
-            monthlyVolume,
-            monthlyRevenue,
-            monthlySupplyCost,
-            monthlyMargin,
-          };
-        });
+          .filter((r): r is NonNullable<typeof r> => Boolean(r));
 
   const totalRevenue = Number(
     productRows.reduce((sum, r) => sum + r.monthlyRevenue, 0).toFixed(2)

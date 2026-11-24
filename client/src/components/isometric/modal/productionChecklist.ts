@@ -5,7 +5,9 @@ import {
   createDefaultFarmCapitalismState,
   CROPS_CONFIG,
   getGrainSiloCapacityKg,
+  getHiredAgronomistsCount,
   getManureBinCapacityKg,
+  getRequiredAgronomistsCount,
   getStrawStackCapacityKg,
 } from './farmGridTypes';
 import { computeFarmYieldSummary } from './farmYieldMath';
@@ -15,6 +17,7 @@ import {
 } from './mill/millTypes';
 import { computeMillYieldSummary } from './mill/millMath';
 import {
+  BAKERY_PRODUCTS_CONFIG,
   checkIsBakeryProductionReady,
   createDefaultBakeryState,
 } from './bakery/bakeryTypes';
@@ -23,7 +26,7 @@ import {
   checkIsMineProductionReady,
   createDefaultMineCapitalismState,
 } from './mine/mineCapitalismTypes';
-import { createDefaultLivestockState } from './livestock/livestockTypes';
+import { computeDailyManureKg, createDefaultLivestockState } from './livestock/livestockTypes';
 import { computeFactoryStaffMetrics } from './industryStaffMath';
 import { getHorseEffectiveCapacityHa } from './horseEnergyMath';
 import { loadGameParameters } from '../admin/gameParameters';
@@ -33,6 +36,7 @@ export interface ProductionChecklistItem {
   icon: string;
   label: string;
   passed: boolean;
+  warning?: boolean;
   detail: string;
 }
 
@@ -120,8 +124,21 @@ export function computeProductionChecklist(
       horses,
       loadGameParameters().horseWorkCapacityHa || 5
     );
-    const energyOk = horses.length > 0 && horseCapHa >= yieldSum.totalHectares;
+    const hasAnyHorses = horses.length > 0 && horseCapHa > 0;
+    const energyFull = hasAnyHorses && horseCapHa >= yieldSum.totalHectares;
+    const energyPct =
+      yieldSum.totalHectares > 0
+        ? Math.min(100, Math.round((horseCapHa / yieldSum.totalHectares) * 100))
+        : 100;
+    const energyOk = hasAnyHorses;
     const crewOk = ready.isReady;
+    const farmerCapPerWorker = loadGameParameters().farmerWorkCapacityHa || 5;
+    const hiredAgronomists = getHiredAgronomistsCount(farmCap.agronomist);
+    const requiredAgronomists = getRequiredAgronomistsCount(yieldSum.fieldFarmersCount);
+    const agronomistFull = hiredAgronomists >= requiredAgronomists;
+    const farmersFull = yieldSum.farmerCapacityHa >= yieldSum.totalHectares;
+    const crewFull = crewOk && farmersFull && agronomistFull;
+    const requiredFarmers = Math.ceil(yieldSum.totalHectares / farmerCapPerWorker);
     const cropKey = farmCap.cropType || 'pszenica';
     const cropLabel = CROPS_CONFIG[cropKey]?.name || 'Zboże';
     const grainStock = farmCap.grainStockKg?.[cropKey] ?? farmCap.wheatStockKg ?? 0;
@@ -130,6 +147,10 @@ export function computeProductionChecklist(
     const strawCap = getStrawStackCapacityKg(farmCap.strawLevel ?? 1);
     const manureStock = farmCap.manureStockKg ?? farmCap.fertilizerStockKg ?? 0;
     const manureCap = getManureBinCapacityKg(farmCap.manureLevel ?? 1);
+    const seedsStock = grainStock > 0 ? grainStock : yieldSum.seedsAvailableKg;
+    const hasEnoughFeed = (buildingState.horseFeedStockKg ?? 0) > 0 || horses.length === 0;
+    const hasAnySeeds = seedsStock > 0;
+    const hasFullSeeds = seedsStock >= yieldSum.seedRequiredKg;
     const storageOk = grainStock < siloCap;
 
     items.push(
@@ -138,26 +159,38 @@ export function computeProductionChecklist(
         icon: '⚡',
         label: 'Energia (konie robocze ≥ zapotrzebowanie pola)',
         passed: energyOk,
+        warning: energyOk && !energyFull,
         detail:
           horses.length === 0
             ? 'Brak koni roboczych w zakładce Energia.'
-            : `Moc koni: ${horseCapHa} ha / powierzchnia farmy: ${yieldSum.totalHectares} ha.`,
+            : !energyFull
+            ? `Moc koni: ${horseCapHa} / ${yieldSum.totalHectares} ha (${energyPct}% wykorzystania).`
+            : `Moc koni: ${horseCapHa} ha / powierzchnia farmy: ${yieldSum.totalHectares} ha (100%).`,
       },
       {
         id: 'crew',
         icon: '👷',
         label: 'Załoga na lejku produkcyjnym',
         passed: crewOk,
-        detail: crewOk
-          ? 'Obsadzone wszystkie etapy cyklu i agronom.'
-          : `Brakuje obsady (${ready.missingStages.map((s) => s.label).join(', ') || 'sprawdź Załogę'}).`,
+        warning: crewOk && !crewFull,
+        detail: !crewOk
+          ? `Brakuje obsady (${ready.missingStages.map((s) => s.label).join(', ') || 'sprawdź Załogę'}).`
+          : !farmersFull
+          ? `Niepełna obsada polowa: ${yieldSum.farmerCapacityHa} / ${yieldSum.totalHectares} ha (wymaganych ${requiredFarmers} rolników po ${farmerCapPerWorker} ha).`
+          : !agronomistFull
+          ? `Za mało agronomów: ${hiredAgronomists}/${requiredAgronomists} (1 agronom na 20 rolników).`
+          : `Obsadzone wszystkie etapy cyklu (${yieldSum.fieldFarmersCount}/${requiredFarmers} rolników, ${hiredAgronomists}/${requiredAgronomists} agronomów).`,
       },
       {
         id: 'materials',
         icon: '📦',
-        label: 'Surowce do produkcji (ziarno siewne / pasza koni)',
-        passed: (buildingState.horseFeedStockKg ?? 0) > 0 || horses.length === 0,
-        detail: `Pasza koni: ${buildingState.horseFeedStockKg ?? 0} kg · Ziarno siewne: ${yieldSum.seedRequiredKg} kg.`,
+        label: `Surowce do produkcji (${cropLabel} / pasza koni)`,
+        passed: hasEnoughFeed && hasAnySeeds,
+        warning: hasEnoughFeed && hasAnySeeds && !hasFullSeeds,
+        detail:
+          hasAnySeeds && !hasFullSeeds
+            ? `⚠️ ${cropLabel}: ${seedsStock} / ${yieldSum.seedRequiredKg} kg (obsiane tylko ${yieldSum.seedCoveragePercent}% areału) · Pasza koni: ${buildingState.horseFeedStockKg ?? 0} kg.`
+            : `${cropLabel}: ${seedsStock} / ${yieldSum.seedRequiredKg} kg · Pasza koni: ${buildingState.horseFeedStockKg ?? 0} kg.`,
       },
       {
         id: 'storage',
@@ -168,6 +201,7 @@ export function computeProductionChecklist(
       }
     );
     const rawMaterials: SummaryInventoryItem[] = [
+      makeInvItem(CROPS_CONFIG[cropKey]?.icon || '🌱', cropLabel, grainStock, siloCap, 'kg'),
       makeInvItem('🌾', 'Pasza koni roboczych', buildingState.horseFeedStockKg ?? 0, 10000, 'kg'),
       makeInvItem('🐂', 'Obornik naturalny', manureStock, manureCap, 'kg'),
     ];
@@ -184,7 +218,8 @@ export function computeProductionChecklist(
     const summary = computeMillYieldSummary(mill, buildingState);
     const hasFuel = hasBuildingFuelOrPower(buildingState, 'wegiel');
     const scaleMult = SCALE_CONFIG[buildingState.businessEnergyScale || 'standard'].multiplier;
-    const energyOk = hasFuel && scaleMult >= 1 && summary.dailyGrainInputKg > 0;
+    const energyOk = hasFuel && summary.dailyGrainInputKg > 0;
+    const energyWarning = energyOk && scaleMult < 1;
     const crewOk = !ready.missingReasons.some((r) => /Zarządc|etap|obsad|Załog/i.test(r));
     const materialsOk = mill.grainStockKg > 0;
     const storageOk = mill.flourStockKg < mill.flourCapacityKg;
@@ -194,6 +229,7 @@ export function computeProductionChecklist(
         icon: '⚡',
         label: 'Energia (max produkcji ≤ max energii)',
         passed: energyOk,
+        warning: energyWarning,
         detail: hasFuel
           ? `Skala energii: ${Math.round(scaleMult * 100)}% · Przemiał: ${summary.dailyGrainInputKg} kg/d.`
           : 'Brak paliwa (węgiel/konie) do napędu młyna.',
@@ -240,7 +276,8 @@ export function computeProductionChecklist(
     const summary = computeBakeryYieldSummary(bakery, buildingState);
     const hasFuel = hasBuildingFuelOrPower(buildingState, 'wegiel');
     const scaleMult = SCALE_CONFIG[buildingState.businessEnergyScale || 'standard'].multiplier;
-    const energyOk = hasFuel && scaleMult >= 1 && summary.dailyFlourInputKg > 0;
+    const energyOk = hasFuel && summary.dailyFlourInputKg > 0;
+    const energyWarning = energyOk && scaleMult < 1;
     const crewOk = !ready.missingReasons.some((r) => /Zarządc|etap|obsad|Załog|Piekarz/i.test(r));
     const materialsOk = bakery.flourStockKg > 0;
     const storageOk = bakery.breadStockKg < bakery.breadCapacityKg;
@@ -250,6 +287,7 @@ export function computeProductionChecklist(
         icon: '⚡',
         label: 'Energia (max produkcji ≤ max energii)',
         passed: energyOk,
+        warning: energyWarning,
         detail: hasFuel
           ? `Skala energii: ${Math.round(scaleMult * 100)}% · Wypiek: ${summary.dailyFlourInputKg} kg mąki/d.`
           : 'Brak opału lub energii do wypieku.',
@@ -283,8 +321,9 @@ export function computeProductionChecklist(
       makeInvItem('🥖', 'Mąka do wypieku', bakery.flourStockKg, bakery.flourCapacityKg, 'kg'),
       ...(fuelItem ? [fuelItem] : []),
     ];
+    const breadProdCfg = BAKERY_PRODUCTS_CONFIG[bakery.productTarget];
     const products: SummaryInventoryItem[] = [
-      makeInvItem('🍞', 'Pieczywo', bakery.breadStockKg, bakery.breadCapacityKg, 'kg'),
+      makeInvItem(breadProdCfg?.icon || '🍞', breadProdCfg?.label || 'Pieczywo', bakery.breadStockKg, bakery.breadCapacityKg, 'kg'),
       makeInvItem('🥐', 'Bułka tarta', bakery.rusksStockKg, bakery.rusksCapacityKg, 'kg'),
     ];
     return { allPassed: items.every((i) => i.passed), items, rawMaterials, products };
@@ -348,7 +387,11 @@ export function computeProductionChecklist(
     const crewOk = ls.crew.length > 0;
     const feedStock = ls.supplies?.feedGrainKg ?? 0;
     const strawStock = ls.supplies?.strawBeddingKg ?? 0;
-    const feedOk = feedStock > 0 && strawStock > 0;
+    const hasFeedContract = Boolean(ls.feedOrder || (ls.feedOrders && ls.feedOrders.length > 0));
+    const hasStrawContract = Boolean(ls.strawOrder || (ls.strawOrders && ls.strawOrders.length > 0));
+    const hasFeedSecured = feedStock > 0 || (hasFeedContract && Boolean(ls.interventionBuyEnabled));
+    const hasStrawSecured = strawStock > 0 || (hasStrawContract && Boolean(ls.interventionBuyEnabled));
+    const feedOk = hasFeedSecured && hasStrawSecured;
     const energyOk = isHorseBreeding ? herdHorses.length > 0 : horses.length > 0;
 
     const perAnimalCap = loadGameParameters().manurePenCapacityKg || 1000;
@@ -395,9 +438,13 @@ export function computeProductionChecklist(
         icon: '📦',
         label: 'Pasza i ściółka w magazynie (nie wstrzymuje wzrostu)',
         passed: true,
-        detail: feedOk
-          ? `Pasza: ${feedStock} kg · Ściółka: ${strawStock} kg.`
-          : `⚠️ Brak paszy/ściółki (${feedStock} kg / ${strawStock} kg) — wzrost trwa, ale zwierzęta tracą zdrowie!`,
+        warning: !feedOk,
+        detail:
+          feedStock > 0 && strawStock > 0
+            ? `Pasza: ${feedStock} kg · Ściółka: ${strawStock} kg.`
+            : feedOk
+            ? `Pasza: ${feedStock} kg · Ściółka: ${strawStock} kg (zabezpieczone kontraktem z zakupem interwencyjnym).`
+            : `⚠️ Brak paszy/ściółki (${feedStock} kg / ${strawStock} kg) — wzrost trwa, ale zwierzęta tracą zdrowie!`,
       },
       {
         id: 'storage',
@@ -416,30 +463,50 @@ export function computeProductionChecklist(
       ...(fuelItem ? [fuelItem] : []),
     ];
     const saleHorsesCount = herdHorses.filter((h) => h.group === 'sale').length;
+    const totalLivestockCount =
+      species === 'horses'
+        ? herdHorses.length
+        : species === 'sheep'
+        ? (ls.herd?.adultSheepCount || 0) + (ls.herd?.growingLambsCount || 0) + (ls.herd?.sheepForSale ?? 0)
+        : species === 'poultry'
+        ? (ls.herd?.adultHensCount || 0) + (ls.herd?.growingChicksCount || 0) + (ls.herd?.poultryForSale ?? 0)
+        : (ls.herd?.milkingGroupCows || 0) + (ls.herd?.growingGroupCalves || 0) + (ls.herd?.cattleForSale ?? 0);
+    const monthlyManureKg = strawStock > 0 ? computeDailyManureKg(species, totalLivestockCount) * 30 : 0;
+    const monthlyMilkL = Math.round((ls.herd?.milkingGroupCows || 0) * 14) * 30;
+    const monthlyEggsCount =
+      (ls.selectedPoultryBranch || 'milking') === 'milking'
+        ? Math.round((ls.herd?.adultHensCount || 0) * 0.8) * 30
+        : 0;
     const products: SummaryInventoryItem[] =
       species === 'horses'
         ? [
             makeInvItem('🐎', 'Konie w zagrodzie', herdHorses.length, null, 'szt.'),
             makeInvItem('🏷️', 'Konie na sprzedaż', saleHorsesCount, null, 'szt.'),
-            makeInvItem('🐂', 'Obornik w zagrodzie', penManureKg, penCap, 'kg'),
+            makeInvItem(
+              '🐂',
+              `Obornik w zagrodzie (+${monthlyManureKg.toLocaleString('pl-PL')} kg/msc)`,
+              penManureKg,
+              penCap,
+              'kg'
+            ),
             makeInvItem('💩', 'Obornik na hałdzie (na sprzedaż)', ls.storage?.manureKg ?? 0, null, 'kg'),
           ]
         : species === 'sheep'
         ? [
             makeInvItem('🥩', 'Baranina', ls.storage?.muttonKg ?? 0, null, 'kg'),
             makeInvItem('🧶', 'Wełna', ls.storage?.woolKg ?? 0, null, 'kg'),
-            makeInvItem('🐂', 'Obornik', ls.storage?.manureKg ?? 0, null, 'kg'),
+            makeInvItem('🐂', `Obornik (+${monthlyManureKg.toLocaleString('pl-PL')} kg/msc)`, ls.storage?.manureKg ?? 0, null, 'kg'),
           ]
         : species === 'poultry'
         ? [
-            makeInvItem('🥚', 'Jaja kurze', ls.storage?.eggsCount ?? 0, null, 'szt.'),
+            makeInvItem('🥚', `Jaja kurze (+${monthlyEggsCount.toLocaleString('pl-PL')} szt./msc)`, ls.storage?.eggsCount ?? 0, null, 'szt.'),
             makeInvItem('🍗', 'Mięso drobiowe', ls.storage?.poultryMeatKg ?? 0, null, 'kg'),
-            makeInvItem('🐂', 'Obornik', ls.storage?.manureKg ?? 0, null, 'kg'),
+            makeInvItem('🐂', `Obornik (+${monthlyManureKg.toLocaleString('pl-PL')} kg/msc)`, ls.storage?.manureKg ?? 0, null, 'kg'),
           ]
         : [
-            makeInvItem('🥛', 'Mleko', ls.storage?.milkLiters ?? 0, null, 'l'),
+            makeInvItem('🥛', `Mleko (+${monthlyMilkL.toLocaleString('pl-PL')} l/msc)`, ls.storage?.milkLiters ?? 0, null, 'l'),
             makeInvItem('🥩', 'Wołowina', ls.storage?.beefKg ?? 0, null, 'kg'),
-            makeInvItem('🐂', 'Obornik', ls.storage?.manureKg ?? 0, null, 'kg'),
+            makeInvItem('🐂', `Obornik (+${monthlyManureKg.toLocaleString('pl-PL')} kg/msc)`, ls.storage?.manureKg ?? 0, null, 'kg'),
           ];
     return { allPassed: items.every((i) => i.passed), items, rawMaterials, products };
   }
@@ -448,7 +515,8 @@ export function computeProductionChecklist(
   const staff = computeFactoryStaffMetrics(building.sizeX, building.sizeY, buildingState);
   const scaleMult = SCALE_CONFIG[buildingState.businessEnergyScale || 'standard'].multiplier;
   const hasEnergyFuel = hasBuildingFuelOrPower(buildingState);
-  const energyOk = hasEnergyFuel && scaleMult >= 1;
+  const energyOk = hasEnergyFuel;
+  const energyWarning = energyOk && scaleMult < 1;
   const crewOk = staff.workersCount > 0 && staff.managersCount > 0;
 
   items.push(
@@ -457,6 +525,7 @@ export function computeProductionChecklist(
       icon: '⚡',
       label: 'Energia (max produkcji ≤ max energii)',
       passed: energyOk,
+      warning: energyWarning,
       detail: hasEnergyFuel
         ? `Skala mocy: ${Math.round(scaleMult * 100)}%.`
         : 'Brak wybranego źródła energii lub paliwa na składzie.',

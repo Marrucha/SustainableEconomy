@@ -1,17 +1,24 @@
 import React from 'react';
-import type { HorseAnimal, LivestockCapitalismState } from './livestockTypes';
-import { HorseRosterSection, createDefaultHorsesList } from './HorseRosterSection';
+import {
+  computeDailyManureKg,
+  type HorseAnimal,
+  type LivestockCapitalismState,
+} from './livestockTypes';
+import { HorseRosterSection } from './HorseRosterSection';
 import { loadGameParameters } from '../../admin/gameParameters';
+import { generateRandomEnglishName } from '../englishNames';
 
 interface LivestockHerdTabProps {
   state: LivestockCapitalismState;
   clockDay?: number;
+  onSpendGold?: (amount: number) => void;
   onUpdateState: (patch: Partial<LivestockCapitalismState>) => void;
 }
 
 export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
   state,
   clockDay = 1,
+  onSpendGold,
   onUpdateState,
 }) => {
   const herd = state.herd;
@@ -19,9 +26,9 @@ export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
   const isCattle = species === 'cattle';
   const isSheep = species === 'sheep';
   const isHorses = species === 'horses';
+  const isPoultry = species === 'poultry';
 
-  const horsesList: HorseAnimal[] =
-    herd.horses && herd.horses.length > 0 ? herd.horses : createDefaultHorsesList();
+  const horsesList: HorseAnimal[] = herd.horses || [];
 
   const handleUpdateHorses = (nextHorses: HorseAnimal[]) => {
     const adultDraftHorses = nextHorses.filter((h) => h.group === 'breeding').length;
@@ -43,12 +50,12 @@ export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
   const breedingCount = isCattle
     ? herd.milkingGroupCows
     : isSheep
-    ? herd.adultSheepCount || 16
+    ? herd.adultSheepCount || 0
     : horsesList.filter((h) => h.group === 'breeding').length;
   const growthCount = isCattle
     ? herd.growingGroupCalves
     : isSheep
-    ? herd.growingLambsCount || 6
+    ? herd.growingLambsCount || 0
     : horsesList.filter((h) => h.group === 'growth').length;
   const forSaleCount = isCattle
     ? herd.cattleForSale ?? 4
@@ -57,7 +64,8 @@ export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
     : horsesList.filter((h) => h.group === 'sale').length;
 
   const totalAnimals = breedingCount + growthCount + forSaleCount;
-  const dailyManureRate = Math.max(2, Math.round(totalAnimals * 1.5));
+  const hasStrawBedding = (state.supplies?.strawBeddingKg ?? 0) > 0;
+  const dailyManureRate = hasStrawBedding ? computeDailyManureKg(species, totalAnimals) : 0;
   const perAnimalCap = loadGameParameters().manurePenCapacityKg || 1000;
   const penCap = Math.max(perAnimalCap, totalAnimals * perAnimalCap);
   const penManureKg = Math.round(Math.min(penCap, state.penManureKg ?? 0));
@@ -84,8 +92,167 @@ export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
     );
   };
 
+  const handleBuyHorseFromPort = (sex: 'female' | 'male', cost: number) => {
+    if (onSpendGold) onSpendGold(cost);
+    const newHorse: HorseAnimal = {
+      id: `horse_port_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name: generateRandomEnglishName(),
+      sex,
+      ageYears: 3.5,
+      ageMonths: 42,
+      vitalityPercent: 100,
+      group: 'breeding',
+      breedingStatus: 'waiting',
+      breedingWaitMonths: 0,
+      postGrowthTarget: 'breeding',
+    };
+    handleUpdateHorses([...horsesList, newHorse]);
+  };
+
   return (
     <div className="space-y-4">
+      <div className="bg-stone-900/90 border border-sky-500/40 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🚢</span>
+          <div>
+            <h4 className="text-xs font-bold text-sky-200">
+              Szybki zakup stada z Portu (Statek Handlowy)
+            </h4>
+            <p className="text-[10px] font-mono text-stone-400">
+              {isCattle
+                ? 'Dokup krowy mleczne / rozrodowe'
+                : isSheep
+                ? 'Dokup owce do stada'
+                : 'Dokup klacze i ogiery do stada rozrodowego'}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {isCattle && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onSpendGold) onSpendGold(45);
+                  onUpdateState({
+                    herd: { ...herd, milkingGroupCows: (herd.milkingGroupCows || 0) + 1 },
+                  });
+                }}
+                className="px-2.5 py-1 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-[11px] font-mono font-bold cursor-pointer"
+              >
+                +1 Krowa (£45)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onSpendGold) onSpendGold(65);
+                  onUpdateState({
+                    herd: { ...herd, bullsCount: (herd.bullsCount || 0) + 1 },
+                  });
+                }}
+                className="px-2.5 py-1 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-[11px] font-mono font-bold cursor-pointer"
+              >
+                +1 Buhaj (£65)
+              </button>
+            </>
+          )}
+          {isSheep && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onSpendGold) onSpendGold(24);
+                  const nextAdult = (herd.adultSheepCount || 0) + 2;
+                  onUpdateState({
+                    herd: {
+                      ...herd,
+                      adultSheepCount: nextAdult,
+                      sheepFlockCount: nextAdult + (herd.ramsCount || 0) + (herd.growingLambsCount || 0) + (herd.sheepForSale || 0),
+                    },
+                  });
+                }}
+                className="px-2.5 py-1 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-[11px] font-mono font-bold cursor-pointer"
+              >
+                +2 Owce (£24)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onSpendGold) onSpendGold(22);
+                  const nextRams = (herd.ramsCount || 0) + 1;
+                  onUpdateState({
+                    herd: {
+                      ...herd,
+                      ramsCount: nextRams,
+                      sheepFlockCount: (herd.adultSheepCount || 0) + nextRams + (herd.growingLambsCount || 0) + (herd.sheepForSale || 0),
+                    },
+                  });
+                }}
+                className="px-2.5 py-1 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-[11px] font-mono font-bold cursor-pointer"
+              >
+                +1 Baran (£22)
+              </button>
+            </>
+          )}
+          {isPoultry && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onSpendGold) onSpendGold(15);
+                  const nextHens = (herd.adultHensCount || 0) + 5;
+                  onUpdateState({
+                    herd: {
+                      ...herd,
+                      adultHensCount: nextHens,
+                      poultryFlockCount: nextHens + (herd.roostersCount || 0) + (herd.growingChicksCount || 0) + (herd.poultryForSale || 0),
+                    },
+                  });
+                }}
+                className="px-2.5 py-1 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-[11px] font-mono font-bold cursor-pointer"
+              >
+                +5 Kur niosek (£15)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onSpendGold) onSpendGold(5);
+                  const nextRoosters = (herd.roostersCount || 0) + 1;
+                  onUpdateState({
+                    herd: {
+                      ...herd,
+                      roostersCount: nextRoosters,
+                      poultryFlockCount: (herd.adultHensCount || 0) + nextRoosters + (herd.growingChicksCount || 0) + (herd.poultryForSale || 0),
+                    },
+                  });
+                }}
+                className="px-2.5 py-1 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-[11px] font-mono font-bold cursor-pointer"
+              >
+                +1 Kogut (£5)
+              </button>
+            </>
+          )}
+          {isHorses && (
+            <>
+              <button
+                type="button"
+                onClick={() => handleBuyHorseFromPort('female', 85)}
+                className="px-2.5 py-1 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-[11px] font-mono font-bold cursor-pointer"
+              >
+                +1 Klacz (£85)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBuyHorseFromPort('male', 95)}
+                className="px-2.5 py-1 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-[11px] font-mono font-bold cursor-pointer"
+              >
+                +1 Ogier (£95)
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* ZAGRODA I OBORNIK W ZAGRODZIE */}
       <div className="bg-stone-950/90 border border-emerald-500/40 rounded-2xl p-4 shadow-xl space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -98,7 +265,10 @@ export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
                 Zagroda ({isCattle ? 'Bydło' : isSheep ? 'Owce' : 'Konie'}) • Łącznie: {totalAnimals} szt.
               </h3>
               <span className="text-[11px] font-mono text-stone-400">
-                Przyrost obornika: +{dailyManureRate} kg / dzień
+                Przyrost obornika: +{dailyManureRate} kg / dzień (+{(dailyManureRate * 30).toLocaleString('pl-PL')} kg / msc)
+                {!hasStrawBedding && totalAnimals > 0 && (
+                  <span className="text-rose-400 font-bold ml-1.5">• brak ściółki</span>
+                )}
               </span>
             </div>
           </div>
@@ -202,7 +372,7 @@ export const LivestockHerdTab: React.FC<LivestockHerdTabProps> = ({
             <div className="pt-2 border-t border-stone-800 text-[11px] font-mono text-purple-300">
               {isCattle
                 ? `Mleko: ~${Math.round(herd.milkingGroupCows * 14)} l/d`
-                : `Wełna: ~${Math.round((herd.adultSheepCount || 16) * 18)} kg/r`}
+                : `Wełna: ~${Math.round((herd.adultSheepCount || 0) * 18)} kg/r`}
             </div>
           </div>
         </div>

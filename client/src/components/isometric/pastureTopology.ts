@@ -343,6 +343,37 @@ export function canDemolishBuildingWithPastureRules(
   return { allowed: true };
 }
 
+function countAttachedAddons(
+  rootBuilding: PlacedBuilding,
+  placedBuildings: PlacedBuilding[],
+  isAddon: (typeId: string) => boolean
+): number {
+  const addons = placedBuildings.filter((b) => isAddon(b.typeId));
+  if (addons.length === 0) return 0;
+
+  const visitedIds = new Set<string>();
+  const queue: PlacedBuilding[] = [];
+
+  for (const addon of addons) {
+    if (doRectanglesShareEdge(rootBuilding, addon)) {
+      visitedIds.add(addon.id);
+      queue.push(addon);
+    }
+  }
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const nextAddon of addons) {
+      if (!visitedIds.has(nextAddon.id) && doRectanglesShareEdge(current, nextAddon)) {
+        visitedIds.add(nextAddon.id);
+        queue.push(nextAddon);
+      }
+    }
+  }
+
+  return visitedIds.size;
+}
+
 /**
  * Zlicza liczbę pól uprawnych (wheat_field) połączonych krawędziowo z daną farmą zbożową.
  */
@@ -351,30 +382,40 @@ export function countAttachedWheatFields(
   placedBuildings: PlacedBuilding[]
 ): number {
   if (!isWheatFarm(farmBuilding.typeId)) return 0;
-  const fields = placedBuildings.filter((b) => isWheatField(b.typeId));
-  if (fields.length === 0) return 0;
+  return countAttachedAddons(farmBuilding, placedBuildings, isWheatField);
+}
 
-  const visitedIds = new Set<string>();
-  const queue: PlacedBuilding[] = [];
+/**
+ * Zlicza liczbę zagród/pastwisk (pasture_cattle, pasture_sheep) połączonych z fermą hodowlaną.
+ */
+export function countAttachedPastures(
+  livestockBuilding: PlacedBuilding,
+  placedBuildings: PlacedBuilding[]
+): number {
+  if (!isLivestockFarm(livestockBuilding.typeId)) return 0;
+  return countAttachedAddons(livestockBuilding, placedBuildings, isPasture);
+}
 
-  for (const field of fields) {
-    if (doRectanglesShareEdge(farmBuilding, field)) {
-      visitedIds.add(field.id);
-      queue.push(field);
-    }
-  }
+/**
+ * Zlicza liczbę pól lnu (flax_field) połączonych z plantacją lnu.
+ */
+export function countAttachedFlaxFields(
+  flaxBuilding: PlacedBuilding,
+  placedBuildings: PlacedBuilding[]
+): number {
+  if (!isFlaxFarm(flaxBuilding.typeId)) return 0;
+  return countAttachedAddons(flaxBuilding, placedBuildings, isFlaxField);
+}
 
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    for (const nextField of fields) {
-      if (!visitedIds.has(nextField.id) && doRectanglesShareEdge(current, nextField)) {
-        visitedIds.add(nextField.id);
-        queue.push(nextField);
-      }
-    }
-  }
-
-  return visitedIds.size;
+/**
+ * Zlicza liczbę pól chmielu (hop_field) połączonych z farmą chmielu.
+ */
+export function countAttachedHopFields(
+  hopBuilding: PlacedBuilding,
+  placedBuildings: PlacedBuilding[]
+): number {
+  if (!isHopFarm(hopBuilding.typeId)) return 0;
+  return countAttachedAddons(hopBuilding, placedBuildings, isHopField);
 }
 
 /**

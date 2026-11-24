@@ -67,6 +67,51 @@ export function computeCityHousingStatus(
   };
 }
 
+/**
+ * Sprawdza, czy budynek mieszkalny (tenement_*) styka się (krawędzią lub rogiem)
+ * z budynkiem mieszkalnym innego typu. Różne typy mieszkalne muszą mieć min. 1 kratkę przerwy.
+ */
+export function hasAdjacentDifferentResidentialType(
+  x: number,
+  y: number,
+  sizeX: number,
+  sizeY: number,
+  typeId: string | undefined,
+  placedBuildings: PlacedBuilding[]
+): boolean {
+  if (!typeId || !typeId.startsWith('tenement_')) return false;
+  return placedBuildings.some((b) => {
+    if (!b.typeId.startsWith('tenement_') || b.typeId === typeId) return false;
+    const overlapX = x <= b.x + b.sizeX && x + sizeX >= b.x;
+    const overlapY = y <= b.y + b.sizeY && y + sizeY >= b.y;
+    return overlapX && overlapY;
+  });
+}
+
+/**
+ * Sprawdza kolizję stawianego obiektu z istniejącymi budynkami.
+ * Wokół miniatury miasta (`city_miniature`) utrzymuje bufor 5 pól wiejskich,
+ * aby farmy i zakłady nie najeżdżały na jej rozłożysty obrys drzew i zabudowy.
+ */
+export function hasBuildingPlacementCollision(
+  x: number,
+  y: number,
+  sizeX: number,
+  sizeY: number,
+  placedBuildings: PlacedBuilding[],
+  isRoadItem = false
+): boolean {
+  return placedBuildings.some((b) => {
+    const pad = b.typeId === 'city_miniature' && !isRoadItem ? 8 : 0;
+    return (
+      x < b.x + b.sizeX + pad &&
+      x + sizeX > b.x - pad &&
+      y < b.y + b.sizeY + pad &&
+      y + sizeY > b.y - pad
+    );
+  });
+}
+
 function canPlaceBuildingAt(
   x: number,
   y: number,
@@ -75,9 +120,36 @@ function canPlaceBuildingAt(
   gridSizeX: number,
   gridSizeY: number,
   terrainTiles: Record<string, TileDef['type']>,
-  placedBuildings: PlacedBuilding[]
+  placedBuildings: PlacedBuilding[],
+  typeId?: string
 ): boolean {
   if (x < 3 || y < 0 || x + sizeX > gridSizeX || y + sizeY > gridSizeY) return false;
+
+  if (hasAdjacentDifferentResidentialType(x, y, sizeX, sizeY, typeId, placedBuildings)) {
+    return false;
+  }
+
+  // Rezerwa miejsca pod Straż Pożarną / Policję (PD od Targowiska) oraz Katedrę 3x2 (PN-Zach od Targowiska)
+  if (typeId && typeId.startsWith('tenement_')) {
+    const market = placedBuildings.find((b) => b.id === 'marketplace_init');
+    if (market) {
+      const rx1 = market.x;
+      const rx2 = market.x + 2;
+      const ry1 = market.y + market.sizeY + 1;
+      const ry2 = ry1 + 2;
+      if (x < rx2 && x + sizeX > rx1 && y < ry2 && y + sizeY > ry1) {
+        return false;
+      }
+      // Rezerwa 3x2 pod Katedrę na PN-Zachód od Targowiska
+      const cx1 = market.x - 4;
+      const cx2 = market.x - 1;
+      const cy1 = market.y - 3;
+      const cy2 = market.y - 1;
+      if (x < cx2 && x + sizeX > cx1 && y < cy2 && y + sizeY > cy1) {
+        return false;
+      }
+    }
+  }
 
   for (let dx = 0; dx < sizeX; dx++) {
     for (let dy = 0; dy < sizeY; dy++) {
@@ -123,7 +195,7 @@ export function findSpotAdjacentToRoad(
   for (const { sx, sy, rot } of orientations) {
     for (let y = 0; y < gridSizeY; y++) {
       for (let x = 3; x < gridSizeX; x++) {
-        if (canPlaceBuildingAt(x, y, sx, sy, gridSizeX, gridSizeY, terrainTiles, placedBuildings)) {
+        if (canPlaceBuildingAt(x, y, sx, sy, gridSizeX, gridSizeY, terrainTiles, placedBuildings, preferredTypeId)) {
           candidates.push({ x, y, sizeX: sx, sizeY: sy, rotation: rot });
         }
       }
@@ -135,19 +207,32 @@ export function findSpotAdjacentToRoad(
     const sameType = placedBuildings.filter((b) => b.typeId === preferredTypeId);
     if (sameType.length > 0) {
       let best = candidates[0];
-      let bestDist = Infinity;
+      let bestScore = Infinity;
+      let bestSameRot = false;
       for (const c of candidates) {
         const cx = c.x + c.sizeX / 2;
         const cy = c.y + c.sizeY / 2;
         let minD = Infinity;
+        let nearestRot: 0 | 90 = 0;
+        let isAlignedParallel = false;
         for (const b of sameType) {
           const bx = b.x + b.sizeX / 2;
           const by = b.y + b.sizeY / 2;
           const d = Math.abs(cx - bx) + Math.abs(cy - by);
-          if (d < minD) minD = d;
+          if (d < minD) {
+            minD = d;
+            nearestRot = b.rotation === 90 ? 90 : 0;
+            isAlignedParallel =
+              c.rotation === nearestRot &&
+              ((nearestRot === 90 && c.x === b.x) || (nearestRot === 0 && c.y === b.y));
+          }
         }
-        if (minD < bestDist || (minD === bestDist && c.rotation === 0 && best.rotation !== 0)) {
-          bestDist = minD;
+        const sameRot = c.rotation === nearestRot;
+        // Preferuj ustawienie równoległe (ta sama orientacja i wyrównanie w szeregu), jeśli jest miejsce
+        const score = minD - (sameRot ? 1.2 : 0) - (isAlignedParallel ? 0.6 : 0);
+        if (score < bestScore || (score === bestScore && sameRot && !bestSameRot)) {
+          bestScore = score;
+          bestSameRot = sameRot;
           best = c;
         }
       }
@@ -209,7 +294,9 @@ export function expandCityTerrainSide(
 
     for (let x = gridSizeX; x < newGridSizeX; x++) {
       for (let y = 0; y < gridSizeY; y++) {
-        nextTerrain[`${x},${y}`] = !prevColHasRoad && x === gridSizeX ? 'road' : 'grass';
+        const isExtendedRoad = terrainTiles[`${gridSizeX - 1},${y}`] === 'road';
+        nextTerrain[`${x},${y}`] =
+          isExtendedRoad || (!prevColHasRoad && x === gridSizeX) ? 'road' : 'grass';
       }
     }
 
@@ -252,13 +339,15 @@ export function expandCityTerrainSide(
       nextRoadTypes[`${kx},${ky + rowsToAdd}`] = val;
     }
 
-    // Nowe wiersze na górze (0 .. rowsToAdd - 1)
+    // Nowe wiersze na górze (0 .. rowsToAdd - 1) — morze szerokości 2 kratek (x=0,1), nabrzeże x=2, x>=3 trawa/drogi
     for (let y = 0; y < rowsToAdd; y++) {
       for (let x = 0; x < gridSizeX; x++) {
-        if (x === 0) nextTerrain[`${x},${y}`] = 'water';
-        else if (x === 1) nextTerrain[`${x},${y}`] = 'quay';
-        else if (x === 2 || (!firstRowHasRoad && y === rowsToAdd - 1)) nextTerrain[`${x},${y}`] = 'road';
-        else nextTerrain[`${x},${y}`] = 'grass';
+        const isExtendedRoad = x >= 3 && terrainTiles[`${x},0`] === 'road';
+        if (x === 0 || x === 1) nextTerrain[`${x},${y}`] = 'water';
+        else if (x === 2) nextTerrain[`${x},${y}`] = 'quay';
+        else if (isExtendedRoad || (!firstRowHasRoad && y === rowsToAdd - 1 && x >= 3)) {
+          nextTerrain[`${x},${y}`] = 'road';
+        } else nextTerrain[`${x},${y}`] = 'grass';
       }
     }
 
@@ -288,10 +377,12 @@ export function expandCityTerrainSide(
 
   for (let y = gridSizeY; y < newGridSizeY; y++) {
     for (let x = 0; x < gridSizeX; x++) {
-      if (x === 0) nextTerrain[`${x},${y}`] = 'water';
-      else if (x === 1) nextTerrain[`${x},${y}`] = 'quay';
-      else if (x === 2 || (!prevRowHasRoad && y === gridSizeY)) nextTerrain[`${x},${y}`] = 'road';
-      else nextTerrain[`${x},${y}`] = 'grass';
+      const isExtendedRoad = x >= 3 && terrainTiles[`${x},${gridSizeY - 1}`] === 'road';
+      if (x === 0 || x === 1) nextTerrain[`${x},${y}`] = 'water';
+      else if (x === 2) nextTerrain[`${x},${y}`] = 'quay';
+      else if (isExtendedRoad || (!prevRowHasRoad && y === gridSizeY && x >= 3)) {
+        nextTerrain[`${x},${y}`] = 'road';
+      } else nextTerrain[`${x},${y}`] = 'grass';
     }
   }
 

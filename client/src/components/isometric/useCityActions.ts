@@ -2,6 +2,10 @@ import React from 'react';
 import type { PlacedBuilding, TileDef, BuildingCatalogItem, BuildingState } from './types';
 import { getBuildingGridDimensions, isBuildingAllowedOnMap, type MapType } from './mapConfig';
 import {
+  hasAdjacentDifferentResidentialType,
+  hasBuildingPlacementCollision,
+} from './cityAutoGrowth';
+import {
   isPasture,
   canPlacePasture,
   isWheatField,
@@ -124,6 +128,20 @@ export function useCityActions(p: UseCityActionsParams) {
       return false;
     }
 
+    // 2b. Zakaz stykania się różnych typów budynków mieszkalnych (min. 1 kratka odstępu)
+    if (
+      hasAdjacentDifferentResidentialType(
+        coord.x,
+        coord.y,
+        curSizeX,
+        curSizeY,
+        item.typeId,
+        placedBuildings
+      )
+    ) {
+      return false;
+    }
+
     // 3. Walidacja przylegania do drogi: każdy budynek (poza samą drogą, polami/pastwiskami oraz metropolią) musi przylegać do drogi
     const isRoadItem = item.typeId.startsWith('road') || item.roadSubType !== undefined;
     const isAgriculturalModule =
@@ -134,7 +152,8 @@ export function useCityActions(p: UseCityActionsParams) {
     const isRoadExempt =
       isRoadItem ||
       isAgriculturalModule ||
-      item.typeId === 'city_miniature';
+      item.typeId === 'city_miniature' ||
+      item.typeId === 'oak';
     if (!isRoadExempt && !isBuildingAdjacentToRoad(coord, curSizeX, curSizeY, terrainTiles)) {
       return false;
     }
@@ -154,11 +173,13 @@ export function useCityActions(p: UseCityActionsParams) {
       }
     }
 
-    const isCollision = placedBuildings.some((b) =>
-      coord.x < b.x + b.sizeX &&
-      coord.x + curSizeX > b.x &&
-      coord.y < b.y + b.sizeY &&
-      coord.y + curSizeY > b.y
+    const isCollision = hasBuildingPlacementCollision(
+      coord.x,
+      coord.y,
+      curSizeX,
+      curSizeY,
+      placedBuildings,
+      isRoadItem
     );
 
     const minWaterX = mapType === 'rural' ? 2 : 1;

@@ -49,6 +49,8 @@ export interface MillCapitalismState {
   productTarget: MillProductTarget;
   crew: MillCrewMember[];
   workdayHours?: number;
+  freeSaturdays?: boolean;
+  cycleDay?: number; // 0..29 (30-dniowy cykl przemiału)
   stageAssignments: Partial<Record<MillCycleStage, string[]>>;
   conditioningEnabled: boolean;
   currentStage: MillCycleStage;

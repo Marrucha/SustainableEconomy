@@ -8,6 +8,7 @@ import { renderMineOverlay } from './mineOverlayRenderer';
 import { renderWoodcutterOverlay } from './woodcutterOverlayRenderer';
 import { renderFlaxProgressOverlay } from './flaxOverlayRenderer';
 import { renderHopProgressOverlay } from './hopOverlayRenderer';
+import { renderMarketplaceOverlay } from './marketplaceOverlayRenderer';
 
 export interface ProgressOverlaysParams {
   ctx: CanvasRenderingContext2D;
@@ -158,6 +159,26 @@ export function renderBuildingProgressOverlays(p: ProgressOverlaysParams) {
       const centerX = (bldg.x + bldg.sizeX / 2 - (bldg.y + bldg.sizeY / 2)) * (tileW / 2);
 
       renderWoodcutterOverlay(ctx, bldg, centerX, drawY + 40, buildingsState?.[bldg.id], clockDate, mouseWorldPos);
+    }
+
+    // 7. Targowisko Miejskie (wskaźnik naszego straganu i odliczanie do przetargu)
+    if (bldg.typeId === 'marketplace') {
+      const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
+      if (!catItem) return;
+      const currentPlotWidth = (bldg.sizeX + bldg.sizeY) * (tileW / 2);
+      const scale = currentPlotWidth / (catItem.baseWidth || 1000);
+      const bottomY = (bldg.x + bldg.sizeX + (bldg.y + bldg.sizeY)) * (tileH / 2);
+      const drawY = bottomY - (catItem.anchorNormY || 700) * scale;
+
+      renderMarketplaceOverlay({
+        ctx,
+        bldg,
+        catItem,
+        tileW,
+        drawY,
+        buildingState: buildingsState?.[bldg.id],
+        clockDate,
+      });
     }
   });
 }

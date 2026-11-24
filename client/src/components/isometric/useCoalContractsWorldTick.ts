@@ -9,7 +9,6 @@ import { appendShipInterventionLogToRecord } from './modal/TradeShipIntervention
 import { loadGameParameters } from './admin/gameParameters';
 import { tickWorkingHorsesMonth } from './modal/horseEnergyMath';
 import { getManureBinCapacityKg } from './modal/farmGridTypes';
-import { mergeWorldTickRecord } from './mergeWorldTickRecord';
 import { computeProductionChecklist } from './modal/productionChecklist';
 
 function isCoalOrCharcoalProductionRunning(b: PlacedBuilding, bState: BuildingState): boolean {
@@ -30,7 +29,6 @@ interface UseCoalContractsWorldTickParams {
 export function useCoalContractsWorldTick({
   clockDate,
   allBuildings,
-  buildingsState,
   setBuildingsState,
   setGold,
 }: UseCoalContractsWorldTickParams) {
@@ -38,8 +36,6 @@ export function useCoalContractsWorldTick({
   const prevTotalDaysRef = useRef<number | null>(null);
   const buildingsRef = useRef(allBuildings);
   buildingsRef.current = allBuildings;
-  const stateRef = useRef(buildingsState);
-  stateRef.current = buildingsState;
 
   useEffect(() => {
     const totalMonths = clockDate.year * 12 + clockDate.month;
@@ -55,9 +51,10 @@ export function useCoalContractsWorldTick({
     prevTotalMonthsRef.current = totalMonths;
     prevTotalDaysRef.current = totalDays;
 
-    const next = { ...stateRef.current };
-    let changed = false;
-    let totalGoldSpent = 0;
+    setBuildingsState((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      let totalGoldSpent = 0;
 
     if (isNewDay) {
       const dailyFeedKg = loadGameParameters().horseDailyFeedKg || 10;
@@ -66,6 +63,7 @@ export function useCoalContractsWorldTick({
         if (!bState) continue;
         let dayChanged = false;
         let nextHorseFeed = bState.horseFeedStockKg ?? 0;
+        let nextHorseStraw = bState.horseStrawStockKg ?? 0;
         let nextCoal = bState.coalStockTons ?? 0;
         let nextCharcoal = bState.charcoalStockTons ?? 0;
 
@@ -75,6 +73,14 @@ export function useCoalContractsWorldTick({
             const updatedFeed = Math.max(0, Number((nextHorseFeed - activeCount * dailyFeedKg).toFixed(2)));
             if (updatedFeed !== nextHorseFeed) {
               nextHorseFeed = updatedFeed;
+              dayChanged = true;
+            }
+          }
+          if (activeCount > 0 && nextHorseStraw > 0) {
+            // Konie energetyczne zużywają 15 kg ściółki/dzień na sztukę (bez produkcji obornika)
+            const updatedStraw = Math.max(0, Number((nextHorseStraw - activeCount * 15).toFixed(2)));
+            if (updatedStraw !== nextHorseStraw) {
+              nextHorseStraw = updatedStraw;
               dayChanged = true;
             }
           }
@@ -108,6 +114,7 @@ export function useCoalContractsWorldTick({
           next[b.id] = {
             ...bState,
             horseFeedStockKg: nextHorseFeed,
+            horseStrawStockKg: nextHorseStraw,
             coalStockTons: nextCoal,
             charcoalStockTons: nextCharcoal,
           };
@@ -126,6 +133,8 @@ export function useCoalContractsWorldTick({
       let nextCharcoalOrder = bState.charcoalOrder;
       let nextHorseFeedStock = bState.horseFeedStockKg ?? 0;
       let nextHorseFeedOrder = bState.horseFeedOrder;
+      let nextHorseStrawStock = bState.horseStrawStockKg ?? 0;
+      let nextHorseStrawOrder = bState.horseStrawOrder;
       let bChanged = false;
 
       if (nextOrder && nextOrder.monthlyTons > 0) {
@@ -305,6 +314,7 @@ export function useCoalContractsWorldTick({
                     [cropKey]: Math.max(0, (farmCap.grainStockKg?.[cropKey] ?? 0) - delivered),
                   },
                   wheatStockKg: Math.max(0, (farmCap.wheatStockKg ?? 0) - delivered),
+                  lastCycleRevenue: Number(((farmCap.lastCycleRevenue || 0) + cost).toFixed(2)),
                 },
               };
               bChanged = true;
@@ -312,7 +322,7 @@ export function useCoalContractsWorldTick({
           }
 
           const shortfallKg = Math.max(0, Math.min(nextHorseFeedOrder.monthlyKg, freeSpace) - deliveredKg);
-          if (bState.horseFeedInterventionBuyEnabled && shortfallKg > 0) {
+          if (bState.horseFeedInterventionBuyEnabled !== false && shortfallKg > 0) {
             const intCost = Number(((shortfallKg / 100) * 11 * 1.1).toFixed(2));
             nextHorseFeedStock += shortfallKg;
             totalGoldSpent += intCost;
@@ -336,12 +346,76 @@ export function useCoalContractsWorldTick({
         }
       }
 
+      if (nextHorseStrawOrder && nextHorseStrawOrder.monthlyKg > 0) {
+        const meta = getContractMeta(nextHorseStrawOrder.contractType);
+        const freeSpace = Math.max(0, 10000 - nextHorseStrawStock);
+        if (nextHorseStrawOrder.supplierId.startsWith('trade_ship')) {
+          const delivered = Math.min(nextHorseStrawOrder.monthlyKg, freeSpace);
+          if (delivered > 0) {
+            const cost = Number(
+              ((delivered / 100) * 6.6 * (1 - meta.discountPercent / 100)).toFixed(2)
+            );
+            nextHorseStrawStock += delivered;
+            totalGoldSpent += cost;
+            bChanged = true;
+          }
+        } else {
+          const supState = next[nextHorseStrawOrder.supplierId];
+          const farmCap = supState?.farmCapitalism;
+          let deliveredKg = 0;
+          if (farmCap) {
+            const avail = farmCap.strawStockKg ?? 0;
+            const delivered = Math.min(nextHorseStrawOrder.monthlyKg, avail, freeSpace);
+            deliveredKg = delivered;
+            if (delivered > 0) {
+              const cost = Number(
+                ((delivered / 100) * 6 * (1 - meta.discountPercent / 100)).toFixed(2)
+              );
+              nextHorseStrawStock += delivered;
+              totalGoldSpent += cost;
+              next[nextHorseStrawOrder.supplierId] = {
+                ...supState,
+                farmCapitalism: {
+                  ...farmCap,
+                  strawStockKg: Math.max(0, avail - delivered),
+                  lastCycleRevenue: Number(((farmCap.lastCycleRevenue || 0) + cost).toFixed(2)),
+                },
+              };
+              bChanged = true;
+            }
+          }
+          const shortfallKg = Math.max(0, nextHorseStrawOrder.monthlyKg - deliveredKg);
+          if (bState.horseFeedInterventionBuyEnabled !== false && shortfallKg > 0 && freeSpace - deliveredKg > 0) {
+            const intQty = Math.min(shortfallKg, freeSpace - deliveredKg);
+            const intCost = Number(((intQty / 100) * 6.6 * 1.1).toFixed(2));
+            nextHorseStrawStock += intQty;
+            totalGoldSpent += intCost;
+            appendShipInterventionLogToRecord(next, {
+              year: clockDate.year,
+              month: clockDate.month,
+              buyerId: b.id,
+              buyerLabel: b.name || b.typeId,
+              supplierId: nextHorseStrawOrder.supplierId,
+              productLabel: 'Ściółka dla koni (interwencyjnie)',
+              shortfallKg: intQty,
+              costGbp: intCost,
+            });
+            bChanged = true;
+          }
+        }
+        if (meta.durationMonths > 0) {
+          const rem = nextHorseStrawOrder.monthsRemaining - 1;
+          nextHorseStrawOrder = rem > 0 ? { ...nextHorseStrawOrder, monthsRemaining: rem } : undefined;
+          bChanged = true;
+        }
+      }
+
       let nextOwnedHorses = bState.ownedHorses;
       if (nextOwnedHorses && nextOwnedHorses.length > 0) {
         const dailyFeedKg = loadGameParameters().horseDailyFeedKg || 10;
         const activeHorsesCount = nextOwnedHorses.filter((h) => !h.isDeceased).length;
         const monthlyHorseNeedKg = Math.round(activeHorsesCount * dailyFeedKg * 30);
-        if (bState.horseFeedInterventionBuyEnabled && activeHorsesCount > 0 && nextHorseFeedStock < monthlyHorseNeedKg) {
+        if (bState.horseFeedInterventionBuyEnabled !== false && activeHorsesCount > 0 && nextHorseFeedStock < monthlyHorseNeedKg) {
           const shortfallKg = Math.min(10000 - nextHorseFeedStock, monthlyHorseNeedKg - nextHorseFeedStock);
           if (shortfallKg > 0) {
             const intCost = Number(((shortfallKg / 100) * 11 * 1.1).toFixed(2));
@@ -354,6 +428,26 @@ export function useCoalContractsWorldTick({
               buyerLabel: b.name || b.typeId,
               supplierId: 'trade_ship',
               productLabel: 'Pasza dla koni (interwencyjnie)',
+              shortfallKg,
+              costGbp: intCost,
+            });
+            bChanged = true;
+          }
+        }
+        const monthlyStrawNeedKg = activeHorsesCount * 15 * 30;
+        if (bState.horseFeedInterventionBuyEnabled !== false && activeHorsesCount > 0 && nextHorseStrawStock < monthlyStrawNeedKg) {
+          const shortfallKg = Math.min(10000 - nextHorseStrawStock, monthlyStrawNeedKg - nextHorseStrawStock);
+          if (shortfallKg > 0) {
+            const intCost = Number(((shortfallKg / 100) * 6.6 * 1.1).toFixed(2));
+            nextHorseStrawStock += shortfallKg;
+            totalGoldSpent += intCost;
+            appendShipInterventionLogToRecord(next, {
+              year: clockDate.year,
+              month: clockDate.month,
+              buyerId: b.id,
+              buyerLabel: b.name || b.typeId,
+              supplierId: 'trade_ship',
+              productLabel: 'Ściółka dla koni (interwencyjnie)',
               shortfallKg,
               costGbp: intCost,
             });
@@ -429,6 +523,8 @@ export function useCoalContractsWorldTick({
           charcoalOrder: nextCharcoalOrder,
           horseFeedStockKg: nextHorseFeedStock,
           horseFeedOrder: nextHorseFeedOrder,
+          horseStrawStockKg: nextHorseStrawStock,
+          horseStrawOrder: nextHorseStrawOrder,
           ownedHorses: nextOwnedHorses,
           ...(nextFarmCap ? { farmCapitalism: nextFarmCap } : {}),
         };
@@ -437,10 +533,12 @@ export function useCoalContractsWorldTick({
       }
     }
 
-    if (changed) {
-      const base = stateRef.current;
-      setBuildingsState((prev) => mergeWorldTickRecord(prev, base, next));
-    }
-    if (totalGoldSpent > 0) setGold((g) => Math.max(0, Number((g - totalGoldSpent).toFixed(2))));
-  }, [clockDate.year, clockDate.month, clockDate.day]);
+      if (totalGoldSpent > 0) {
+        const spent = Number(totalGoldSpent.toFixed(2));
+        queueMicrotask(() => setGold((g) => Math.max(0, Number((g - spent).toFixed(2)))));
+      }
+
+      return changed ? next : prev;
+    });
+  }, [clockDate.year, clockDate.month, clockDate.day, setBuildingsState, setGold]);
 }

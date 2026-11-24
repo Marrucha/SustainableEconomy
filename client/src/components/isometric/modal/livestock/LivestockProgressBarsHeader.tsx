@@ -1,5 +1,5 @@
 import React from 'react';
-import type { LivestockCapitalismState } from './livestockTypes';
+import { computeDailyManureKg, type LivestockCapitalismState } from './livestockTypes';
 import type { UseGameClockReturn } from '../../clock/useGameClock';
 import { MONTH_NAMES } from '../../clock/gameClockTypes';
 
@@ -39,11 +39,22 @@ export const LivestockProgressBarsHeader: React.FC<LivestockProgressBarsHeaderPr
   const growthPct = hasCrew ? Math.min(100, Math.round((growthDaysPassed / growthMaxDays) * 100)) : 0;
 
   // Szacunki bieżącej produkcji (0 przy braku załogi)
+  const totalCattle =
+    (state.herd.milkingGroupCows || 0) +
+    (state.herd.growingGroupCalves || 0) +
+    (state.herd.cattleForSale ?? 0);
+  const totalHorses =
+    state.herd.horses && state.herd.horses.length > 0
+      ? state.herd.horses.filter((x) => !x.isDeceased).length
+      : (state.herd.adultDraftHorses ?? 0) +
+        (state.herd.growingFoalsCount ?? 0) +
+        (state.herd.horsesForSale ?? 0);
+  const hasStrawBedding = (state.supplies?.strawBeddingKg ?? 0) > 0;
   const dailyMilk = hasCrew ? Math.round(state.herd.milkingGroupCows * 14) : 0;
-  const dailyManure = hasCrew ? Math.round(state.herd.milkingGroupCows * 24) : 0;
-  const annualWool = hasCrew ? Math.round((state.herd.adultSheepCount || 16) * 18) : 0;
-  const adultHorses = state.herd.adultDraftHorses ?? 10;
-  const dailyHorseManure = hasCrew ? Math.round(adultHorses * 20) : 0;
+  const dailyManure = hasCrew && hasStrawBedding ? computeDailyManureKg('cattle', totalCattle) : 0;
+  const annualWool = hasCrew ? Math.round((state.herd.adultSheepCount || 0) * 18) : 0;
+  const adultHorses = state.herd.adultDraftHorses ?? 0;
+  const dailyHorseManure = hasCrew && hasStrawBedding ? computeDailyManureKg('horses', totalHorses) : 0;
 
   return (
     <div className="bg-gradient-to-r from-stone-900 via-stone-950 to-stone-900 border border-emerald-500/50 rounded-2xl p-4 shadow-xl space-y-3">

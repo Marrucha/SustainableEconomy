@@ -44,7 +44,8 @@ export function useFarmAnnualTick({
     const farms = placedRef.current.filter((b) => b.typeId === 'wheat_farm');
     if (farms.length === 0) return;
 
-    const isHarvestSettlementDay = clockDate.month === 1 && clockDate.day === 1 && clockDate.year > 1880;
+    const isNewYearDay = clockDate.month === 1 && clockDate.day === 1 && clockDate.year > 1880;
+    const isHarvestSettlementSeason = clockDate.month === 1 && clockDate.year > 1880;
     const completedYear = clockDate.year - 1;
     let totalMarketRevenue = 0;
     let totalDailyStorageCostGbp = 0;
@@ -70,11 +71,9 @@ export function useFarmAnnualTick({
           return opts[Math.floor(Math.random() * opts.length)];
         };
 
-        if (!farmCap.growingWeather || isHarvestSettlementDay) {
-          patch.growingWeather = rollGrowthWeather();
-        }
-        if (!farmCap.harvestWeather || isHarvestSettlementDay) {
-          patch.harvestWeather = rollHarvestWeather();
+        if (isNewYearDay) {
+          if (farmCap.growingWeather !== undefined) patch.growingWeather = undefined;
+          if (farmCap.harvestWeather !== undefined) patch.harvestWeather = undefined;
         }
 
         const readyCheck = checkIsProductionReady(farmCap, ownedHorsesCount);
@@ -104,6 +103,51 @@ export function useFarmAnnualTick({
         }
         if (scheduledStage !== farmCap.currentStage) {
           patch.currentStage = scheduledStage;
+        }
+        if (
+          (scheduledStage === 'growing' || scheduledStage === 'harvesting' || scheduledStage === 'storing_selling') &&
+          !farmCap.growingWeather &&
+          !isNewYearDay
+        ) {
+          patch.growingWeather = rollGrowthWeather();
+        }
+        if (
+          (scheduledStage === 'harvesting' || scheduledStage === 'storing_selling') &&
+          !farmCap.harvestWeather &&
+          !isNewYearDay
+        ) {
+          patch.harvestWeather = rollHarvestWeather();
+        }
+
+        if (farmCap.sowingCompletedForCurrentCycle && (farmCap.lastSowingSeedsUsedKg ?? 0) === 0) {
+          patch.sowingCompletedForCurrentCycle = false;
+        }
+
+        // Pobranie ziarna siewnego bezpośrednio ze spichlerza w momencie wejścia w zasiew (Maj)
+        if (
+          scheduledStage === 'sowing' &&
+          !farmCap.sowingCompletedForCurrentCycle &&
+          farmCap.lastSowingYear !== clockDate.year
+        ) {
+          const activeCrop: CropType = farmCap.cropType || 'pszenica';
+          const rawGrainMap = farmCap.grainStockKg || { pszenica: 0, zyto: 0, jeczmien: 0 };
+          const currentCropKg =
+            rawGrainMap[activeCrop] ?? (activeCrop === 'pszenica' ? farmCap.wheatStockKg ?? 0 : 0);
+          const usedSeedsKg = Math.min(currentCropKg, yieldSummary.seedRequiredKg);
+          if (usedSeedsKg > 0) {
+            const nextCropKg = Math.max(0, currentCropKg - usedSeedsKg);
+
+            patch.grainStockKg = {
+              ...rawGrainMap,
+              [activeCrop]: nextCropKg,
+            };
+            if (activeCrop === 'pszenica') {
+              patch.wheatStockKg = nextCropKg;
+            }
+            patch.sowingCompletedForCurrentCycle = true;
+            patch.lastSowingYear = clockDate.year;
+            patch.lastSowingSeedsUsedKg = usedSeedsKg;
+          }
         }
 
         // Miesięczna utrata jakości składowanego ziarna (-1% / miesiąc, 1. dnia miesiąca) oraz dzienny koszt składowania
@@ -136,8 +180,8 @@ export function useFarmAnnualTick({
           patch.manureShortageWarning = undefined;
         }
 
-        // Rozliczenie cyklu na koniec roku wegetacyjnego (po zakończeniu etapu 8. Zbyt / Silos -> 1 Stycznia)
-        if (isHarvestSettlementDay && farmCap.lastHarvestYear !== completedYear) {
+        // Rozliczenie zbiorów 1 stycznia po zakończeniu etapu 8. Młocka (złożenie ziarna do magazynu)
+        if (isHarvestSettlementSeason && farmCap.lastHarvestYear !== completedYear) {
           const activeCrop: CropType = farmCap.cropType || 'pszenica';
           const totalYieldKg = yieldSummary.totalYieldKg;
           const strawYieldKg = totalYieldKg * 2; // 3 t ziarna -> 6 t ściółki (proporcjonalnie z mnożnikami)
@@ -148,10 +192,9 @@ export function useFarmAnnualTick({
           patch.manureStockKg = nextManure;
           patch.fertilizerStockKg = nextManure;
 
-          // Pobranie nasion ze spichlerza, jeśli źródłem jest własny magazyn
-          if (farmCap.seedSource === 'storage') {
-            patch.seedsStockKg = Math.max(0, (farmCap.seedsStockKg || 0) - yieldSummary.seedRequiredKg);
-          }
+          // Reset flagi zasiewu na nowy cykl roczny (ziarno siewne było już pobrane ze spichlerza w maju)
+          patch.sowingCompletedForCurrentCycle = false;
+          patch.lastSowingSeedsUsedKg = 0;
 
           // Dodanie słomy (ściółki) do stogu/magazynu (limit bazowy 20 t, rozbudowa do 80 t)
           const strawCapKg = getStrawStackCapacityKg(farmCap.strawLevel);
@@ -160,7 +203,8 @@ export function useFarmAnnualTick({
           const seedCost = farmCap.seedSource === 'market' ? 22 : 0;
           const fertCost = yieldSummary.manureUsedKg > 0 ? (yieldSummary.fertilizerBonusPct === 30 ? 14 : 7) : 0;
           const sprayCost = yieldSummary.hasWeedWorker
-            ? (farmCap.enableWeeding ? 9 : 0) + (farmCap.enableIrrigation ? 8 : 0)
+            ? (farmCap.enableWeeding ? 9 : 0) +
+              (farmCap.enableIrrigation ? Math.round(8 * yieldSummary.totalHectares) : 0)
             : 0;
           const crewCost = farmCap.crew.reduce((acc, w) => acc + w.wageDaily, 0);
           const agroCost = farmCap.agronomist?.hired ? farmCap.agronomist.wageDaily : 0;
@@ -197,9 +241,10 @@ export function useFarmAnnualTick({
             .filter(([crop]) => crop !== activeCrop)
             .reduce((sum, [, kg]) => sum + (kg || 0), 0);
 
-          if (otherGrainKg === 0) {
-            const siloCapKg = getGrainSiloCapacityKg(farmCap.siloLevel, extraFields);
-            const nextAmount = Math.min(siloCapKg, currentCropKg + totalYieldKg);
+          const siloCapKg = getGrainSiloCapacityKg(farmCap.siloLevel, extraFields);
+          const availableCapKg = Math.max(0, siloCapKg - otherGrainKg);
+          if (availableCapKg > currentCropKg && totalYieldKg > 0) {
+            const nextAmount = Math.min(availableCapKg, currentCropKg + totalYieldKg);
             const addedKg = Math.max(0, nextAmount - currentCropKg);
             const oldQuality = patch.grainQualityPercent ?? farmCap.grainQualityPercent ?? 100;
             const harvestQuality = yieldSummary.harvestQualityPercent;

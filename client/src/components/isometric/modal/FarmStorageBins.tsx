@@ -44,7 +44,11 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
 }) => {
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [subTab, setSubTab] = useState<'buy' | 'sell'>('buy');
+  const [seedSupplierId, setSeedSupplierId] = useState<string>('trade_ship_init');
   const livestockFarms = allWorldBuildings.filter((b) => b.typeId === 'livestock_farm');
+  const otherGrainFarms = allWorldBuildings.filter(
+    (b) => b.typeId === 'wheat_farm' && b.id !== currentBuildingId
+  );
   const [selectedLivestockId, setSelectedLivestockId] = useState<string>(livestockFarms[0]?.id || '');
 
   const rawGrains = state.grainStockKg;
@@ -186,21 +190,134 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
 
       {subTab === 'buy' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start">
-          {/* LEWA KOLUMNA: NAWÓZ NATURALNY I FORMATKA ZAMÓWIENIA */}
-          <FarmManureBinCard
-            state={state}
-            attachedFieldsCount={attachedFieldsCount}
-            manureStock={manureStock}
-            livestockFarms={livestockFarms}
-            buildingsState={buildingsState}
-            activeLivestockId={activeLivestockId}
-            selectedFarmManureKg={selectedFarmManureKg}
-            onSelectLivestock={setSelectedLivestockId}
-            onBuyManure={handleBuyManure}
-            onSpendGold={onSpendGold}
-            onUpdateState={onUpdateState}
-            showFeedback={showFeedback}
-          />
+          {/* LEWA KOLUMNA: NASIONA ZE STATKU LUB INNEJ FARMY + NAWÓZ NATURALNY */}
+          <div className="space-y-3.5">
+            {(() => {
+              const activeCropId = state.cropType || 'pszenica';
+              const siloGrainStockKg =
+                state.grainStockKg?.[activeCropId] ??
+                (activeCropId === 'pszenica' ? state.wheatStockKg ?? 0 : 0);
+              const siloCapKg = getGrainSiloCapacityKg(
+                Math.min(4, Math.max(1, state.siloLevel ?? 1)),
+                attachedFieldsCount
+              );
+              const requiredSeedKg = 300 + Math.max(0, attachedFieldsCount) * 150;
+              const isShipSeed =
+                seedSupplierId === 'trade_ship_init' || seedSupplierId.startsWith('trade_ship');
+              const activeSeedFarm = otherGrainFarms.find((f) => f.id === seedSupplierId);
+              const farmSeedAvailKg = activeSeedFarm
+                ? buildingsState[activeSeedFarm.id]?.farmCapitalism?.grainStockKg?.[activeCropId] ??
+                  buildingsState[activeSeedFarm.id]?.farmCapitalism?.wheatStockKg ??
+                  0
+                : 0;
+              const priceMultiplier = isShipSeed ? 0.11 : 0.09; // £11/100kg ze statku, £9/100kg z innej farmy
+
+              return (
+                <div className="bg-stone-900/90 rounded-2xl p-3.5 border border-amber-500/40 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🌱</span>
+                      <div>
+                        <h4 className="text-xs font-bold text-amber-200">
+                          Ziarno siewne ({CROPS_CONFIG[activeCropId].name})
+                        </h4>
+                        <p className="text-[10px] font-mono text-stone-400">
+                          W magazynie: <strong className={siloGrainStockKg <= 0 ? 'text-rose-400' : 'text-emerald-300'}>{siloGrainStockKg} kg</strong> • Wymagane na siew: {requiredSeedKg} kg
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <select
+                    value={isShipSeed || activeSeedFarm ? seedSupplierId : 'trade_ship_init'}
+                    onChange={(e) => setSeedSupplierId(e.target.value)}
+                    className="w-full bg-stone-950 border border-stone-700 rounded-lg px-2 py-1.5 text-[11px] text-stone-200 cursor-pointer"
+                  >
+                    <option value="trade_ship_init">
+                      🚢 Statek Handlowy (£11 / 100 kg)
+                    </option>
+                    {otherGrainFarms.map((f) => {
+                      const avail =
+                        buildingsState[f.id]?.farmCapitalism?.grainStockKg?.[activeCropId] ??
+                        buildingsState[f.id]?.farmCapitalism?.wheatStockKg ??
+                        0;
+                      return (
+                        <option key={f.id} value={f.id} disabled={avail < 100}>
+                          🌾 {formatSupplierOrderLabel(f, buildingsState, allWorldBuildings)} (stan: {avail} kg • £9 / 100 kg)
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[100, 250, 500].map((kg) => {
+                      const spaceLeft = Math.max(0, siloCapKg - siloGrainStockKg);
+                      const buyKg = Math.min(kg, spaceLeft);
+                      const cost = Math.round(buyKg * priceMultiplier);
+                      const disabled = buyKg <= 0 || (!isShipSeed && farmSeedAvailKg < buyKg);
+                      return (
+                        <button
+                          key={kg}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => {
+                            if (buyKg <= 0) return;
+                            if (!isShipSeed && activeSeedFarm && onUpdateAnyBuildingState) {
+                              const sellerCap = buildingsState[activeSeedFarm.id]?.farmCapitalism;
+                              if (sellerCap) {
+                                const curSellerGrain =
+                                  sellerCap.grainStockKg?.[activeCropId] ?? sellerCap.wheatStockKg ?? 0;
+                                const nextSellerGrain = Math.max(0, curSellerGrain - buyKg);
+                                onUpdateAnyBuildingState(activeSeedFarm.id, {
+                                  farmCapitalism: {
+                                    ...sellerCap,
+                                    grainStockKg: {
+                                      ...(sellerCap.grainStockKg || { pszenica: 0, zyto: 0, jeczmien: 0 }),
+                                      [activeCropId]: nextSellerGrain,
+                                    },
+                                    ...(activeCropId === 'pszenica' ? { wheatStockKg: nextSellerGrain } : {}),
+                                  },
+                                });
+                              }
+                            }
+                            if (onSpendGold) onSpendGold(cost);
+                            const nextSiloStock = Math.min(siloCapKg, siloGrainStockKg + buyKg);
+                            onUpdateState({
+                              grainStockKg: {
+                                ...(state.grainStockKg || { pszenica: 0, zyto: 0, jeczmien: 0 }),
+                                [activeCropId]: nextSiloStock,
+                              },
+                              ...(activeCropId === 'pszenica' ? { wheatStockKg: nextSiloStock } : {}),
+                              seedSource: 'storage',
+                            });
+                            showFeedback(
+                              `${isShipSeed ? '🚢' : '🌾'} Kupiono ${buyKg} kg ziarna ${CROPS_CONFIG[activeCropId].name} do spichlerza (${isShipSeed ? 'Statek Handlowy' : activeSeedFarm?.name}) za £${cost}!`
+                            );
+                          }}
+                          className="flex-1 min-w-[95px] py-1.5 px-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 disabled:opacity-40 border border-amber-500/50 text-amber-200 text-[11px] font-mono font-bold cursor-pointer disabled:cursor-not-allowed transition-colors"
+                        >
+                          + {kg} kg (£{Math.round(kg * priceMultiplier)})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            <FarmManureBinCard
+              state={state}
+              attachedFieldsCount={attachedFieldsCount}
+              manureStock={manureStock}
+              livestockFarms={livestockFarms}
+              buildingsState={buildingsState}
+              activeLivestockId={activeLivestockId}
+              selectedFarmManureKg={selectedFarmManureKg}
+              onSelectLivestock={setSelectedLivestockId}
+              onBuyManure={handleBuyManure}
+              onSpendGold={onSpendGold}
+              onUpdateState={onUpdateState}
+              showFeedback={showFeedback}
+            />
+          </div>
 
           {/* PRAWA KOLUMNA: ZAWARTE KONTRAKTY ZAKUPU */}
           <div className="bg-stone-900/90 rounded-2xl p-3 border border-emerald-500/30 space-y-2">
@@ -294,34 +411,70 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
             if (siloLevel >= maxSiloLevel) return;
             if (onSpendGold) onSpendGold(upgradeCost);
             onUpdateState({ siloLevel: siloLevel + 1 });
-            showFeedback(`🏛️ Rozbudowano spichlerz do poziomu ${siloLevel + 1} (${(siloLevel + 1) * 10} t) za £${upgradeCost}!`);
+            showFeedback(`🏛️ Rozbudowano spichlerz do poziomu ${siloLevel + 1} (${getGrainSiloCapacityKg(siloLevel + 1, attachedFieldsCount) / 1000} t) za £${upgradeCost}!`);
           };
+
+          const otherMarketPrices = otherGrainFarms
+            .map((f) => buildingsState[f.id]?.farmCapitalism)
+            .filter((fc) => fc && (fc.cropType || 'pszenica') === crop.id && (fc.grainSalePricePerTon ?? 0) > 0)
+            .map((fc) => Number(fc!.grainSalePricePerTon));
+          const avgMarketPrice =
+            otherMarketPrices.length > 0
+              ? Math.round(otherMarketPrices.reduce((s, p) => s + p, 0) / otherMarketPrices.length)
+              : null;
+          const refPriceText =
+            avgMarketPrice !== null
+              ? `śr. rynkowa: £${avgMarketPrice}/t`
+              : `statek: £${crop.marketPricePerTon}/t`;
 
           return (
             <div className="relative bg-gradient-to-b from-stone-900 to-stone-950 border border-amber-500/80 rounded-2xl p-4 flex flex-col justify-between shadow-lg shadow-amber-950/40 ring-1 ring-amber-400/50">
-              <div className={`absolute top-2.5 right-2.5 text-stone-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow ${
-                isOccupiedByPreviousCrop ? 'bg-rose-400' : 'bg-amber-500'
-              }`}>
-                {isOccupiedByPreviousCrop ? 'Poprzedni zasiew (Opróżnij)' : 'Aktywne Zboże'}
-              </div>
+              {isOccupiedByPreviousCrop && (
+                <div className="mb-2 text-stone-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow bg-rose-400 inline-block self-start">
+                  Poprzedni zasiew (Opróżnij)
+                </div>
+              )}
 
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl p-1.5 bg-stone-950 rounded-xl border border-stone-800 shadow-sm">
-                    {crop.icon}
-                  </span>
-                  <div>
-                    <h4 className="text-xs font-bold text-amber-100 flex items-center gap-1.5">
-                      <span>{crop.name}</span>
-                      <span
-                        title={crop.desc}
-                        className="w-4 h-4 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 text-[10px] inline-flex items-center justify-center cursor-help"
-                      >
-                        ?
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl p-1.5 bg-stone-950 rounded-xl border border-stone-800 shadow-sm">
+                      {crop.icon}
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-bold text-amber-100 flex items-center gap-1.5">
+                        <span>{crop.name}</span>
+                        <span
+                          title={crop.desc}
+                          className="w-4 h-4 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 text-[10px] inline-flex items-center justify-center cursor-help"
+                        >
+                          ?
+                        </span>
+                      </h4>
+                      <span className="text-[10px] text-amber-400 font-mono block">
+                        Jedyna Komora Spichlerza Fermy
                       </span>
-                    </h4>
-                    <span className="text-[10px] text-amber-400 font-mono block">
-                      Jedyna Komora Spichlerza Fermy
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-0.5">
+                    <label className="text-[10px] font-mono text-stone-300 flex items-center gap-1">
+                      <span>Cena (£/t):</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={999}
+                        value={salePricePerTon}
+                        onChange={(e) =>
+                          onUpdateState({
+                            grainSalePricePerTon: Math.max(1, Number(e.target.value) || crop.marketPricePerTon),
+                          })
+                        }
+                        className="w-16 bg-stone-950 border border-amber-500/60 rounded-lg px-1.5 py-0.5 text-xs font-mono font-bold text-amber-300 text-right focus:outline-none focus:border-amber-400"
+                      />
+                    </label>
+                    <span className="text-[9px] font-mono text-stone-400">
+                      ({refPriceText})
                     </span>
                   </div>
                 </div>
@@ -431,11 +584,11 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
                     onClick={handleUpgradeSilo}
                     className="w-full py-2 px-3 rounded-xl text-xs font-bold bg-amber-600/20 hover:bg-amber-600/35 text-amber-200 border border-amber-500/60 hover:border-amber-400 transition-all cursor-pointer shadow"
                   >
-                    ⬆️ Rozbuduj spichlerz (+10 t → {(siloLevel + 1) * 10} t za £{upgradeCost})
+                    ⬆️ Rozbuduj spichlerz (+50 t → {getGrainSiloCapacityKg(siloLevel + 1, attachedFieldsCount) / 1000} t za £{upgradeCost})
                   </button>
                 ) : (
                   <div className="w-full py-1.5 px-3 rounded-xl text-[11px] font-mono font-bold bg-emerald-950/40 text-emerald-300 border border-emerald-700/50 text-center">
-                    ✅ Maksymalna rozbudowa spichlerza ({maxSiloLevel * 10} t)
+                    ✅ Maksymalna rozbudowa spichlerza ({getGrainSiloCapacityKg(maxSiloLevel, attachedFieldsCount) / 1000} t)
                   </div>
                 )}
                 <div
@@ -457,14 +610,26 @@ export const FarmStorageBins: React.FC<FarmStorageBinsProps> = ({
         })()}
 
         {/* 3. KAFELEK: STÓG SŁOMY ZBOŻOWEJ */}
-        <FarmStrawBinCard
-          state={state}
-          strawStock={strawStock}
-          onSellStraw={handleSellStraw}
-          onSpendGold={onSpendGold}
-          onUpdateState={onUpdateState}
-          showFeedback={showFeedback}
-        />
+        {(() => {
+          const otherStrawPrices = otherGrainFarms
+            .map((f) => buildingsState[f.id]?.farmCapitalism?.strawPricePerTon)
+            .filter((p): p is number => typeof p === 'number' && p > 0);
+          const avgStrawMarketPrice =
+            otherStrawPrices.length > 0
+              ? Math.round(otherStrawPrices.reduce((s, p) => s + p, 0) / otherStrawPrices.length)
+              : null;
+          return (
+            <FarmStrawBinCard
+              state={state}
+              strawStock={strawStock}
+              avgMarketPrice={avgStrawMarketPrice}
+              onSellStraw={handleSellStraw}
+              onSpendGold={onSpendGold}
+              onUpdateState={onUpdateState}
+              showFeedback={showFeedback}
+            />
+          );
+        })()}
           </div>
 
           {/* PRAWA KOLUMNA: ZAWARTE KONTRAKTY SPRZEDAŻY */}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { BuildingState } from '../../types';
 import { generateRandomEnglishName } from '../englishNames';
 import { FarmPipelineArrow } from '../FarmPipelineArrow';
@@ -51,6 +51,23 @@ export const MillCycleSnake: React.FC<MillCycleSnakeProps> = ({
     readyCheck.missingReasons[0] ||
     checklist.items.find((i) => !i.passed)?.detail ||
     '';
+  const targetHours = Math.round((state.cycleProgressPercent / 100) * 168);
+  const [displayHours, setDisplayHours] = useState<number>(targetHours);
+
+  useEffect(() => {
+    if (displayHours === targetHours) return;
+    const diff = (targetHours - displayHours + 168) % 168;
+    if (diff === 0) return;
+    const stepMs = Math.max(16, Math.min(55, Math.floor(1200 / diff)));
+    const timer = setInterval(() => {
+      setDisplayHours((prev) => {
+        if (prev === targetHours) return prev;
+        return (prev + 1) % 168;
+      });
+    }, stepMs);
+    return () => clearInterval(timer);
+  }, [targetHours, displayHours]);
+
   const summary = computeMillYieldSummary(state, buildingState);
   const productCfg = MILL_PRODUCTS_CONFIG[state.productTarget] || MILL_PRODUCTS_CONFIG.maka_pszenna;
   const managerMember = state.crew.find((c) => c.profession === 'manager');
@@ -165,7 +182,8 @@ export const MillCycleSnake: React.FC<MillCycleSnakeProps> = ({
                 Cykl Przemiału • {productCfg.label}
               </p>
               <p className="text-[11px] text-stone-400">
-                Wydajność: <span className="text-stone-200 font-mono">{summary.dailyGrainInputKg} kg ziarna/d</span> →{' '}
+                Wydajność: <span className="text-stone-200 font-mono">{summary.dailyGrainInputKg} kg ziarna/d</span>{' '}
+                (~<span className="text-sky-300 font-mono">{((summary.dailyGrainInputKg * (state.freeSaturdays ? 5 : 6)) / 1000).toFixed(1)} t/tydz.</span>) →{' '}
                 <span className="text-emerald-300 font-mono">{summary.dailyFlourOutputKg} kg mąki</span> +{' '}
                 <span className="text-amber-300 font-mono">{summary.dailyBranOutputKg} kg otrąb</span> ({summary.energyModeLabel})
               </p>
@@ -198,21 +216,66 @@ export const MillCycleSnake: React.FC<MillCycleSnakeProps> = ({
             >
               {isActuallyRunning ? '⚡ Przemiał w toku' : '⏸️ Przemiał wstrzymany'}
             </span>
-            <span className="font-mono text-xs font-bold text-amber-300 w-10 text-right">
-              {state.cycleProgressPercent}%
+            <span className="font-mono text-xs font-bold text-amber-300 text-right shrink-0">
+              {Math.round((displayHours / 168) * 100)}% ({displayHours}/168h)
             </span>
           </div>
         </div>
 
-        <div className="w-full h-2.5 bg-stone-950 rounded-full overflow-hidden border border-stone-800">
-          <div
-            className={`h-full transition-all duration-300 ${
-              isActuallyRunning
-                ? 'bg-gradient-to-r from-amber-500 via-orange-400 to-emerald-400'
-                : 'bg-stone-700'
-            }`}
-            style={{ width: `${state.cycleProgressPercent}%` }}
-          />
+        {/* Pasek postępu tygodniowy podzielony na 7 dni × 24 godziny (168 odcinków) */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[10px] font-mono text-stone-400">
+            <span>Cykl tygodniowy (Pn–Nd • 168h)</span>
+            <label className="flex items-center gap-1.5 text-stone-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(state.freeSaturdays)}
+                onChange={(e) => onUpdate({ freeSaturdays: e.target.checked })}
+                className="w-3.5 h-3.5 accent-amber-500 cursor-pointer"
+              />
+              <span>Wolne soboty</span>
+            </label>
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd'].map((dayLabel, dayIdx) => {
+              const totalFilledHours = displayHours;
+              const dayStartHour = dayIdx * 24;
+              const isSundayCol = dayIdx === 6;
+              const isSaturdayOff = dayIdx === 5 && Boolean(state.freeSaturdays);
+              const isOffDay = isSundayCol || isSaturdayOff;
+              const workdayHours = isOffDay ? 0 : (state.workdayHours ?? 10);
+              return (
+                <div key={dayLabel} className="space-y-0.5">
+                  <div className="flex items-center justify-between text-[9px] font-mono text-stone-400 px-0.5">
+                    <span className={isOffDay ? 'text-rose-400 font-bold' : ''}>{dayLabel}</span>
+                    <span>{isOffDay ? 'Wolne' : `${workdayHours}h`}</span>
+                  </div>
+                  <div className="grid grid-cols-12 gap-[1px] bg-stone-950 p-0.5 rounded border border-stone-800">
+                    {Array.from({ length: 24 }).map((_, hourIdx) => {
+                      const globalHour = dayStartHour + hourIdx;
+                      const isFilled = globalHour < totalFilledHours;
+                      const isWorkHour = hourIdx < workdayHours;
+                      return (
+                        <div
+                          key={hourIdx}
+                          title={`${dayLabel} ${hourIdx}:00`}
+                          className={`h-1.5 rounded-[1px] ${
+                            isFilled
+                              ? isWorkHour
+                                ? 'bg-amber-400'
+                                : 'bg-emerald-500/70'
+                              : isWorkHour
+                              ? 'bg-stone-800'
+                              : 'bg-stone-900'
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

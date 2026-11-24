@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { GameDate } from './gameClockTypes';
+import { loadPersistedState, savePersistedState } from '../gamePersistence';
 
 export interface UseGameClockReturn {
   date: GameDate;
@@ -14,11 +15,16 @@ export function useGameClock(
   initialYear: number = 1880,
   onDayTick?: (newDate: GameDate) => void
 ): UseGameClockReturn {
-  const [date, setDate] = useState<GameDate>({
-    day: 1,
-    month: 1,
-    year: initialYear,
-  });
+  const [date, setDate] = useState<GameDate>(() =>
+    loadPersistedState<GameDate>('clockDate', {
+      day: 1,
+      month: 1,
+      year: initialYear,
+    })
+  );
+  useEffect(() => {
+    savePersistedState('clockDate', date);
+  }, [date]);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [speed, setSpeed] = useState<number>(1);
 

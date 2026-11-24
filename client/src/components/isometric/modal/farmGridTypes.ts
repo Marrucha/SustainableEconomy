@@ -32,8 +32,9 @@ export type FarmCycleStage =
   | 'harvesting'        // 7. Żniwa (Rolnik jako Żniwiarz)
   | 'storing_selling';  // 8. Zbyt / Silos (Kupiec jako Sprzedawca)
 
-export const GRAIN_SILO_BASE_CAPACITY_KG = 10000; // 10 ton bazowej pojemności spichlerza
-export const GRAIN_SILO_MAX_LEVEL = 4; // Maksymalnie 40 ton (4 poziomy po 10 ton)
+export const GRAIN_SILO_BASE_CAPACITY_KG = 50000; // 50 ton bazowej pojemności spichlerza
+export const MANURE_BIN_BASE_CAPACITY_KG = 100000; // 100 ton bazowej pojemności zasieku obornika
+export const GRAIN_SILO_MAX_LEVEL = 4; // Maksymalnie 4 poziomy rozbudowy
 export const STRAW_STACK_BASE_CAPACITY_KG = 20000; // 20 ton bazowej pojemności stogu słomy
 
 export function getMaxGrainSiloLevel(attachedFieldsCount = 0): number {
@@ -53,7 +54,7 @@ export function getStrawStackCapacityKg(strawLevel = 1): number {
 
 export function getManureBinCapacityKg(manureLevel = 1): number {
   const lvl = Math.min(GRAIN_SILO_MAX_LEVEL, Math.max(1, manureLevel));
-  return lvl * GRAIN_SILO_BASE_CAPACITY_KG;
+  return lvl * MANURE_BIN_BASE_CAPACITY_KG;
 }
 
 export function getGrainSiloDailyCostPence(siloLevel = 1): number {
@@ -76,12 +77,24 @@ export interface FarmCrewMember {
 
 export interface FarmAgronomist {
   hired: boolean;
+  count?: number;             // Liczba agronomów (1 agronom wystarcza na 20 rolników)
   name: string;
   title: string;
   wageDaily: number;          // £ / dzień (Klasa M)
   specialization: 'norfolk' | 'soil_chemistry' | 'botany';
   yieldBonusPercent: number;  // np. +25%
   lossReductionPercent: number; // np. 50%
+}
+
+export const FARMERS_PER_AGRONOMIST = 20;
+
+export function getHiredAgronomistsCount(agronomist?: FarmAgronomist): number {
+  if (!agronomist?.hired) return 0;
+  return Math.max(1, agronomist.count ?? 1);
+}
+
+export function getRequiredAgronomistsCount(fieldFarmersCount: number): number {
+  return Math.max(1, Math.ceil(Math.max(0, fieldFarmersCount) / FARMERS_PER_AGRONOMIST));
 }
 
 export type CropType = 'pszenica' | 'zyto' | 'jeczmien';
@@ -172,6 +185,9 @@ export interface FarmCapitalismState {
   stageProgress: number; // 0..100%
   totalCyclesCompleted: number;
   lastHarvestYear?: number;
+  sowingCompletedForCurrentCycle?: boolean;
+  lastSowingYear?: number;
+  lastSowingSeedsUsedKg?: number;
   manureShortageWarning?: string;
   manureOrder?: FarmManureContract;
 
@@ -275,7 +291,7 @@ export function checkIsProductionReady(
   check('sowing', '4. Zasiew', 'Rolnik');
   // 4. Nawożenie i 5. Pielenie/Oprysk są agrotechnicznymi opcjami bonusowymi — nie blokują cyklu!
   check('harvesting', '7. Żniwa', 'Rolnik');
-  check('storing_selling', '8. Zbyt/Silos', 'Kupiec / Sprzedawca');
+  check('storing_selling', '8. Młocka', 'Kupiec / Sprzedawca');
 
   return {
     isReady: missing.length === 0,
@@ -321,27 +337,27 @@ export function createDefaultFarmCapitalismState(): FarmCapitalismState {
     agronomist: createDefaultAgronomist(),
     cropType: 'pszenica',
     stageAssignments: {},
-    seedSource: 'market',
+    seedSource: 'storage',
     wheatDestination: 'store_silo',
     enableFertilizing: true,
     fertilizingLevel: 100,
     enableWeeding: true,
     enableIrrigation: false,
     grainStockKg: {
-      pszenica: 3000,
+      pszenica: 0,
       zyto: 0,
       jeczmien: 0,
     },
-    manureStockKg: 250,
-    strawStockKg: 600,
-    seedsStockKg: 200,
-    fertilizerStockKg: 250,
-    wheatStockKg: 3000,
+    manureStockKg: 0,
+    strawStockKg: 0,
+    seedsStockKg: 0,
+    fertilizerStockKg: 0,
+    wheatStockKg: 0,
     currentStage: 'seed_intake',
-    stageProgress: 30,
-    totalCyclesCompleted: 2,
-    lastCycleRevenue: 135,
-    lastCycleCost: 68,
-    lastCycleYieldKg: 1120,
+    stageProgress: 0,
+    totalCyclesCompleted: 0,
+    lastCycleRevenue: 0,
+    lastCycleCost: 0,
+    lastCycleYieldKg: 0,
   };
 }

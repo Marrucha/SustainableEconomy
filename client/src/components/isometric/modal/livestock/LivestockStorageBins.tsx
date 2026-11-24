@@ -4,6 +4,7 @@ import type { WorldSupplierBuilding } from '../industrySupplyConfig';
 import type { LivestockCapitalismState } from './livestockTypes';
 import { LIVESTOCK_PRODUCTS } from './livestockTypes';
 import { LivestockSupplyOrderCard } from './LivestockSupplyOrderCard';
+import { LivestockAnimalPurchaseCard } from './LivestockAnimalPurchaseCard';
 import { IncomingSalesContractsCard } from '../IncomingSalesContractsCard';
 import { loadGameParameters } from '../../admin/gameParameters';
 import { computeSupplyContractPenalty, getContractMeta } from '../industryContracts';
@@ -15,13 +16,14 @@ interface LivestockStorageBinsProps {
   allWorldBuildings?: WorldSupplierBuilding[];
   buildingsState?: Record<string, BuildingState>;
   onSpendGold?: (amount: number) => void;
+  onUpdateAnyBuildingState?: (buildingId: string, newState: Partial<BuildingState>) => void;
   onUpdateState: (patch: Partial<LivestockCapitalismState>) => void;
 }
 
   const params = loadGameParameters();
   const feedCapKg = params.grainSiloBaseCapacityKg || 10000;
   const strawCapKg = params.strawStackBaseCapacityKg || 20000;
-  const manureCapKg = params.manureBinBaseCapacityKg || 10000;
+  const manureCapKg = params.manureBinBaseCapacityKg || 100000;
   const MAX_BIN_CAPACITY = feedCapKg;
 
 export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
@@ -30,6 +32,7 @@ export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
   allWorldBuildings = [],
   buildingsState = {},
   onSpendGold,
+  onUpdateAnyBuildingState,
   onUpdateState,
 }) => {
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -255,6 +258,18 @@ export const LivestockStorageBins: React.FC<LivestockStorageBinsProps> = ({
             }}
           />
         </div>
+
+        {/* 3. JEDNORAZOWY ZAKUP ZWIERZĄT Z INNEJ FERMY LUB ZE STATKU */}
+        <LivestockAnimalPurchaseCard
+          currentBuildingId={buildingId}
+          state={state}
+          allWorldBuildings={allWorldBuildings}
+          buildingsState={buildingsState}
+          onSpendGold={onSpendGold}
+          onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+          onUpdateState={onUpdateState}
+          notify={notify}
+        />
           </div>
 
           {/* PRAWA KOLUMNA: ZAWARTE KONTRAKTY ZAKUPU */}

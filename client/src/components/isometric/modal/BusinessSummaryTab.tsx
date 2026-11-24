@@ -53,11 +53,15 @@ export const BusinessSummaryTab: React.FC<BusinessSummaryTabProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-        {checklist.items.map((item) => (
+        {checklist.items.map((item) => {
+          const isWarning = item.passed && Boolean(item.warning);
+          return (
           <div
             key={item.id}
             className={`p-3 rounded-2xl border space-y-1.5 ${
-              item.passed
+              isWarning
+                ? 'bg-amber-950/35 border-amber-500/55'
+                : item.passed
                 ? 'bg-emerald-950/20 border-emerald-500/40'
                 : 'bg-rose-950/25 border-rose-500/50'
             }`}
@@ -69,15 +73,17 @@ export const BusinessSummaryTab: React.FC<BusinessSummaryTabProps> = ({
               </span>
               <span
                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                  item.passed
+                  isWarning
+                    ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                    : item.passed
                     ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
                     : 'bg-rose-500/20 border-rose-400 text-rose-300'
                 }`}
               >
-                {item.passed ? '✓ OK' : item.id === 'storage' ? '✕ PEŁNY' : '✕ BRAK'}
+                {isWarning ? '⚠️ OSTRZEŻENIE' : item.passed ? '✓ OK' : item.id === 'storage' ? '✕ PEŁNY' : '✕ BRAK'}
               </span>
             </div>
-            <p className="text-[11px] font-mono text-stone-300">{item.detail}</p>
+            <p className={`text-[11px] font-mono ${isWarning ? 'text-amber-200' : 'text-stone-300'}`}>{item.detail}</p>
             {!item.passed && (
               <div className="pt-1">
                 <button
@@ -96,7 +102,8 @@ export const BusinessSummaryTab: React.FC<BusinessSummaryTabProps> = ({
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Stan surowców i produktów w 2 kolumnach */}

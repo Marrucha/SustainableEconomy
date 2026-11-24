@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { FarmAgronomist, FarmCrewMember, FarmCycleStage, CropType, FertilizingLevel, FarmWeatherType } from './farmGridTypes';
-import { getWorkerStageRoleTitle, CROPS_CONFIG } from './farmGridTypes';
+import { getHiredAgronomistsCount, getWorkerStageRoleTitle, CROPS_CONFIG } from './farmGridTypes';
 import { getGrowthWeatherPercent, getHarvestWeatherPercent } from './farmYieldMath';
 
 export interface StageMeta {
@@ -210,7 +210,7 @@ export const FarmStageCard: React.FC<FarmStageCardProps> = ({
                   <path d="M12 12c2.7 0 4.5-1.8 4.5-4.5S14.7 3 12 3 7.5 4.8 7.5 7.5 9.3 12 12 12zm0 2c-3.3 0-8 1.7-8 5v2h16v-2c0-3.3-4.7-5-8-5z" />
                 </svg>
                 <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-stone-950 border border-white/80 text-white text-[8px] font-mono font-bold flex items-center justify-center leading-none shadow-sm">
-                  {stage.id === 'growing' ? (agronomist.hired ? 1 : 0) : assignedWorkers.length}
+                  {stage.id === 'growing' ? getHiredAgronomistsCount(agronomist) : assignedWorkers.length}
                 </span>
               </button>
             )}
@@ -329,16 +329,19 @@ export const FarmStageCard: React.FC<FarmStageCardProps> = ({
           currentFarmStage === 'storing_selling';
         const w = growingWeather;
         const wPct = getGrowthWeatherPercent(w, enableIrrigation);
+        const isWetWeather = w === 'rainy' || w === 'stormy';
         const wIcon = w === 'rainy' ? '🌧️' : w === 'cloudy' || w === 'partly_cloudy' ? '☁️' : w === 'stormy' ? '⛈️' : '☀️';
         const wLabel = w === 'rainy' ? 'Deszcz' : w === 'cloudy' || w === 'partly_cloudy' ? 'Chmury' : w === 'stormy' ? 'Burza' : 'Susza/Słońce';
         return (
           <div className="my-0.5 space-y-1 text-[10px] leading-tight">
             <label className="flex items-center justify-between gap-1 cursor-pointer">
               <span
-                title="Nawadnianie (£8 • +10%, chroni przed suszą — ale nie przed burzą)"
+                title="Nawadnianie (£8/ha • +10%, chroni przed suszą — przy deszczu i burzy nie daje premii)"
                 className={enableIrrigation ? 'text-sky-900 font-bold whitespace-nowrap truncate' : 'text-stone-700 whitespace-nowrap truncate'}
               >
-                💧 Nawadnianie (£8 • +10%, bez suszy)
+                {isWetWeather
+                  ? '💧 Nawadnianie (£8/ha • +0% w deszcz/burzę)'
+                  : '💧 Nawadnianie (£8/ha • +10%, bez suszy)'}
               </span>
               <input
                 type="checkbox"

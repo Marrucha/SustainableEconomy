@@ -16,7 +16,7 @@ const STAGE_LABELS: Record<FarmCycleStage, { label: string; icon: string }> = {
   weeding: { label: 'Pielenie', icon: '🌿' },
   growing: { label: 'Wzrost', icon: '🌾' },
   harvesting: { label: 'Żniwa', icon: '🚜' },
-  storing_selling: { label: 'Silos/Zbyt', icon: '💰' },
+  storing_selling: { label: 'Młocka', icon: '🌾' },
 };
 
 function drawRoundRect(

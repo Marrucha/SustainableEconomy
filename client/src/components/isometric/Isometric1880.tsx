@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { IsometricModals } from './IsometricModals';
 import { AdminParametersModal } from './admin/AdminParametersModal';
+import { SaveLoadModal } from './modal/SaveLoadModal';
+import { formatGameDate } from './clock/gameClockTypes';
 import { IsometricHeader, IsometricClockControls } from './IsometricHeader';
 import { MapSwitcher } from './MapSwitcher';
 import { WorldMapView } from './WorldMapView';
@@ -9,6 +11,7 @@ import { EconomyHudMenu } from './EconomyHudMenu';
 import { BuildCursorBanner } from './BuildCursorBanner';
 import { CATALOG } from './catalog';
 import { useWorldMaps } from './useWorldMaps';
+import { CITY_GEOMETRY, RURAL_GEOMETRY } from './mapConfig';
 import type { RebuildTarget } from './modal/RebuildDemolishModal';
 import { screenToTile } from './isoMath';
 import { useIsometricAssets } from './useIsometricAssets';
@@ -23,6 +26,7 @@ export const Isometric1880: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(0.85);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isSaveLoadOpen, setIsSaveLoadOpen] = useState(false);
   const [pan, setPan] = useState({ x: -20, y: 40 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -317,12 +321,20 @@ export const Isometric1880: React.FC = () => {
           );
 
         if (clickedBuilding) {
+          if (clickedBuilding.typeId === 'city_miniature') {
+            setCurrentMap('city');
+            setSelectedType(null);
+            setInspectingBuilding(null);
+            setInspectingTerrain(null);
+            setRebuildTarget(null);
+            return;
+          }
           setInspectingBuilding(clickedBuilding);
           setInspectingTerrain(null);
         }
       }
     }
-  }, [selectedType, isDemolishMode, zoom, pan, activeGeometry, placedBuildings]);
+  }, [selectedType, isDemolishMode, zoom, pan, activeGeometry, placedBuildings, setCurrentMap]);
 
   // DOUBLE CLICK (dwuklik) -> Otwarcie menu terenu lub budynku
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -352,6 +364,14 @@ export const Isometric1880: React.FC = () => {
       );
 
     if (clickedBuilding) {
+      if (clickedBuilding.typeId === 'city_miniature') {
+        setCurrentMap('city');
+        setSelectedType(null);
+        setInspectingBuilding(null);
+        setInspectingTerrain(null);
+        setRebuildTarget(null);
+        return;
+      }
       setInspectingBuilding(clickedBuilding);
       setInspectingTerrain(null);
       return;
@@ -420,6 +440,23 @@ export const Isometric1880: React.FC = () => {
             allWorldBuildings={allWorldBuildings}
             buildingsState={buildingsState}
             onToggleBuildMode={() => setIsBuildMode((p) => { if (p) setSelectedType(null); return !p; })}
+            onNavigateToBuilding={(building) => {
+              const targetMap = building.mapType === 'rural' ? 'rural' : 'city';
+              const targetGeometry = targetMap === 'rural' ? RURAL_GEOMETRY : CITY_GEOMETRY;
+              const viewHeight = canvasRef.current?.clientHeight || window.innerHeight;
+              const gx = building.x + (building.sizeX ?? 1) / 2;
+              const gy = building.y + (building.sizeY ?? 1) / 2;
+              setCurrentMap(targetMap);
+              setIsBuildMode(false);
+              setIsDemolishMode(false);
+              setSelectedType(null);
+              setInspectingBuilding(null);
+              setInspectingTerrain(null);
+              setPan({
+                x: -(gx - gy) * (targetGeometry.tileWidth / 2),
+                y: (viewHeight / 2) / zoom - 60 - (gx + gy) * (targetGeometry.tileHeight / 2),
+              });
+            }}
             buildTreeSlot={
               <BuildToolbar
                 catalog={CATALOG}
@@ -449,7 +486,11 @@ export const Isometric1880: React.FC = () => {
         </div>
       )}
       <div className="absolute top-3 right-4 z-30">
-        <IsometricClockControls clock={gameClock} onOpenAdmin={() => setIsAdminOpen(true)} />
+        <IsometricClockControls
+          clock={gameClock}
+          onOpenAdmin={() => setIsAdminOpen(true)}
+          onOpenSaveLoad={() => setIsSaveLoadOpen(true)}
+        />
       </div>
       {isDemolishMode && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 bg-rose-950/95 border-2 border-rose-500 rounded-full px-5 py-2 shadow-2xl backdrop-blur-md flex items-center gap-3 text-xs text-rose-200 font-semibold animate-in fade-in duration-200">
@@ -518,6 +559,13 @@ export const Isometric1880: React.FC = () => {
         onCloseRebuildTarget={() => setRebuildTarget(null)}
       />
       <AdminParametersModal isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} />
+      {isSaveLoadOpen && (
+        <SaveLoadModal
+          gameDateLabel={formatGameDate(gameClock.date)}
+          gold={gold}
+          onClose={() => setIsSaveLoadOpen(false)}
+        />
+      )}
     </div>
   );
 };

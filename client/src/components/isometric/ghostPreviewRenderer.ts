@@ -1,4 +1,8 @@
 import { getBuildingGridDimensions, type MapType } from './mapConfig';
+import {
+  hasAdjacentDifferentResidentialType,
+  hasBuildingPlacementCollision,
+} from './cityAutoGrowth';
 import type { PlacedBuilding, BuildingCatalogItem, TileDef } from './types';
 import {
   isPasture,
@@ -47,13 +51,24 @@ export function renderGhostPreview(p: GhostPreviewParams) {
   const leftX = (hoverTile.x - (hoverTile.y + curSizeY)) * (tileW / 2);
   const leftY = (hoverTile.x + (hoverTile.y + curSizeY)) * (tileH / 2);
 
-  const isCollision = placedBuildings.some(
-    (b) =>
-      hoverTile.x < b.x + b.sizeX &&
-      hoverTile.x + curSizeX > b.x &&
-      hoverTile.y < b.y + b.sizeY &&
-      hoverTile.y + curSizeY > b.y
-  );
+  const isRoadItem = selectedType.typeId.startsWith('road') || selectedType.roadSubType !== undefined;
+  const isCollision =
+    hasBuildingPlacementCollision(
+      hoverTile.x,
+      hoverTile.y,
+      curSizeX,
+      curSizeY,
+      placedBuildings,
+      isRoadItem
+    ) ||
+    hasAdjacentDifferentResidentialType(
+      hoverTile.x,
+      hoverTile.y,
+      curSizeX,
+      curSizeY,
+      selectedType.typeId,
+      placedBuildings
+    );
 
   const minXBoundary = mapType === 'rural' ? 2 : 1;
   const isWaterOrOut =
