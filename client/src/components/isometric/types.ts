@@ -266,5 +266,5 @@ export interface BuildingCatalogItem {
   yardAnchorNormX?: number;
   yardAnchorNormY?: number;
   yardBaseWidth?: number;
-  roadSubType?: 'curb' | 'seamless' | 'dirt';
+  roadSubType?: 'curb' | 'seamless' | 'dirt' | 'railway';
 }

@@ -20,7 +20,7 @@ export interface WorldMapData {
   gridSizeY: number;
   terrainTiles: Record<string, TileDef['type']>;
   roadOrientations: Record<string, 0 | 90>;
-  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'>;
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt' | 'railway'>;
   placedBuildings: PlacedBuilding[];
   nextExpandSide?: CityExpandSide;
 }
@@ -41,12 +41,33 @@ export function useWorldMaps() {
       roadTypes: {},
       placedBuildings: INITIAL_CITY_BUILDINGS,
     });
-    const hasShip = loaded.placedBuildings.some((b) => b.typeId === 'trade_ship');
-    if (hasShip) return loaded;
+    const nextTerrain = { ...loaded.terrainTiles };
+    for (const key of ['8,9', '9,9', '10,9', '7,6', '7,7', '7,8']) {
+      if (nextTerrain[key] === 'grass') nextTerrain[key] = 'road';
+    }
+    for (const key of ['7,10', '7,11', '7,12']) {
+      if (nextTerrain[key] === 'road') nextTerrain[key] = 'grass';
+    }
+    const migratedBuildings = loaded.placedBuildings.map((b) => {
+      if (b.typeId === 'cathedral') {
+        if (b.id === 'cathedral_init' && (b.x !== 6 || b.y !== 10 || b.sizeX !== 5 || b.sizeY !== 3)) {
+          return { ...b, x: 6, y: 10, sizeX: 5, sizeY: 3, rotation: 90 as const };
+        }
+        if (b.sizeX === 2 || b.sizeY === 2) {
+          return { ...b, sizeX: 5, sizeY: 3, rotation: 90 as const };
+        }
+      }
+      if ((b.id === 'hospital_init' || b.id === 'pumping_station_init') && b.rotation !== 90) {
+        return { ...b, rotation: 90 as const };
+      }
+      return b;
+    });
+    const hasShip = migratedBuildings.some((b) => b.typeId === 'trade_ship');
+    if (hasShip) return { ...loaded, terrainTiles: nextTerrain, placedBuildings: migratedBuildings };
     const ship = INITIAL_CITY_BUILDINGS.find((b) => b.typeId === 'trade_ship');
     return ship
-      ? { ...loaded, placedBuildings: [ship, ...loaded.placedBuildings] }
-      : loaded;
+      ? { ...loaded, terrainTiles: nextTerrain, placedBuildings: [ship, ...migratedBuildings] }
+      : { ...loaded, terrainTiles: nextTerrain, placedBuildings: migratedBuildings };
   });
 
   // Stan mapy wiejskiej (z usunięciem przestarzałej mniejszej plantacji kauczuku 4x4 z dawnych zapisów)
@@ -137,7 +158,7 @@ export function useWorldMaps() {
   };
 
   const setRoadTypes = (
-    updater: React.SetStateAction<Record<string, 'curb' | 'seamless' | 'dirt'>>
+    updater: React.SetStateAction<Record<string, 'curb' | 'seamless' | 'dirt' | 'railway'>>
   ) => {
     setActiveData((prev) => ({
       ...prev,

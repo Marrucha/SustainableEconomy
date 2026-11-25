@@ -4,7 +4,7 @@ import { canDemolishBuildingWithPastureRules } from '../pastureTopology';
 
 export type RebuildTarget =
   | { kind: 'building'; building: PlacedBuilding }
-  | { kind: 'road'; x: number; y: number; roadType: 'curb' | 'seamless' | 'dirt'; orientation: 0 | 90 }
+  | { kind: 'road'; x: number; y: number; roadType: 'curb' | 'seamless' | 'dirt' | 'railway'; orientation: 0 | 90 }
   | { kind: 'terrain'; x: number; y: number; terrainType: TerrainType };
 
 interface RebuildDemolishModalProps {
@@ -13,7 +13,7 @@ interface RebuildDemolishModalProps {
   placedBuildings?: PlacedBuilding[];
   onDemolishBuilding: (buildingId: string) => void;
   onDemolishRoad: (x: number, y: number) => void;
-  onChangeRoadType: (x: number, y: number, newType: 'curb' | 'seamless' | 'dirt') => void;
+  onChangeRoadType: (x: number, y: number, newType: 'curb' | 'seamless' | 'dirt' | 'railway') => void;
   onRotateRoad: (x: number, y: number) => void;
   onRenovateBuilding: (building: PlacedBuilding) => void;
   onClearForest: (x: number, y: number) => void;

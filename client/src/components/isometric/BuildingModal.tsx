@@ -34,6 +34,7 @@ import { ResidentialSection } from './modal/ResidentialSection';
 import { IndustrySection } from './modal/IndustrySection';
 import { UniversitySection } from './modal/UniversitySection';
 import { TradeSchoolSection } from './modal/TradeSchoolSection';
+import { CathedralSection } from './modal/CathedralSection';
 import { TownHallSection } from './modal/TownHallSection';
 import { MarketplaceSection } from './modal/MarketplaceSection';
 import { GroceryShopSection } from './modal/GroceryShopSection';
@@ -99,6 +100,7 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
   const isGroceryShop = building.typeId === 'grocery_shop';
   const isUniversity = building.typeId === 'university';
   const isTradeSchool = building.typeId === 'trade_school';
+  const isCathedral = building.typeId === 'cathedral';
   const isResidential = building.typeId.startsWith('tenement');
   const isTownHall = building.typeId === 'town_hall';
   const isMarketplace = building.typeId === 'marketplace';
@@ -608,7 +610,22 @@ export const BuildingModal: React.FC<BuildingModalProps> = ({
             />
           )}
 
-          {isBusiness && !isUniversity && !isTradeSchool && !isFarm && !isFlax && !isHop && !isOrchard && !isLivestock && !isMine && !isWoodcutter && !isMill && !isBakery && (
+          {isCathedral && (
+            <CathedralSection
+              buildingId={building.id}
+              buildingTitle={building.name || 'Katedra'}
+              buildingState={buildingState}
+              allWorldBuildings={allWorldBuildings}
+              buildingsState={buildingsState}
+              businessTab="production"
+              hasGreenRelief={hasGreenRelief}
+              onSpendGold={onSpendGold}
+              onUpdateAnyBuildingState={onUpdateAnyBuildingState}
+              onUpdateState={onUpdateState}
+            />
+          )}
+
+          {isBusiness && !isUniversity && !isTradeSchool && !isCathedral && !isFarm && !isFlax && !isHop && !isOrchard && !isLivestock && !isMine && !isWoodcutter && !isMill && !isBakery && (
             <IndustrySection
               building={building}
               buildingState={buildingState}

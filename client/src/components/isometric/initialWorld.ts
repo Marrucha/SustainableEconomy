@@ -20,7 +20,7 @@ export function createInitialCityTerrain(): Record<string, TileDef['type']> {
         (x === 11 && y >= 14 && y <= 23) ||
         (y === 5 && x >= 3 && x <= 26) ||
         (y === 18 && x >= 3 && x <= 26) ||
-        (x === 7 && y >= 0 && y <= 23) ||
+        (x === 7 && y >= 0 && y <= 23 && (y < 10 || y > 12)) ||
         (x === 11 && y >= 0 && y <= 5) ||
         (x === 19 && y >= 0 && y <= 23);
 
@@ -51,8 +51,8 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     name: 'Statek Handlowy (Port Londyn)',
     x: 1,
     y: 0,
-    sizeX: 1,
-    sizeY: 2,
+    sizeX: 2,
+    sizeY: 4,
     rotation: 0,
     cost: 0,
   },
@@ -115,11 +115,11 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     id: 'cathedral_init',
     typeId: 'cathedral',
     name: 'Katedra',
-    x: 8,
+    x: 6,
     y: 10,
-    sizeX: 3,
-    sizeY: 2,
-    rotation: 0,
+    sizeX: 5,
+    sizeY: 3,
+    rotation: 90,
     cost: 12000,
   },
   {
@@ -148,7 +148,7 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     id: 'courthouse_init',
     typeId: 'courthouse',
     name: 'Sąd Miejski',
-    x: 12,
+    x: 14,
     y: 16,
     sizeX: 1,
     sizeY: 2,
@@ -159,7 +159,7 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     id: 'fire_station_init',
     typeId: 'fire_station',
     name: 'Straż Pożarna',
-    x: 13,
+    x: 15,
     y: 14,
     sizeX: 1,
     sizeY: 2,
@@ -170,11 +170,11 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     id: 'pumping_station_init',
     typeId: 'pumping_station',
     name: 'Stacja Pomp',
-    x: 13,
+    x: 12,
     y: 16,
     sizeX: 2,
     sizeY: 2,
-    rotation: 0,
+    rotation: 90,
     cost: 3200,
   },
   {
@@ -185,7 +185,7 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     y: 16,
     sizeX: 2,
     sizeY: 2,
-    rotation: 0,
+    rotation: 90,
     cost: 5400,
   },
   {
@@ -247,7 +247,7 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     id: 'trade_school_init',
     typeId: 'trade_school',
     name: 'Szkoła Branżowa i Techniczna',
-    x: 14,
+    x: 13,
     y: 14,
     sizeX: 2,
     sizeY: 2,

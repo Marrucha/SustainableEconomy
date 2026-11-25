@@ -2,6 +2,7 @@ import type { BuildingState, PlacedBuilding } from '../types';
 import { createDefaultUniversityState } from './universityTypes';
 import { createDefaultTownHallCrew } from './townhall/townHallCrewTypes';
 import { createDefaultTradeSchoolCrew } from './tradeSchoolTypes';
+import { createDefaultCathedralCrew } from './cathedralTypes';
 
 export const WORKERS_PER_TENEMENT = 20;
 export const MANAGERS_PER_MIDDLE_TENEMENT = 10;
@@ -37,7 +38,7 @@ function deterministicName(seedIndex: number): string {
   return `${f} ${l}`;
 }
 
-const ELITE_ROLES = new Set(['manager', 'agronomist', 'sztygar', 'rector', 'mayor']);
+const ELITE_ROLES = new Set(['manager', 'agronomist', 'sztygar', 'rector', 'mayor', 'bishop']);
 const MIDDLE_ROLES = new Set([
   'baker',
   'miller',
@@ -50,6 +51,7 @@ const MIDDLE_ROLES = new Set([
   'lecturer',
   'clerk',
   'principal',
+  'priest',
 ]);
 
 const ROLE_LABELS_PL: Record<string, string> = {
@@ -58,6 +60,10 @@ const ROLE_LABELS_PL: Record<string, string> = {
   sztygar: 'Sztygar',
   rector: 'Rektor',
   mayor: 'Burmistrz',
+  bishop: 'Biskup',
+  priest: 'Ksiądz',
+  organist: 'Organista',
+  nun: 'Zakonnica',
   clerk: 'Urzędnik',
   principal: 'Dyrektor szkoły branżowej',
   teacher: 'Nauczyciel',
@@ -141,9 +147,13 @@ function deterministicHousehold(
     }
   }
   const parts: string[] = [];
-  if (w) parts.push('żona/mąż');
-  parts.push(`${c} ${c === 1 ? 'dziecko' : 'dzieci'}`);
-  parts.push(`${p} ${p === 1 ? 'rodzic' : 'rodziców'}`);
+  if (!w && c === 0 && p === 0) {
+    parts.push('Brak rodziny');
+  } else {
+    if (w) parts.push('żona/mąż');
+    parts.push(`${c} ${c === 1 ? 'dziecko' : 'dzieci'}`);
+    parts.push(`${p} ${p === 1 ? 'rodzic' : 'rodziców'}`);
+  }
   return {
     familySummary: parts.join(', '),
     totalHouseholdPersons: 1 + (w ? 1 : 0) + c + p,
@@ -208,7 +218,9 @@ export function getCityHousingPools(
       b.typeId === 'town_hall' ? createDefaultTownHallCrew(b.id) : undefined;
     const tradeSchoolCrew =
       b.typeId === 'trade_school' ? createDefaultTradeSchoolCrew(b.id) : undefined;
-    if (!st && !univCrew && !townHallCrew && !tradeSchoolCrew) continue;
+    const cathedralCrew =
+      b.typeId === 'cathedral' ? createDefaultCathedralCrew(b.id) : undefined;
+    if (!st && !univCrew && !townHallCrew && !tradeSchoolCrew && !cathedralCrew) continue;
 
     const crewSources: Array<{
       list?: Array<{
@@ -233,6 +245,7 @@ export function getCityHousingPools(
       { list: univCrew },
       { list: townHallCrew },
       { list: tradeSchoolCrew },
+      { list: cathedralCrew },
     ];
 
     for (const src of crewSources) {

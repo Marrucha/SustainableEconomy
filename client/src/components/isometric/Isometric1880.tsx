@@ -48,6 +48,7 @@ export const Isometric1880: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<BuildingCategory | 'Wszystkie'>('Wszystkie');
   const [buildRotation, setBuildRotation] = useState<0 | 90>(0);
   const [hoverTile, setHoverTile] = useState<{ x: number; y: number } | null>(null);
+  const [hoverCursorPos, setHoverCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [gold, setGold] = useState<number>(() => loadPersistedState('gold', 350000));
   const [inspectingBuilding, setInspectingBuilding] = useState<PlacedBuilding | null>(null);
   const [inspectingTerrain, setInspectingTerrain] = useState<{ x: number; y: number } | null>(null);
@@ -289,6 +290,7 @@ export const Isometric1880: React.FC = () => {
     setHoverTile((prev) =>
       prev?.x === tile?.x && prev?.y === tile?.y ? prev : tile
     );
+    setHoverCursorPos(tile ? { x: e.clientX, y: e.clientY } : null);
   };
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
@@ -391,8 +393,8 @@ export const Isometric1880: React.FC = () => {
   }, [zoom, pan, activeGeometry, placedBuildings, currentMap]);
 
   const handleWheel = (e: React.WheelEvent) => {
-    // Limit przybliżenia max 1.05 (aby uniknąć pikselozy) i min 0.35 dla pełnego widoku mapy
-    setZoom((prev) => Math.max(0.35, Math.min(1.05, prev - e.deltaY * 0.001)));
+    // Limit przybliżenia max 3.0 (dla wysokorozdzielczych spritów budynków) i min 0.35 dla pełnego widoku mapy
+    setZoom((prev) => Math.max(0.35, Math.min(3.0, prev - e.deltaY * 0.001)));
   };
 
   return (
@@ -407,6 +409,10 @@ export const Isometric1880: React.FC = () => {
           ref={canvasRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
+          onMouseLeave={() => {
+            setHoverTile(null);
+            setHoverCursorPos(null);
+          }}
           onMouseUp={handleMouseUp}
           onDoubleClick={handleDoubleClick}
           onWheel={handleWheel}
@@ -415,6 +421,39 @@ export const Isometric1880: React.FC = () => {
         />
       )}
 
+      {currentMap !== 'world' &&
+        hoverTile &&
+        hoverCursorPos &&
+        !isDragging &&
+        !inspectingBuilding &&
+        !selectedType && (() => {
+          const hoveredBuilding = placedBuildings.find(
+            (b) =>
+              hoverTile.x >= b.x &&
+              hoverTile.x < b.x + b.sizeX &&
+              hoverTile.y >= b.y &&
+              hoverTile.y < b.y + b.sizeY
+          );
+          if (!hoveredBuilding) return null;
+          const bState = buildingsState[hoveredBuilding.id];
+          const displayName = bState?.enterpriseName || hoveredBuilding.name;
+          const ownerName = bState?.ownerName;
+          return (
+            <div
+              className="pointer-events-none fixed z-40 px-2.5 py-1.5 rounded-xl bg-stone-950/90 border border-amber-500/50 shadow-2xl backdrop-blur-sm"
+              style={{
+                left: hoverCursorPos.x + 14,
+                top: hoverCursorPos.y - 10,
+                transform: 'translateY(-100%)',
+              }}
+            >
+              <p className="text-xs font-bold text-amber-100 whitespace-nowrap">{displayName}</p>
+              {ownerName && (
+                <p className="text-[10px] text-stone-400 font-mono whitespace-nowrap">{ownerName}</p>
+              )}
+            </div>
+          );
+        })()}
       <MapSwitcher
         currentMap={currentMap}
         onChangeMap={(newMap) => {

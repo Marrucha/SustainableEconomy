@@ -160,16 +160,16 @@ export function useIsometricAssets() {
       tenement_workers_rot90: '/sprites/assets_1880/tenement_workers_rot90.png',
 
       // 7. Kamienica Mieszczańska 1x2
-      tenement_middle_norm: '/sprites/assets_1880/tenement_middle_norm.png',
-      tenement_middle_rot90: '/sprites/assets_1880/tenement_middle_rot90.png',
+      tenement_middle_norm: '/sprites/assets_1880/tenement_middle_norm.png?v=2',
+      tenement_middle_rot90: '/sprites/assets_1880/tenement_middle_rot90.png?v=2',
 
       // 8. Willa Arystokracji 2x2
-      tenement_elite_norm: '/sprites/assets_1880/tenement_elite_norm.png',
-      tenement_elite_rot90: '/sprites/assets_1880/tenement_elite_rot90.png',
+      tenement_elite_norm: '/sprites/assets_1880/tenement_elite_norm.png?v=2',
+      tenement_elite_rot90: '/sprites/assets_1880/tenement_elite_rot90.png?v=2',
 
       // 9. Wiktoriański Ratusz Miejski 3x3
-      town_hall_norm: '/sprites/assets_1880/town_hall_norm.png',
-      town_hall_rot90: '/sprites/assets_1880/town_hall_rot90.png',
+      town_hall_norm: '/sprites/assets_1880/town_hall_norm.png?v=3',
+      town_hall_rot90: '/sprites/assets_1880/town_hall_rot90.png?v=3',
 
       // 9b. Handel i Składy Miejskie 1880
       marketplace_norm: '/sprites/assets_1880/marketplace_norm.png?v=v2',
@@ -186,10 +186,32 @@ export function useIsometricAssets() {
       // 9c. Edukacja Miejska 1880
       trade_school_norm: '/sprites/assets_1880/trade_school_norm.png?v=1',
       trade_school_rot90: '/sprites/assets_1880/trade_school_rot90.png?v=1',
-      university_norm: '/sprites/assets_1880/university_norm.png?v=4',
-      university_rot90: '/sprites/assets_1880/university_rot90.png?v=4',
+      university_norm: '/sprites/assets_1880/university_norm.png?v=5',
+      university_rot90: '/sprites/assets_1880/university_rot90.png?v=5',
       transport_company_norm: '/sprites/assets_1880/transport_company_norm.png?v=1',
       transport_company_rot90: '/sprites/assets_1880/transport_company_rot90.png?v=1',
+      railway_station_norm: '/sprites/assets_1880/railway_station_norm.png?v=4',
+      railway_station_rot90: '/sprites/assets_1880/railway_station_rot90.png?v=4',
+      cathedral_norm: '/sprites/assets_1880/cathedral_norm.png?v=6',
+      cathedral_rot90: '/sprites/assets_1880/cathedral_rot90.png?v=6',
+      city_theatre_norm: '/sprites/assets_1880/city_theatre_norm.png?v=3',
+      city_theatre_rot90: '/sprites/assets_1880/city_theatre_rot90.png?v=3',
+      pumping_station_norm: '/sprites/assets_1880/pumping_station_norm.png?v=3',
+      pumping_station_rot90: '/sprites/assets_1880/pumping_station_rot90.png?v=3',
+      police_station_norm: '/sprites/assets_1880/police_station_norm.png?v=5',
+      police_station_rot90: '/sprites/assets_1880/police_station_rot90.png?v=5',
+      fire_station_norm: '/sprites/assets_1880/fire_station_norm.png?v=3',
+      fire_station_rot90: '/sprites/assets_1880/fire_station_rot90.png?v=3',
+      courthouse_norm: '/sprites/assets_1880/courthouse_norm.png?v=10',
+      courthouse_rot90: '/sprites/assets_1880/courthouse_rot90.png?v=10',
+      city_hospital_norm: '/sprites/assets_1880/city_hospital_norm.png?v=3',
+      city_hospital_rot90: '/sprites/assets_1880/city_hospital_rot90.png?v=3',
+      trade_ship_norm: '/sprites/assets_1880/trade_ship_norm.png?v=3',
+      trade_ship_rot90: '/sprites/assets_1880/trade_ship_rot90.png?v=3',
+      public_library_norm: '/sprites/assets_1880/public_library_norm.png?v=1',
+      public_library_rot90: '/sprites/assets_1880/public_library_rot90.png?v=1',
+      public_baths_norm: '/sprites/assets_1880/public_baths_norm.png?v=1',
+      public_baths_rot90: '/sprites/assets_1880/public_baths_rot90.png?v=1',
 
       // 10. Park z Dębem 2x2
       oak_norm: '/sprites/assets_1880/oak_norm.png',
@@ -209,6 +231,10 @@ export function useIsometricAssets() {
       tile_road_dirt_y: '/sprites/assets_1880/tile_road_dirt_y.png',
       tile_road_dirt_norm: '/sprites/assets_1880/tile_road_dirt_y.png',
       tile_road_dirt_rot90: '/sprites/assets_1880/tile_road_dirt_x.png',
+      tile_railway_x: '/sprites/assets_1880/tile_railway_x.png?v=2',
+      tile_railway_y: '/sprites/assets_1880/tile_railway_y.png?v=2',
+      tile_railway_norm: '/sprites/assets_1880/tile_railway_y.png?v=2',
+      tile_railway_rot90: '/sprites/assets_1880/tile_railway_x.png?v=2',
       tile_water: '/sprites/assets_1880/tile_water.png',
       tile_quay: '/sprites/assets_1880/tile_quay.png',
       tile_forest_oak: '/sprites/assets_1880/tile_forest_oak.png',

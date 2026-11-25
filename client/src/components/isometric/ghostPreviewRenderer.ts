@@ -161,6 +161,7 @@ export function renderGhostPreview(p: GhostPreviewParams) {
     let baseKey = 'tile_road';
     if (subType === 'seamless') baseKey = 'tile_road_cobble_seamless';
     else if (subType === 'dirt') baseKey = 'tile_road_dirt';
+    else if (subType === 'railway') baseKey = 'tile_railway';
 
     const roadImgKey = curRotation === 0 ? `${baseKey}_y` : `${baseKey}_x`;
     const rImg = assets[roadImgKey];

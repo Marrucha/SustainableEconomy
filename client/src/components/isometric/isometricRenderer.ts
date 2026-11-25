@@ -16,7 +16,7 @@ export interface RenderParams {
   assets: Record<string, HTMLImageElement>;
   terrainTiles: Record<string, TileDef['type']>;
   roadOrientations: Record<string, 0 | 90>;
-  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'>;
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt' | 'railway'>;
   placedBuildings: PlacedBuilding[];
   selectedType: BuildingCatalogItem | null;
   buildRotation: 0 | 90;
@@ -104,6 +104,8 @@ export function renderIsometricScene(p: RenderParams) {
         tileImgKey = dir === 'x' ? 'tile_road_cobble_seamless_x' : 'tile_road_cobble_seamless_y';
       } else if (subType === 'dirt') {
         tileImgKey = dir === 'x' ? 'tile_road_dirt_x' : 'tile_road_dirt_y';
+      } else if (subType === 'railway') {
+        tileImgKey = dir === 'x' ? 'tile_railway_x' : 'tile_railway_y';
       } else {
         tileImgKey = dir === 'x' ? 'tile_road_x' : 'tile_road_y';
       }
@@ -235,7 +237,18 @@ export function renderIsometricScene(p: RenderParams) {
       const catItem = CATALOG.find((c) => c.typeId === bldg.typeId);
       if (!catItem) return;
 
-      const rot = bldg.rotation || 0;
+      const rot: 0 | 90 =
+        !catItem.isSquare &&
+        catItem.defaultSizeX !== catItem.defaultSizeY &&
+        bldg.sizeX === catItem.defaultSizeY &&
+        bldg.sizeY === catItem.defaultSizeX
+          ? 90
+          : !catItem.isSquare &&
+            catItem.defaultSizeX !== catItem.defaultSizeY &&
+            bldg.sizeX === catItem.defaultSizeX &&
+            bldg.sizeY === catItem.defaultSizeY
+          ? 0
+          : bldg.rotation || 0;
       const spriteKey = `${catItem.spriteBaseName}_${rot === 0 ? 'norm' : 'rot90'}`;
       const img = assets[spriteKey];
 

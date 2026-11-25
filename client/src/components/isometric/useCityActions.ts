@@ -25,8 +25,8 @@ interface UseCityActionsParams {
   setTerrainTiles: React.Dispatch<React.SetStateAction<Record<string, TileDef['type']>>>;
   roadOrientations: Record<string, 0 | 90>;
   setRoadOrientations: React.Dispatch<React.SetStateAction<Record<string, 0 | 90>>>;
-  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'>;
-  setRoadTypes: React.Dispatch<React.SetStateAction<Record<string, 'curb' | 'seamless' | 'dirt'>>>;
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt' | 'railway'>;
+  setRoadTypes: React.Dispatch<React.SetStateAction<Record<string, 'curb' | 'seamless' | 'dirt' | 'railway'>>>;
   gold: number;
   setGold: React.Dispatch<React.SetStateAction<number>>;
   mapType: MapType;
@@ -91,7 +91,7 @@ export function useCityActions(p: UseCityActionsParams) {
     setGold((g) => g + 15);
   };
 
-  const changeRoadType = (x: number, y: number, newType: 'curb' | 'seamless' | 'dirt') => {
+  const changeRoadType = (x: number, y: number, newType: 'curb' | 'seamless' | 'dirt' | 'railway') => {
     setRoadTypes((prev) => ({ ...prev, [`${x},${y}`]: newType }));
   };
 

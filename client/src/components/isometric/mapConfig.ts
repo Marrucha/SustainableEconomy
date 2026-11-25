@@ -50,6 +50,7 @@ export const RURAL_ALLOWED_BUILDINGS = new Set([
   'cotton_plantation',
   'horse_ranch',
   'road_dirt',
+  'railway_track',
 ]);
 
 // Budynki dozwolone w widoku miejskim (miasto / kamienice / przemysł / usługi miejskie)
@@ -101,6 +102,7 @@ export const CITY_ALLOWED_BUILDINGS = new Set([
   'oak',
   'road_curb',
   'road_seamless',
+  'railway_track',
 ]);
 
 /**

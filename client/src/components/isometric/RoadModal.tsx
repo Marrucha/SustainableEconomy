@@ -3,9 +3,9 @@ import React from 'react';
 interface RoadModalProps {
   x: number;
   y: number;
-  roadType: 'curb' | 'seamless' | 'dirt';
+  roadType: 'curb' | 'seamless' | 'dirt' | 'railway';
   onDemolish: () => void;
-  onChangeType: (newType: 'curb' | 'seamless' | 'dirt') => void;
+  onChangeType: (newType: 'curb' | 'seamless' | 'dirt' | 'railway') => void;
   onClose: () => void;
 }
 
@@ -17,7 +17,7 @@ export const RoadModal: React.FC<RoadModalProps> = ({
   onChangeType,
   onClose,
 }) => {
-  const getRoadName = (type: 'curb' | 'seamless' | 'dirt') => {
+  const getRoadName = (type: 'curb' | 'seamless' | 'dirt' | 'railway') => {
     switch (type) {
       case 'curb':
         return 'Bruk Miejski (z krawężnikiem)';
@@ -25,10 +25,13 @@ export const RoadModal: React.FC<RoadModalProps> = ({
         return 'Bruk Granitowy (bez krawężnika)';
       case 'dirt':
         return 'Wiejska Droga Ziemna';
+      case 'railway':
+        return 'Tor Kolejowy';
     }
   };
 
-  const getRefund = (type: 'curb' | 'seamless' | 'dirt') => {
+  const getRefund = (type: 'curb' | 'seamless' | 'dirt' | 'railway') => {
+    if (type === 'railway') return 60;
     return type === 'dirt' ? 8 : 25;
   };
 

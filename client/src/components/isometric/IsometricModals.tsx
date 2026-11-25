@@ -30,7 +30,7 @@ interface IsometricModalsProps {
   onConfirmDemolishTarget: () => void;
   onCancelDemolishTarget: () => void;
   onDemolishRoad: (x: number, y: number) => void;
-  onChangeRoadType: (x: number, y: number, newType: 'curb' | 'seamless' | 'dirt') => void;
+  onChangeRoadType: (x: number, y: number, newType: 'curb' | 'seamless' | 'dirt' | 'railway') => void;
   onRotateRoad: (x: number, y: number) => void;
   onRenovateBuilding: (bldg: PlacedBuilding) => void;
   onClearForest: (x: number, y: number) => void;

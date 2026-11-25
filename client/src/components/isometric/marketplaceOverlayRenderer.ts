@@ -59,7 +59,8 @@ export function renderMarketplaceOverlay({
     );
 
     const anchor = STALL_SPRITE_ANCHORS[slotIdx] || { dxFactor: 0, spriteY: 600 };
-    const centerX = baseCenterX + anchor.dxFactor * currentPlotWidth - 5;
+    const edgeOffsetX = slotIdx === 3 || slotIdx === 4 || slotIdx === 5 || slotIdx === 6 ? 5 : 0;
+    const centerX = baseCenterX + anchor.dxFactor * currentPlotWidth - 5 + edgeOffsetX;
     const anchorY = drawY + anchor.spriteY * scale;
 
     ctx.save();

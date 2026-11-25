@@ -24,6 +24,17 @@ const PUBLIC_TYPE_IDS = new Set([
   'road_curb',
   'road_seamless',
   'road_dirt',
+  'railway_track',
+  'police_station',
+  'fire_station',
+  'courthouse',
+  'city_theatre',
+  'cathedral',
+  'pumping_station',
+  'city_hospital',
+  'public_baths',
+  'public_library',
+  'railway_station',
 ]);
 
 const CRAFT_TYPE_IDS = new Set([

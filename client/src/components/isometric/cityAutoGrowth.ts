@@ -129,7 +129,7 @@ function canPlaceBuildingAt(
     return false;
   }
 
-  // Rezerwa miejsca pod Straż Pożarną / Policję (PD od Targowiska) oraz Katedrę 3x2 (PN-Zach od Targowiska)
+  // Rezerwa miejsca pod Straż Pożarną / Policję (PD od Targowiska) oraz Katedrę 3x5 (x: 8..10, y: 0..4)
   if (typeId && typeId.startsWith('tenement_')) {
     const market = placedBuildings.find((b) => b.id === 'marketplace_init');
     if (market) {
@@ -140,12 +140,8 @@ function canPlaceBuildingAt(
       if (x < rx2 && x + sizeX > rx1 && y < ry2 && y + sizeY > ry1) {
         return false;
       }
-      // Rezerwa 3x2 pod Katedrę na PN-Zachód od Targowiska
-      const cx1 = market.x - 4;
-      const cx2 = market.x - 1;
-      const cy1 = market.y - 3;
-      const cy2 = market.y - 1;
-      if (x < cx2 && x + sizeX > cx1 && y < cy2 && y + sizeY > cy1) {
+      // Rezerwa 5x3 pod Katedrę na kwartale x: 6..10, y: 10..12 (PD-Zachód od poprzedniego kwartału, przy Targowisku)
+      if (x < 11 && x + sizeX > 6 && y < 13 && y + sizeY > 10) {
         return false;
       }
     }
@@ -270,14 +266,14 @@ export function expandCityTerrainSide(
   placedBuildings: PlacedBuilding[],
   side: CityExpandSide,
   roadOrientations: Record<string, 0 | 90> = {},
-  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'> = {}
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt' | 'railway'> = {}
 ): {
   gridSizeX: number;
   gridSizeY: number;
   terrainTiles: Record<string, TileDef['type']>;
   placedBuildings: PlacedBuilding[];
   roadOrientations: Record<string, 0 | 90>;
-  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'>;
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt' | 'railway'>;
   spawnHint: { x: number; y: number };
 } {
   if (side === 'right') {
@@ -323,7 +319,7 @@ export function expandCityTerrainSide(
     const newGridSizeY = gridSizeY + rowsToAdd;
     const nextTerrain: Record<string, TileDef['type']> = {};
     const nextOrientations: Record<string, 0 | 90> = {};
-    const nextRoadTypes: Record<string, 'curb' | 'seamless' | 'dirt'> = {};
+    const nextRoadTypes: Record<string, 'curb' | 'seamless' | 'dirt' | 'railway'> = {};
 
     // Przesunięcie istniejącego terenu i dróg o rowsToAdd w dół
     for (const [key, val] of Object.entries(terrainTiles)) {
@@ -404,14 +400,14 @@ export function ensureCitySpaceFor3x3(
   placedBuildings: PlacedBuilding[],
   nextExpandSide: CityExpandSide = 'bottom',
   roadOrientations: Record<string, 0 | 90> = {},
-  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'> = {}
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt' | 'railway'> = {}
 ): {
   gridSizeX: number;
   gridSizeY: number;
   terrainTiles: Record<string, TileDef['type']>;
   placedBuildings: PlacedBuilding[];
   roadOrientations: Record<string, 0 | 90>;
-  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt'>;
+  roadTypes: Record<string, 'curb' | 'seamless' | 'dirt' | 'railway'>;
   nextExpandSide: CityExpandSide;
 } {
   if (hasFree3x3BuildSpace(gridSizeX, gridSizeY, terrainTiles, placedBuildings)) {
