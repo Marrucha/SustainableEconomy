@@ -116,18 +116,52 @@ export function renderIsometricScene(p: RenderParams) {
     }
 
     // Rysowanie płaskiego podłoża (trawa, droga, nabrzeże, woda)
+    if (tile.type === 'road' && p.roadTypes[`${tile.x},${tile.y}`] === 'railway') {
+      const grassImg = assets['tile_grass'];
+      if (grassImg && grassImg.complete && grassImg.naturalWidth > 0) {
+        ctx.drawImage(grassImg, screenX, screenY, tileW, tileH);
+      }
+    }
+    const waterDrop = tileH * 0.14;
     const tileImg = assets[tileImgKey] || assets['tile_grass'];
     if (tileImg && tileImg.complete && tileImg.naturalWidth > 0) {
-      ctx.drawImage(tileImg, screenX, screenY, tileW, tileH);
+      const drawY = tile.type === 'water' ? screenY + waterDrop : screenY;
+      ctx.drawImage(tileImg, screenX, drawY, tileW, tileH);
     }
 
-    // Subtelna siatka
+    // Pionowa ściana oporowa nabrzeża (od strony morza, x=1)
+    if (tile.type === 'quay') {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(topX, topY);
+      ctx.lineTo(topX - tileW / 2, topY + tileH / 2);
+      ctx.lineTo(topX - tileW / 2, topY + tileH / 2 + waterDrop);
+      ctx.lineTo(topX, topY + waterDrop);
+      ctx.closePath();
+      ctx.fillStyle = '#5c5852';
+      ctx.fill();
+      ctx.strokeStyle = '#3d3a35';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Pasek cienia na styku z wodą
+      ctx.beginPath();
+      ctx.moveTo(topX, topY + waterDrop);
+      ctx.lineTo(topX - tileW / 2, topY + tileH / 2 + waterDrop);
+      ctx.strokeStyle = 'rgba(10, 20, 30, 0.45)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Subtelna siatka (dla wody obniżona do poziomu lustra wody)
+    const gridOffsetY = tile.type === 'water' ? waterDrop : 0;
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(topX, topY);
-    ctx.lineTo(topX + tileW / 2, topY + tileH / 2);
-    ctx.lineTo(topX, topY + tileH);
-    ctx.lineTo(topX - tileW / 2, topY + tileH / 2);
+    ctx.moveTo(topX, topY + gridOffsetY);
+    ctx.lineTo(topX + tileW / 2, topY + tileH / 2 + gridOffsetY);
+    ctx.lineTo(topX, topY + tileH + gridOffsetY);
+    ctx.lineTo(topX - tileW / 2, topY + tileH / 2 + gridOffsetY);
     ctx.closePath();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 0.75;

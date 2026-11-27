@@ -52,7 +52,7 @@ export const INITIAL_CITY_BUILDINGS: PlacedBuilding[] = [
     x: 1,
     y: 0,
     sizeX: 2,
-    sizeY: 4,
+    sizeY: 5,
     rotation: 0,
     cost: 0,
   },

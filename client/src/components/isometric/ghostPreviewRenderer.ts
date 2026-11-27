@@ -77,7 +77,7 @@ export function renderGhostPreview(p: GhostPreviewParams) {
     hoverTile.y < 0 ||
     hoverTile.y + curSizeY > gridY;
 
-  const isRoadMode = selectedType.typeId.startsWith('road');
+  const isRoadMode = isRoadItem;
   const isHoveringRoad = terrainTiles[`${hoverTile.x},${hoverTile.y}`] === 'road';
 
   let isOnRoad = false;

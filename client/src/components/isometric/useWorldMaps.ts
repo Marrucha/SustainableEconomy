@@ -60,6 +60,9 @@ export function useWorldMaps() {
       if ((b.id === 'hospital_init' || b.id === 'pumping_station_init') && b.rotation !== 90) {
         return { ...b, rotation: 90 as const };
       }
+      if (b.id === 'trade_ship_init' && (b.sizeX !== 2 || b.sizeY !== 5)) {
+        return { ...b, sizeX: 2, sizeY: 5 };
+      }
       return b;
     });
     const hasShip = migratedBuildings.some((b) => b.typeId === 'trade_ship');

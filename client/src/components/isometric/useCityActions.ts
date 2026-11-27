@@ -189,7 +189,7 @@ export function useCityActions(p: UseCityActionsParams) {
       coord.y < 0 ||
       coord.y + curSizeY > gridSizeY;
 
-    if (item.typeId.startsWith('road')) {
+    if (isRoadItem) {
       if (isWaterOrOut || isCollision || gold < item.cost) return false;
       setTerrainTiles((prev) => ({ ...prev, [`${coord.x},${coord.y}`]: 'road' }));
       setRoadOrientations((prev) => ({ ...prev, [`${coord.x},${coord.y}`]: rot }));
